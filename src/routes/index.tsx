@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Search, Plus, LayoutDashboard, FolderKanban, Users, Truck, Wallet, MessageSquare, ArrowUpRight, Send } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Search, Plus, LayoutDashboard, FolderKanban, Users, Truck, Wallet, MessageSquare,
+  ArrowUpRight, Send, Bell, Clipboard, IndianRupee, Clock, AlertTriangle, Sparkles,
+  Home as HomeIcon, Building2, Check,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -17,215 +22,324 @@ const navItems = [
   { label: "Clients", icon: Users },
   { label: "Vendors", icon: Truck },
   { label: "Finance", icon: Wallet },
-  { label: "Messages", icon: MessageSquare },
+  { label: "Messages", icon: MessageSquare, badge: 7 },
 ];
 
 const phases = ["Survey", "Design", "Procurement", "Execution", "Finishing", "Handover"] as const;
 
 type Health = "on-track" | "attention" | "urgent";
+type ProjectType = "residential" | "commercial";
 
 const projects: Array<{
-  name: string;
-  client: string;
-  location: string;
-  phase: typeof phases[number];
-  completion: number;
-  spent: number;
-  budget: number;
-  health: Health;
+  name: string; client: string; location: string;
+  phase: typeof phases[number]; completion: number;
+  spent: number; budget: number; health: Health; type: ProjectType;
 }> = [
-  { name: "Banyan House", client: "Mehra Family", location: "Bandra, Mumbai", phase: "Execution", completion: 62, spent: 48, budget: 85, health: "on-track" },
-  { name: "Atelier 14", client: "Kapoor & Co.", location: "Defence Colony, Delhi", phase: "Procurement", completion: 38, spent: 26, budget: 54, health: "attention" },
-  { name: "Coral Studio", client: "Iyer Residence", location: "Koregaon Park, Pune", phase: "Finishing", completion: 89, spent: 71, budget: 72, health: "urgent" },
+  { name: "Banyan House", client: "Mehra Family", location: "Bandra, Mumbai", phase: "Execution", completion: 62, spent: 48, budget: 85, health: "on-track", type: "residential" },
+  { name: "Atelier 14", client: "Kapoor & Co.", location: "Defence Colony, Delhi", phase: "Procurement", completion: 38, spent: 26, budget: 54, health: "attention", type: "commercial" },
+  { name: "Coral Studio", client: "Iyer Residence", location: "Koregaon Park, Pune", phase: "Finishing", completion: 89, spent: 71, budget: 72, health: "urgent", type: "residential" },
 ];
 
-const healthStyles: Record<Health, { dot: string; label: string; ring: string }> = {
-  "on-track": { dot: "bg-[var(--success)]", label: "On track", ring: "ring-[var(--success)]/30" },
-  attention: { dot: "bg-[var(--warning)]", label: "Needs attention", ring: "ring-[var(--warning)]/30" },
-  urgent: { dot: "bg-[var(--danger)]", label: "Urgent", ring: "ring-[var(--danger)]/30" },
+const healthMap: Record<Health, { color: string; label: string; pulse: string; line: string }> = {
+  "on-track": { color: "#7a9e8a", label: "On track", pulse: "", line: "#7a9e8a" },
+  attention: { color: "#d4882a", label: "Watch closely", pulse: "pulse-slow", line: "#d4882a" },
+  urgent: { color: "#c4685a", label: "Urgent", pulse: "pulse-fast", line: "#c4685a" },
 };
+
+// Count-up hook
+function useCountUp(target: number, duration = 1500, decimals = 0) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    let raf: number; const start = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min((t - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setVal(target * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return decimals === 0 ? Math.round(val) : val.toFixed(decimals);
+}
 
 function Dashboard() {
   return (
     <div className="min-h-screen flex bg-background text-foreground font-sans">
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-      <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-      {/* Sidebar */}
-      <aside className="w-64 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
+      {/* Sidebar (hidden on mobile) */}
+      <aside className="hidden md:flex w-64 shrink-0 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border">
         <div className="px-6 pt-8 pb-10">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-display font-semibold">S</div>
-            <div>
-              <div className="font-display text-lg leading-none">StudioOS</div>
-              <div className="text-[11px] uppercase tracking-[0.18em] text-sidebar-foreground/50 mt-1">Design Studio</div>
-            </div>
+          <div className="font-display text-3xl leading-none">
+            <span className="text-white">Studio</span><span className="text-[#c17f5a]">OS</span>
           </div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-white/35 mt-2">Design Command Centre</div>
         </div>
         <nav className="px-3 space-y-1 flex-1">
           {navItems.map((n) => (
             <button
               key={n.label}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm transition-[background-color,color] duration-[180ms] ${
                 n.active
-                  ? "bg-sidebar-accent text-white border-l-2 border-primary"
-                  : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent/60"
+                  ? "bg-sidebar-accent text-white border-l-2 border-[#c17f5a]"
+                  : "text-white/65 hover:text-white hover:bg-sidebar-accent"
               }`}
             >
               <n.icon className="h-4 w-4" />
-              <span>{n.label}</span>
+              <span className="flex-1 text-left">{n.label}</span>
+              {n.badge && (
+                <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-md bg-[#c17f5a] text-white">{n.badge}</span>
+              )}
             </button>
           ))}
         </nav>
-        <div className="p-4 m-3 rounded-xl bg-sidebar-accent/60 border border-sidebar-border">
-          <div className="text-xs text-sidebar-foreground/60">Studio</div>
+        <div className="p-4 m-3 rounded-[10px] bg-sidebar-accent border border-sidebar-border">
+          <div className="text-[10px] uppercase tracking-[0.18em] text-white/40">Studio</div>
           <div className="text-sm font-medium text-white mt-1">Bhavik Studio</div>
-          <div className="text-[11px] text-sidebar-foreground/50 mt-2">12 active · 4 vendors</div>
+          <div className="text-[11px] text-white/45 mt-2 font-mono">12 active · 4 vendors</div>
         </div>
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="h-16 border-b border-border bg-background/80 backdrop-blur flex items-center px-8 gap-4 sticky top-0 z-10">
+        <header className="h-16 border-b border-border bg-background/85 backdrop-blur flex items-center px-4 md:px-8 gap-3 sticky top-0 z-10">
           <div className="relative flex-1 max-w-xl">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search projects, clients, vendors…"
-              className="w-full h-10 pl-10 pr-4 rounded-lg bg-card border border-border text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring/40"
+              className="w-full h-10 pl-10 pr-4 rounded-[10px] bg-card border border-border text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring/30"
             />
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <span className="text-xs text-muted-foreground hidden md:inline">Mon, 18 May</span>
-            <button
-              aria-label="Add new project"
-              className="h-10 px-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium shadow-sm hover:opacity-95 transition"
-            >
-              <Plus className="h-4 w-4" />
-              <span>New project</span>
+            <button className="relative h-10 w-10 inline-flex items-center justify-center rounded-[10px] border border-border bg-card hover:bg-muted transition-colors duration-150">
+              <Bell className="h-4 w-4" />
+              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#c17f5a] shadow-[0_0_0_3px_rgba(193,127,90,0.25)] pulse-fast" />
+            </button>
+            <button className="h-10 px-4 inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 transition-[filter] duration-150">
+              <Plus className="h-4 w-4" /><span>New project</span>
             </button>
           </div>
         </header>
 
-        <main className="flex-1 px-8 py-10 max-w-[1400px] w-full">
+        <main className="flex-1 px-4 md:px-8 py-8 md:py-10 max-w-[1400px] w-full pb-24 md:pb-10">
           {/* Hero */}
-          <div className="flex items-end justify-between mb-10">
-            <div>
-              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3">Dashboard</div>
-              <h1 className="text-4xl md:text-5xl font-display font-medium">Good morning, Bhavik.</h1>
-              <p className="text-muted-foreground mt-2 max-w-xl">Three projects in motion this week. One needs a quick call.</p>
-            </div>
-            <div className="hidden md:flex gap-8 pb-2">
-              <Stat label="Active projects" value="3" />
-              <Stat label="Budget in play" value="₹2.11 Cr" />
-              <Stat label="This week" value="14 tasks" />
-            </div>
+          <div className="mb-10">
+            <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Dashboard</div>
+            <h1 className="text-4xl md:text-5xl font-display">Good morning, Bhavik.</h1>
+            <p className="text-muted-foreground mt-2 max-w-xl">Three projects in motion this week. One needs a quick call.</p>
           </div>
 
-          {/* Phase legend */}
-          <div className="mb-8 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-            <span className="mr-2">Phases</span>
-            {phases.map((p, i) => (
-              <span key={p} className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-foreground/30" />
-                <span>{p}</span>
-                {i < phases.length - 1 && <span className="text-foreground/20">·</span>}
+          {/* Stats row */}
+          <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mb-8">
+            <StatCard idx={0} icon={Clipboard} label="Active Projects" value={3} sub="1 added this month" subTone="success" accent="#c17f5a" />
+            <StatCard idx={1} icon={IndianRupee} label="Collected This Month" value={8.4} suffix="L" prefix="₹" decimals={1} sub="↑ 18% vs last month" subTone="success" accent="#7a9e8a" />
+            <StatCard idx={2} icon={Clock} label="Pending Collection" value={5.2} suffix="L" prefix="₹" decimals={1} sub="2 invoices overdue" subTone="danger" accent="#d4882a" />
+            <StatCard idx={3} icon={AlertTriangle} label="Items Need Attention" value={6} sub="3 urgent today" subTone="danger" accent="#c4685a" />
+          </section>
+
+          {/* AI Insight */}
+          <section
+            className="relative overflow-hidden rounded-[16px] bg-[#1a1612] text-white p-7 md:p-9 mb-10 animate-fade-up"
+            style={{ animationDelay: "0.32s" }}
+          >
+            <div className="absolute top-0 right-0 w-[400px] h-[400px] pointer-events-none"
+                 style={{ background: "radial-gradient(circle at 70% 30%, rgba(193,127,90,0.18), transparent 60%)" }} />
+            <div className="relative">
+              <span className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#c17f5a] mb-4">
+                <Sparkles className="h-3 w-3" /> AI Insight
               </span>
-            ))}
-          </div>
+              <h2 className="font-display text-3xl md:text-4xl text-white">Good morning, Bhavik</h2>
+              <p className="italic text-white/65 mt-3 max-w-2xl leading-relaxed">
+                Mehta project tiles are delayed 3 days. Flooring shifts to 18th May. Client update recommended today before she calls.
+              </p>
+              <div className="flex flex-wrap gap-3 mt-6">
+                <button className="h-10 px-5 rounded-[6px] bg-[#c17f5a] text-white text-sm font-medium hover:brightness-95 transition-[filter] duration-150">
+                  Draft Client Update
+                </button>
+                <button className="h-10 px-5 rounded-[6px] border border-white/25 text-white text-sm font-medium hover:bg-white/5 transition-colors duration-150">
+                  View Impact
+                </button>
+              </div>
+            </div>
+          </section>
 
           {/* Project cards */}
+          <div className="flex items-baseline justify-between mb-5">
+            <h2 className="font-display text-2xl">Active Projects</h2>
+            <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{projects.length} in motion</span>
+          </div>
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {projects.map((p) => (
-              <ProjectCard key={p.name} project={p} />
+            {projects.map((p, i) => (
+              <ProjectCard key={p.name} project={p} delay={0.4 + i * 0.08} />
             ))}
           </section>
         </main>
+
+        {/* Mobile bottom nav */}
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-sidebar border-t border-sidebar-border px-2 py-2 flex justify-around">
+          {navItems.slice(0, 5).map((n) => (
+            <button key={n.label}
+              className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-[10px] text-[10px] ${n.active ? "text-[#c17f5a]" : "text-white/60"}`}>
+              <n.icon className="h-5 w-5" />
+              <span>{n.label}</span>
+            </button>
+          ))}
+        </nav>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function StatCard({
+  idx, icon: Icon, label, value, prefix = "", suffix = "", decimals = 0, sub, subTone, accent,
+}: {
+  idx: number; icon: React.ComponentType<{ className?: string }>;
+  label: string; value: number; prefix?: string; suffix?: string; decimals?: number;
+  sub: string; subTone: "success" | "danger"; accent: string;
+}) {
+  const count = useCountUp(value, 1500, decimals);
   return (
-    <div>
+    <article
+      className="relative overflow-hidden rounded-[16px] bg-card border border-border p-5 md:p-6 animate-fade-up transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px]"
+      style={{ animationDelay: `${idx * 0.08}s`, boxShadow: "var(--shadow-card)" }}
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="h-9 w-9 rounded-[10px] flex items-center justify-center" style={{ background: `${accent}18`, color: accent }}>
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
       <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</div>
-      <div className="text-2xl font-display font-medium mt-1">{value}</div>
-    </div>
+      <div className="font-display text-[32px] leading-tight mt-1 tabular-nums">
+        {prefix}{count}{suffix}
+      </div>
+      <div className="text-[11px] mt-2 font-mono" style={{ color: subTone === "success" ? "#7a9e8a" : "#c4685a" }}>
+        {sub}
+      </div>
+      <div className="absolute bottom-0 inset-x-0 h-[3px]" style={{ background: accent }} />
+    </article>
   );
 }
 
-function ProjectCard({ project: p }: { project: typeof projects[number] }) {
-  const h = healthStyles[p.health];
+function ProjectCard({ project: p, delay }: { project: typeof projects[number]; delay: number }) {
+  const h = healthMap[p.health];
   const phaseIdx = phases.indexOf(p.phase);
   const budgetPct = Math.round((p.spent / p.budget) * 100);
+  const completion = useCountUp(p.completion, 1000);
+  const TypeIcon = p.type === "residential" ? HomeIcon : Building2;
+  const initials = p.client.split(" ").map(w => w[0]).slice(0, 2).join("");
 
   return (
-    <article className="group relative bg-card rounded-2xl border border-border p-6 flex flex-col gap-6 hover:shadow-[0_20px_50px_-25px_rgba(80,40,20,0.25)] transition-shadow">
+    <article
+      className="group relative bg-card rounded-[16px] border border-border p-7 md:p-8 flex flex-col gap-6 overflow-hidden animate-fade-up transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px]"
+      style={{ animationDelay: `${delay}s`, boxShadow: "var(--shadow-card)" }}
+    >
+      {/* Decorative gradient */}
+      <div className="absolute top-0 right-0 w-48 h-48 pointer-events-none"
+           style={{ background: "radial-gradient(circle at 80% 20%, rgba(193,127,90,0.10), transparent 60%)" }} />
+
       {/* Header */}
-      <header className="flex items-start justify-between gap-4">
+      <header className="relative flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <span className={`h-2 w-2 rounded-full ${h.dot} ring-4 ${h.ring}`} aria-label={h.label} />
-            <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{h.label}</span>
+          <div className="flex items-center gap-2 mb-3">
+            <span
+              className={`inline-flex h-1.5 w-1.5 rounded-full ${h.pulse}`}
+              style={{ background: h.color, color: h.color }}
+              aria-label={h.label}
+            />
+            <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{h.label}</span>
+            <span className="ml-auto inline-flex h-6 w-6 items-center justify-center rounded-[6px] bg-muted text-muted-foreground">
+              <TypeIcon className="h-3.5 w-3.5" />
+            </span>
           </div>
-          <h2 className="text-2xl font-display font-medium leading-tight truncate">{p.name}</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            {p.client} · <span className="text-foreground/60">{p.location}</span>
-          </p>
-        </div>
-        <div className="text-right shrink-0">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Phase</div>
-          <div className="text-sm font-medium mt-1">{p.phase}</div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">{phaseIdx + 1} / {phases.length}</div>
+          <h3 className="font-display leading-tight" style={{ fontSize: "20px" }}>{p.name}</h3>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="inline-flex h-6 w-6 rounded-full items-center justify-center text-[10px] font-medium text-white" style={{ background: "#c17f5a" }}>
+              {initials}
+            </span>
+            <p className="text-xs text-muted-foreground truncate">
+              {p.client} · {p.location}
+            </p>
+          </div>
         </div>
       </header>
 
       {/* Completion */}
-      <div>
+      <div className="relative">
         <div className="flex items-baseline justify-between mb-2">
           <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Completion</span>
-          <span className="font-display text-3xl font-medium tabular-nums">{p.completion}<span className="text-base text-muted-foreground">%</span></span>
+          <span className="font-display text-3xl tabular-nums">{completion}<span className="text-base text-muted-foreground font-mono">%</span></span>
         </div>
-        <div className="relative h-2 rounded-full bg-muted overflow-hidden">
-          <div className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all" style={{ width: `${p.completion}%` }} />
+        <div className="relative h-1.5 rounded-full bg-muted overflow-hidden" style={{ height: "6px" }}>
+          <div
+            className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-1000 ease-out"
+            style={{ width: `${completion}%`, background: "linear-gradient(90deg, #c17f5a, #d49a7a)" }}
+          />
         </div>
-        {/* Phase pips */}
-        <div className="mt-3 grid grid-cols-6 gap-1">
-          {phases.map((_, i) => (
-            <div key={i} className={`h-1 rounded-full ${i <= phaseIdx ? "bg-primary/70" : "bg-muted"}`} />
-          ))}
+
+        {/* Phase chips */}
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {phases.map((ph, i) => {
+            const done = i < phaseIdx;
+            const current = i === phaseIdx;
+            return (
+              <span
+                key={ph}
+                className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px] ${
+                  current
+                    ? "text-white"
+                    : done
+                      ? "text-white"
+                      : "text-muted-foreground border border-border"
+                }`}
+                style={{
+                  background: current ? "#d4882a" : done ? "#7a9e8a" : "transparent",
+                }}
+              >
+                {done && <Check className="h-2.5 w-2.5" />}
+                {ph}
+              </span>
+            );
+          })}
         </div>
       </div>
 
       {/* Budget */}
-      <div>
+      <div className="relative">
         <div className="flex items-baseline justify-between mb-2">
           <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Budget</span>
-          <span className="text-sm text-muted-foreground tabular-nums">
+          <span className="text-xs text-muted-foreground tabular-nums font-mono">
             <span className="text-foreground font-medium">₹{p.spent}L</span> / ₹{p.budget}L
           </span>
         </div>
-        <div className="relative h-2 rounded-full bg-muted overflow-hidden">
+        <div className="relative rounded-full bg-muted overflow-hidden" style={{ height: "6px" }}>
           <div
-            className={`absolute inset-y-0 left-0 rounded-full ${budgetPct > 95 ? "bg-[var(--danger)]" : budgetPct > 80 ? "bg-[var(--warning)]" : "bg-foreground/70"}`}
-            style={{ width: `${Math.min(budgetPct, 100)}%` }}
+            className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-1000 ease-out"
+            style={{
+              width: `${Math.min(budgetPct, 100)}%`,
+              background: budgetPct > 95 ? "#c4685a" : budgetPct > 80 ? "#d4882a" : "#3d3530",
+            }}
           />
         </div>
-        <div className="text-[11px] text-muted-foreground mt-1.5 tabular-nums">{budgetPct}% spent</div>
+        <div className="text-[10px] text-muted-foreground mt-1.5 tabular-nums font-mono uppercase tracking-wider">{budgetPct}% spent</div>
       </div>
 
       {/* Actions */}
-      <div className="mt-auto flex gap-2 pt-2">
-        <button className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-95 transition">
-          View project <ArrowUpRight className="h-3.5 w-3.5" />
+      <div className="relative mt-auto flex gap-2 pt-2">
+        <button className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 transition-[filter] duration-150">
+          View Project <ArrowUpRight className="h-3.5 w-3.5" />
         </button>
-        <button className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted transition">
-          <Send className="h-3.5 w-3.5" /> Send update
+        <button className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-[6px] border border-border bg-card text-sm font-medium hover:bg-muted transition-colors duration-150">
+          <Send className="h-3.5 w-3.5" /> Send Update
         </button>
       </div>
+
+      {/* Bottom accent line */}
+      <div className="absolute bottom-0 inset-x-0" style={{ height: "3px", background: h.line }} />
     </article>
   );
 }
