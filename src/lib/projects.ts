@@ -43,7 +43,12 @@ export const projects: Project[] = [
     description:
       "A 4-BHK sea-facing residence reimagined with warm Indian craft, lime-wash walls and reclaimed teak. Anchored around a central courtyard with a banyan motif.",
     team: ["Bhavik Shah", "Riya Menon", "Aditya Patel"],
-    vendors: ["Studio Marigold (Furniture)", "Kohinoor Stone", "Lumen Lighting Co."],
+    vendors: [
+      { name: "Studio Marigold", scope: "Custom furniture", status: "confirmed" },
+      { name: "Kohinoor Stone", scope: "Kota & marble flooring", status: "completed" },
+      { name: "Lumen Lighting Co.", scope: "Lighting design", status: "pending" },
+      { name: "Teakwood Atelier", scope: "Reclaimed teak joinery", status: "confirmed" },
+    ],
     milestones: [
       { label: "Site survey complete", date: "15 Jan 2026", done: true },
       { label: "Design sign-off", date: "02 Mar 2026", done: true },
@@ -52,6 +57,35 @@ export const projects: Project[] = [
       { label: "Finishing & styling", date: "25 Jul 2026", done: false },
       { label: "Handover", date: "30 Aug 2026", done: false },
     ],
+    gallery: [
+      { room: "Living Room", items: [
+        { caption: "Courtyard view", tone: "linear-gradient(135deg,#c17f5a,#8b5a3c)" },
+        { caption: "Lime-wash wall", tone: "linear-gradient(135deg,#e8dcc8,#c4b196)" },
+        { caption: "Teak console", tone: "linear-gradient(135deg,#6b4423,#3d2817)" },
+      ]},
+      { room: "Master Bedroom", items: [
+        { caption: "Headboard mockup", tone: "linear-gradient(135deg,#9b6b4a,#5d3a22)" },
+        { caption: "Window seat", tone: "linear-gradient(135deg,#d4a574,#a8784f)" },
+      ]},
+      { room: "Kitchen", items: [
+        { caption: "Stone counter", tone: "linear-gradient(135deg,#3a3a38,#1e1e1c)" },
+        { caption: "Brass fittings", tone: "linear-gradient(135deg,#c9a84c,#8a6f2a)" },
+      ]},
+    ],
+    budgetBreakdown: [
+      { category: "Civil & masonry", allocated: 22, spent: 18 },
+      { category: "Joinery & furniture", allocated: 28, spent: 14 },
+      { category: "Stone & flooring", allocated: 14, spent: 12 },
+      { category: "Lighting", allocated: 8, spent: 2 },
+      { category: "Soft furnishing", allocated: 7, spent: 1 },
+      { category: "Studio fee", allocated: 6, spent: 1 },
+    ],
+    notes: [
+      { author: "Riya Menon", date: "12 May 2026", text: "Client approved the lime-wash sample 03. Proceeding with full living room application next week." },
+      { author: "Bhavik Shah", date: "08 May 2026", text: "Teak shipment cleared customs. Joinery work begins Monday on site." },
+      { author: "Aditya Patel", date: "02 May 2026", text: "Banyan motif sketch revision 4 sent for client sign-off." },
+    ],
+
   },
   {
     id: "atelier-14",
