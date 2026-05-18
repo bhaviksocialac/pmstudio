@@ -322,10 +322,18 @@ function ProjectCard({ project: p, delay }: { project: Project; delay: number })
 
       {/* Actions */}
       <div className="relative mt-auto flex gap-2 pt-2">
-        <button className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 transition-[filter] duration-150">
+        <Link
+          to="/projects/$projectId"
+          params={{ projectId: p.id }}
+          onClick={(e) => e.stopPropagation()}
+          className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 transition-[filter] duration-150"
+        >
           View Project <ArrowUpRight className="h-3.5 w-3.5" />
-        </button>
-        <button className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-[6px] border border-border bg-card text-sm font-medium hover:bg-muted transition-colors duration-150">
+        </Link>
+        <button
+          onClick={(e) => e.stopPropagation()}
+          className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-[6px] border border-border bg-card text-sm font-medium hover:bg-muted transition-colors duration-150"
+        >
           <Send className="h-3.5 w-3.5" /> Send Update
         </button>
       </div>
