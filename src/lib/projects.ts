@@ -103,7 +103,12 @@ export const projects: Project[] = [
     description:
       "A boutique law office spanning two floors — quiet luxury, fluted oak panelling, deep green leather and brass detailing. Designed for focus and quiet client conversations.",
     team: ["Bhavik Shah", "Nikhil Rao"],
-    vendors: ["Oakcraft", "Brass & Bone", "Verdant Greens"],
+    vendors: [
+      { name: "Oakcraft", scope: "Fluted oak panelling", status: "confirmed" },
+      { name: "Brass & Bone", scope: "Brass detailing & hardware", status: "pending" },
+      { name: "Verdant Greens", scope: "Indoor planting", status: "pending" },
+      { name: "Leatherline Studio", scope: "Green leather upholstery", status: "delayed" },
+    ],
     milestones: [
       { label: "Site survey complete", date: "08 Feb 2026", done: true },
       { label: "Design sign-off", date: "22 Mar 2026", done: true },
@@ -112,6 +117,33 @@ export const projects: Project[] = [
       { label: "Finishing", date: "20 Sep 2026", done: false },
       { label: "Handover", date: "12 Oct 2026", done: false },
     ],
+    gallery: [
+      { room: "Reception", items: [
+        { caption: "Oak panel mockup", tone: "linear-gradient(135deg,#8b6f47,#4a3823)" },
+        { caption: "Brass reception desk", tone: "linear-gradient(135deg,#c9a84c,#6b5420)" },
+      ]},
+      { room: "Partner Office", items: [
+        { caption: "Green leather chair", tone: "linear-gradient(135deg,#3a5a3a,#1e3a1e)" },
+        { caption: "Reading nook", tone: "linear-gradient(135deg,#5d4a32,#2e2418)" },
+        { caption: "Brass wall sconce", tone: "linear-gradient(135deg,#a88a4c,#5c4a22)" },
+      ]},
+      { room: "Conference", items: [
+        { caption: "Oak boardroom table", tone: "linear-gradient(135deg,#6b4a2a,#3a2818)" },
+      ]},
+    ],
+    budgetBreakdown: [
+      { category: "Civil & partitions", allocated: 12, spent: 8 },
+      { category: "Oak panelling", allocated: 14, spent: 6 },
+      { category: "Furniture & upholstery", allocated: 16, spent: 7 },
+      { category: "Brass detailing", allocated: 6, spent: 3 },
+      { category: "Lighting", allocated: 4, spent: 1 },
+      { category: "Studio fee", allocated: 2, spent: 1 },
+    ],
+    notes: [
+      { author: "Nikhil Rao", date: "10 May 2026", text: "Leather supplier flagged 2-week delay on green hide. Sourcing backup from Chennai vendor." },
+      { author: "Bhavik Shah", date: "04 May 2026", text: "Brass hardware samples received. Client preferred matte over polished finish." },
+    ],
+
   },
   {
     id: "coral-studio",
