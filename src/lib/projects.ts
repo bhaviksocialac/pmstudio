@@ -19,8 +19,11 @@ export type Project = {
   expectedHandover: string;
   description: string;
   team: string[];
-  vendors: string[];
+  vendors: { name: string; scope: string; status: "confirmed" | "pending" | "delayed" | "completed" }[];
   milestones: { label: string; date: string; done: boolean }[];
+  gallery: { room: string; items: { caption: string; tone: string }[] }[];
+  budgetBreakdown: { category: string; allocated: number; spent: number }[];
+  notes: { author: string; date: string; text: string }[];
 };
 
 export const projects: Project[] = [
