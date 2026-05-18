@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   Search, Plus, LayoutDashboard, FolderKanban, Users, Truck, Wallet, MessageSquare,
   ArrowUpRight, Send, Bell, Clipboard, IndianRupee, Clock, AlertTriangle, Sparkles,
   Home as HomeIcon, Building2, Check,
 } from "lucide-react";
+import { projects, phases, healthMap, type Project } from "@/lib/projects";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,26 +26,6 @@ const navItems = [
   { label: "Messages", icon: MessageSquare, badge: 7 },
 ];
 
-const phases = ["Survey", "Design", "Procurement", "Execution", "Finishing", "Handover"] as const;
-
-type Health = "on-track" | "attention" | "urgent";
-type ProjectType = "residential" | "commercial";
-
-const projects: Array<{
-  name: string; client: string; location: string;
-  phase: typeof phases[number]; completion: number;
-  spent: number; budget: number; health: Health; type: ProjectType;
-}> = [
-  { name: "Banyan House", client: "Mehra Family", location: "Bandra, Mumbai", phase: "Execution", completion: 62, spent: 48, budget: 85, health: "on-track", type: "residential" },
-  { name: "Atelier 14", client: "Kapoor & Co.", location: "Defence Colony, Delhi", phase: "Procurement", completion: 38, spent: 26, budget: 54, health: "attention", type: "commercial" },
-  { name: "Coral Studio", client: "Iyer Residence", location: "Koregaon Park, Pune", phase: "Finishing", completion: 89, spent: 71, budget: 72, health: "urgent", type: "residential" },
-];
-
-const healthMap: Record<Health, { color: string; label: string; pulse: string; line: string }> = {
-  "on-track": { color: "#7a9e8a", label: "On track", pulse: "", line: "#7a9e8a" },
-  attention: { color: "#d4882a", label: "Watch closely", pulse: "pulse-slow", line: "#d4882a" },
-  urgent: { color: "#c4685a", label: "Urgent", pulse: "pulse-fast", line: "#c4685a" },
-};
 
 // Count-up hook
 function useCountUp(target: number, duration = 1500, decimals = 0) {
@@ -225,18 +206,29 @@ function StatCard({
   );
 }
 
-function ProjectCard({ project: p, delay }: { project: typeof projects[number]; delay: number }) {
+function ProjectCard({ project: p, delay }: { project: Project; delay: number }) {
   const h = healthMap[p.health];
   const phaseIdx = phases.indexOf(p.phase);
   const budgetPct = Math.round((p.spent / p.budget) * 100);
   const completion = useCountUp(p.completion, 1000);
   const TypeIcon = p.type === "residential" ? HomeIcon : Building2;
   const initials = p.client.split(" ").map(w => w[0]).slice(0, 2).join("");
+  const navigate = useNavigate();
 
   return (
     <article
-      className="group relative bg-card rounded-[16px] border border-border p-7 md:p-8 flex flex-col gap-6 overflow-hidden animate-fade-up transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px]"
+      role="link"
+      tabIndex={0}
+      onClick={() => navigate({ to: "/projects/$projectId", params: { projectId: p.id } })}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          navigate({ to: "/projects/$projectId", params: { projectId: p.id } });
+        }
+      }}
+      className="group relative bg-card rounded-[16px] border border-border p-7 md:p-8 flex flex-col gap-6 overflow-hidden animate-fade-up transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-lg cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       style={{ animationDelay: `${delay}s`, boxShadow: "var(--shadow-card)" }}
+
     >
       {/* Decorative gradient */}
       <div className="absolute top-0 right-0 w-48 h-48 pointer-events-none"
@@ -330,10 +322,18 @@ function ProjectCard({ project: p, delay }: { project: typeof projects[number]; 
 
       {/* Actions */}
       <div className="relative mt-auto flex gap-2 pt-2">
-        <button className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 transition-[filter] duration-150">
+        <Link
+          to="/projects/$projectId"
+          params={{ projectId: p.id }}
+          onClick={(e) => e.stopPropagation()}
+          className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 transition-[filter] duration-150"
+        >
           View Project <ArrowUpRight className="h-3.5 w-3.5" />
-        </button>
-        <button className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-[6px] border border-border bg-card text-sm font-medium hover:bg-muted transition-colors duration-150">
+        </Link>
+        <button
+          onClick={(e) => e.stopPropagation()}
+          className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-[6px] border border-border bg-card text-sm font-medium hover:bg-muted transition-colors duration-150"
+        >
           <Send className="h-3.5 w-3.5" /> Send Update
         </button>
       </div>
