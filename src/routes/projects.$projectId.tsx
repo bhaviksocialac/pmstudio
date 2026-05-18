@@ -40,7 +40,7 @@ export const Route = createFileRoute("/projects/$projectId")({
 });
 
 function ProjectDetail() {
-  const { project: p } = Route.useLoaderData();
+  const { project: p } = Route.useLoaderData() as { project: Project };
   const h = healthMap[p.health];
   const phaseIdx = phases.indexOf(p.phase);
   const budgetPct = Math.round((p.spent / p.budget) * 100);
