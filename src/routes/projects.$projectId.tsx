@@ -3,7 +3,7 @@ import {
   ArrowLeft, Send, Calendar, MapPin, Users, Truck, IndianRupee,
   Home as HomeIcon, Building2, Check, Sparkles, Phone, Mail,
 } from "lucide-react";
-import { getProjectById, phases, healthMap } from "@/lib/projects";
+import { getProjectById, phases, healthMap, type Project } from "@/lib/projects";
 
 export const Route = createFileRoute("/projects/$projectId")({
   head: ({ params }) => {
