@@ -161,7 +161,12 @@ export const projects: Project[] = [
     description:
       "A coral-toned 3-BHK apartment with curved arches, terrazzo flooring and a sunken living room. Tiles delayed by 3 days — flooring schedule shifted to 18 May.",
     team: ["Bhavik Shah", "Riya Menon"],
-    vendors: ["Terrazzo Mumbai", "Curve Joinery", "Lumen Lighting Co."],
+    vendors: [
+      { name: "Terrazzo Mumbai", scope: "Terrazzo flooring", status: "delayed" },
+      { name: "Curve Joinery", scope: "Arches & curved walls", status: "completed" },
+      { name: "Lumen Lighting Co.", scope: "Pendant & cove lighting", status: "confirmed" },
+      { name: "Coral Textiles", scope: "Drapes & cushions", status: "confirmed" },
+    ],
     milestones: [
       { label: "Site survey complete", date: "25 Oct 2025", done: true },
       { label: "Design sign-off", date: "10 Dec 2025", done: true },
@@ -170,6 +175,35 @@ export const projects: Project[] = [
       { label: "Finishing & styling", date: "18 May 2026", done: false },
       { label: "Handover", date: "28 May 2026", done: false },
     ],
+    gallery: [
+      { room: "Living Room", items: [
+        { caption: "Coral arch wall", tone: "linear-gradient(135deg,#e89378,#c4685a)" },
+        { caption: "Sunken seating", tone: "linear-gradient(135deg,#d4a584,#9b6f50)" },
+        { caption: "Terrazzo floor", tone: "linear-gradient(135deg,#e8dcc8,#b89c78)" },
+      ]},
+      { room: "Bedroom", items: [
+        { caption: "Curved headboard", tone: "linear-gradient(135deg,#c47860,#7a4838)" },
+        { caption: "Reading corner", tone: "linear-gradient(135deg,#e5b89a,#a87858)" },
+      ]},
+      { room: "Bathroom", items: [
+        { caption: "Terrazzo basin", tone: "linear-gradient(135deg,#d4c8b4,#8a7a60)" },
+        { caption: "Brass shower fittings", tone: "linear-gradient(135deg,#c9a84c,#7a5e22)" },
+      ]},
+    ],
+    budgetBreakdown: [
+      { category: "Civil & arches", allocated: 18, spent: 18 },
+      { category: "Terrazzo flooring", allocated: 16, spent: 14 },
+      { category: "Furniture", allocated: 18, spent: 17 },
+      { category: "Lighting", allocated: 8, spent: 8 },
+      { category: "Soft furnishing", allocated: 7, spent: 9 },
+      { category: "Studio fee", allocated: 5, spent: 5 },
+    ],
+    notes: [
+      { author: "Riya Menon", date: "14 May 2026", text: "Terrazzo tiles delayed 3 days — flooring rescheduled to 18 May. Client notified." },
+      { author: "Bhavik Shah", date: "09 May 2026", text: "Soft furnishing overshot budget by ₹2L — approved by client for upgraded linen drapes." },
+      { author: "Riya Menon", date: "01 May 2026", text: "Curved walls handover passed quality check. Beautiful workmanship." },
+    ],
+
   },
 ];
 
