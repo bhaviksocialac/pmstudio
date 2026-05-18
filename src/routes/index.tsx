@@ -26,26 +26,6 @@ const navItems = [
   { label: "Messages", icon: MessageSquare, badge: 7 },
 ];
 
-const phases = ["Survey", "Design", "Procurement", "Execution", "Finishing", "Handover"] as const;
-
-type Health = "on-track" | "attention" | "urgent";
-type ProjectType = "residential" | "commercial";
-
-const projects: Array<{
-  name: string; client: string; location: string;
-  phase: typeof phases[number]; completion: number;
-  spent: number; budget: number; health: Health; type: ProjectType;
-}> = [
-  { name: "Banyan House", client: "Mehra Family", location: "Bandra, Mumbai", phase: "Execution", completion: 62, spent: 48, budget: 85, health: "on-track", type: "residential" },
-  { name: "Atelier 14", client: "Kapoor & Co.", location: "Defence Colony, Delhi", phase: "Procurement", completion: 38, spent: 26, budget: 54, health: "attention", type: "commercial" },
-  { name: "Coral Studio", client: "Iyer Residence", location: "Koregaon Park, Pune", phase: "Finishing", completion: 89, spent: 71, budget: 72, health: "urgent", type: "residential" },
-];
-
-const healthMap: Record<Health, { color: string; label: string; pulse: string; line: string }> = {
-  "on-track": { color: "#7a9e8a", label: "On track", pulse: "", line: "#7a9e8a" },
-  attention: { color: "#d4882a", label: "Watch closely", pulse: "pulse-slow", line: "#d4882a" },
-  urgent: { color: "#c4685a", label: "Urgent", pulse: "pulse-fast", line: "#c4685a" },
-};
 
 // Count-up hook
 function useCountUp(target: number, duration = 1500, decimals = 0) {
