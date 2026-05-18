@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import {
-  ArrowLeft, Send, Calendar, MapPin, IndianRupee,
+  ArrowLeft, Send, Calendar, MapPin,
   Home as HomeIcon, Building2, Check, Sparkles, Phone, Mail,
   Image as ImageIcon, Truck, StickyNote, Wallet, CircleDot,
 } from "lucide-react";
