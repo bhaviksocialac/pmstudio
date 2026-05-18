@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   Search, Plus, LayoutDashboard, FolderKanban, Users, Truck, Wallet, MessageSquare,
   ArrowUpRight, Send, Bell, Clipboard, IndianRupee, Clock, AlertTriangle, Sparkles,
   Home as HomeIcon, Building2, Check,
 } from "lucide-react";
+import { projects, phases, healthMap, type Project } from "@/lib/projects";
 
 export const Route = createFileRoute("/")({
   head: () => ({
