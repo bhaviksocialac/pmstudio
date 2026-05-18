@@ -206,18 +206,29 @@ function StatCard({
   );
 }
 
-function ProjectCard({ project: p, delay }: { project: typeof projects[number]; delay: number }) {
+function ProjectCard({ project: p, delay }: { project: Project; delay: number }) {
   const h = healthMap[p.health];
   const phaseIdx = phases.indexOf(p.phase);
   const budgetPct = Math.round((p.spent / p.budget) * 100);
   const completion = useCountUp(p.completion, 1000);
   const TypeIcon = p.type === "residential" ? HomeIcon : Building2;
   const initials = p.client.split(" ").map(w => w[0]).slice(0, 2).join("");
+  const navigate = useNavigate();
 
   return (
     <article
-      className="group relative bg-card rounded-[16px] border border-border p-7 md:p-8 flex flex-col gap-6 overflow-hidden animate-fade-up transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px]"
+      role="link"
+      tabIndex={0}
+      onClick={() => navigate({ to: "/projects/$projectId", params: { projectId: p.id } })}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          navigate({ to: "/projects/$projectId", params: { projectId: p.id } });
+        }
+      }}
+      className="group relative bg-card rounded-[16px] border border-border p-7 md:p-8 flex flex-col gap-6 overflow-hidden animate-fade-up transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-lg cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
       style={{ animationDelay: `${delay}s`, boxShadow: "var(--shadow-card)" }}
+
     >
       {/* Decorative gradient */}
       <div className="absolute top-0 right-0 w-48 h-48 pointer-events-none"
