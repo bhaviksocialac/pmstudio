@@ -336,6 +336,3 @@ function ProjectDetail() {
   );
 }
 
-function _UnusedKeepImport() {
-  return <IndianRupee />;
-}
