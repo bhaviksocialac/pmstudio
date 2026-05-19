@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { askCopilot } from "@/lib/ai-copilot.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { onAskCopilot } from "@/lib/app-bus";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Action =
