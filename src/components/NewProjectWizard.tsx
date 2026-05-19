@@ -98,7 +98,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
 
   const create = useMutation({
     mutationFn: async () => {
-      const parsed = basicsSchema.parse(basics);
+      const parsed = getBasicsSchema().parse(basics);
       const startDate = new Date(parsed.start_date);
       const schedule = computePhaseSchedule(startDate);
       const handover = schedule[schedule.length - 1].end;
@@ -297,7 +297,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
               <button
                 onClick={() => {
                   if (step === 1) {
-                    const result = basicsSchema.safeParse(basics);
+                    const result = getBasicsSchema().safeParse(basics);
                     if (!result.success) {
                       toast.error(result.error.issues[0].message);
                       return;
