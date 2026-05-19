@@ -14,7 +14,7 @@ import type { DbClient, DbVendor, DbProject } from "@/lib/db-types";
 import {
   notifications as notifs, type Client, type Vendor,
 } from "@/lib/studio-data";
-import { onModal, openModal, type ModalEvent } from "@/lib/app-bus";
+import { onModal, openModal, askCopilot, type ModalEvent } from "@/lib/app-bus";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { AICopilot } from "@/components/AICopilot";
 
