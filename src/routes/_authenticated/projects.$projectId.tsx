@@ -407,10 +407,16 @@ function TimelineTab({ project }: { project: Project }) {
     },
   });
   const { data: subRows = [] } = useQuery({
-    queryKey: ["phase-subs", project.id],
+    queryKey: ["phase-subs-timeline", project.id],
     queryFn: async () => {
-      const { data } = await supabase.from("phase_subcategories").select("*, vendors(name,company_name)").eq("project_id", project.id).order("order_index");
-      return (data ?? []) as any[];
+      const { data: subs } = await supabase.from("phase_subcategories").select("*").eq("project_id", project.id).order("order_index");
+      const vendorIds = Array.from(new Set((subs ?? []).map((s: any) => s.vendor_id).filter(Boolean)));
+      const vendorMap = new Map<string, string>();
+      if (vendorIds.length) {
+        const { data: vs } = await supabase.from("vendors").select("id,name,company_name").in("id", vendorIds);
+        (vs ?? []).forEach((v: any) => vendorMap.set(v.id, v.company_name || v.name));
+      }
+      return (subs ?? []).map((s: any) => ({ ...s, vendor_name: s.vendor_id ? vendorMap.get(s.vendor_id) : null }));
     },
   });
 
