@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
-import { Send, Loader2, MessageSquare } from "lucide-react";
+import { Send, Loader2, MessageSquare, Share2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { SmartReplies } from "@/components/SmartReplies";
+import { RouteMessageModal } from "@/components/RouteMessageModal";
+import { HindiToggle } from "@/components/HindiToggle";
+import { VoiceNoteUploader } from "@/components/VoiceNoteUploader";
 
 export const Route = createFileRoute("/_authenticated/messages")({
   head: () => ({ meta: [{ title: "Messages — PMStudio" }, { name: "description", content: "All client and vendor conversations in one inbox." }] }),
@@ -27,6 +30,8 @@ function MessagesPage() {
   const qc = useQueryClient();
   const [activeThread, setActiveThread] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [hindiPreview, setHindiPreview] = useState<string | null>(null);
+  const [routeOpen, setRouteOpen] = useState(false);
   const [filter, setFilter] = useState<"All" | "Clients" | "Vendors">("All");
 
   const { data: messages = [], isLoading } = useQuery({
@@ -55,9 +60,10 @@ function MessagesPage() {
   const send = useMutation({
     mutationFn: async () => {
       if (!draft.trim() || !active) return;
+      const bodyToSend = (hindiPreview ?? draft).trim();
       const { error } = await supabase.from("messages").insert({
         user_id: user!.id,
-        body: draft.trim(),
+        body: bodyToSend,
         from_me: true,
         kind: active.kind,
         thread_with: active.key.startsWith("__") ? null : active.key,
@@ -66,6 +72,7 @@ function MessagesPage() {
     },
     onSuccess: () => {
       setDraft("");
+      setHindiPreview(null);
       qc.invalidateQueries({ queryKey: ["messages"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to send"),
