@@ -129,8 +129,15 @@ function MessagesPage() {
               <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Select a conversation</div>
             ) : (
               <>
-                <div className="px-5 py-4 border-b border-border">
+                <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-2">
                   <div className="font-medium capitalize">{active.kind} thread</div>
+                  <button
+                    onClick={() => setRouteOpen(true)}
+                    disabled={!active.messages.length}
+                    className="h-8 px-3 rounded-[6px] border border-border text-[11px] font-medium inline-flex items-center gap-1.5 hover:bg-muted disabled:opacity-50"
+                  >
+                    <Share2 className="h-3 w-3" /> Route Message
+                  </button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-[#faf8f5]/40">
                   {active.messages.map((m, idx) => {
@@ -139,7 +146,7 @@ function MessagesPage() {
                       <div key={m.id}>
                         <div className={`flex ${m.from_me ? "justify-end" : "justify-start"}`}>
                           <div className={`max-w-[75%] rounded-[16px] px-4 py-2.5 text-sm ${m.from_me ? "bg-[#c17f5a] text-white rounded-br-[6px]" : "bg-card border border-border rounded-bl-[6px]"}`}>
-                            <div>{m.body}</div>
+                            <div className="whitespace-pre-wrap">{m.body}</div>
                             <div className={`text-[10px] mt-1 font-mono ${m.from_me ? "text-white/70" : "text-muted-foreground"}`}>
                               {new Date(m.sent_at).toLocaleString()}
                             </div>
@@ -157,17 +164,34 @@ function MessagesPage() {
                     );
                   })}
                 </div>
-                <div className="border-t border-border p-4">
+                <div className="border-t border-border p-4 space-y-2">
+                  {draft.trim() && (
+                    <HindiToggle text={draft} onPreview={setHindiPreview} />
+                  )}
                   <div className="flex items-center gap-2">
-                    <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send.mutate()}
+                    <VoiceNoteUploader
+                      threadWith={active.key.startsWith("__") ? null : active.key}
+                      kind={active.kind}
+                    />
+                    <input value={draft} onChange={(e) => { setDraft(e.target.value); setHindiPreview(null); }} onKeyDown={(e) => e.key === "Enter" && send.mutate()}
                       placeholder="Type a message…"
                       className="flex-1 h-10 px-3 rounded-[10px] bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring/30" />
                     <button onClick={() => send.mutate()} disabled={send.isPending || !draft.trim()}
                       className="h-10 px-4 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 inline-flex items-center gap-1.5 disabled:opacity-60">
-                      <Send className="h-3.5 w-3.5" /> Send
+                      <Send className="h-3.5 w-3.5" /> Send{hindiPreview ? " (Hindi)" : ""}
                     </button>
                   </div>
                 </div>
+                <RouteMessageModal
+                  open={routeOpen}
+                  onClose={() => setRouteOpen(false)}
+                  messageBody={draft.trim() || active.messages[active.messages.length - 1]?.body || ""}
+                />
+              </>
+            )}
+          </section>
+        </div>
+      </main>
               </>
             )}
           </section>
