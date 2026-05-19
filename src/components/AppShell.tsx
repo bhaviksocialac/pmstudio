@@ -14,7 +14,7 @@ import type { DbClient, DbVendor, DbProject } from "@/lib/db-types";
 import {
   notifications as notifs, type Client, type Vendor,
 } from "@/lib/studio-data";
-import { onModal, openModal, type ModalEvent } from "@/lib/app-bus";
+import { onModal, openModal, askCopilot, type ModalEvent } from "@/lib/app-bus";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { AICopilot } from "@/components/AICopilot";
 
@@ -210,13 +210,27 @@ function TopBar() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && query.trim()) { askCopilot(query.trim()); setQuery(""); }
+          }}
           placeholder="Ask AI or search anything…"
           className="w-full h-10 pl-10 pr-4 rounded-[10px] bg-card border border-border text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring/30"
         />
         {enabled && (
           <div className="absolute top-full left-0 right-0 mt-2 rounded-[10px] bg-card border border-border shadow-lg overflow-hidden z-40 max-h-[60vh] overflow-y-auto">
+            <button
+              onClick={() => { askCopilot(query); setQuery(""); }}
+              className="w-full text-left px-4 py-3 flex items-center gap-2.5 bg-[#fff7eb] hover:bg-[#fce9d2] border-b border-border"
+            >
+              <Sparkles className="h-4 w-4 text-[#c17f5a] shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.18em] text-[#c17f5a] font-medium">Ask AI</div>
+                <div className="text-sm font-medium truncate">{query}</div>
+              </div>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Enter</span>
+            </button>
             {!hasResults && (
-              <div className="px-4 py-6 text-sm text-muted-foreground text-center">No results for "{query}"</div>
+              <div className="px-4 py-6 text-sm text-muted-foreground text-center">No matches for "{query}" in projects, clients, or vendors</div>
             )}
             {searchProjects.length > 0 && (
               <SearchSection title="Projects" items={searchProjects.map((p) => ({

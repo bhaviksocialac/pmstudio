@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { askCopilot } from "@/lib/ai-copilot.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { onAskCopilot } from "@/lib/app-bus";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Action =
@@ -38,6 +39,13 @@ export function AICopilot() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, pendingAction]);
+
+  useEffect(() => onAskCopilot((q) => {
+    setOpen(true);
+    if (q && q.trim()) {
+      setTimeout(() => ask.mutate(q.trim()), 50);
+    }
+  }), []);
 
   const ask = useMutation({
     mutationFn: async (text: string) => {
