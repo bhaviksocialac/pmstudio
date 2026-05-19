@@ -12,6 +12,7 @@ import {
   healthMap, computeHealth, type DbProject, type DbTask, type HealthKey,
 } from "@/lib/db-types";
 import { useAuth } from "@/lib/auth";
+import { PendingApprovals } from "@/components/PendingApprovals";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
