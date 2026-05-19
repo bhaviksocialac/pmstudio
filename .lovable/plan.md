@@ -1,72 +1,93 @@
-# Client Portal (Module 3)
+# AI Communication Engine — Plan
 
-A public, no-login portal accessible via shareable URL `/portal/$projectId`. Mobile-first, warm terracotta + charcoal theme, English/Hindi toggle.
+A single unified system: every AI-generated message becomes a row in a new `ai_drafts` table with status `pending → sent | discarded`. The dashboard "Pending Approvals" hub is the one place the designer reviews/sends/edits/discards. All 7 features feed into this hub.
 
-## Architecture
+## 1. Database (1 migration)
 
-- **Public route**: `src/routes/portal.$projectId.tsx` — outside `_authenticated` layout, no auth gate.
-- **Server fn (admin)**: `src/lib/portal.functions.ts` using `supabaseAdmin` to read project data by id without auth. Returns only client-safe fields (no user_id, no internal notes).
-- **Approve mutation**: server fn `submitApproval` writes to `approvals` table (admin client, scoped by approval id + project id).
-- **i18n**: small `src/lib/portal-i18n.ts` map (en/hi) consumed via local `useState` + URL `?lang=hi`.
+New table `ai_drafts`:
+- `id, user_id, project_id, kind` (enum: `weekly_report | vendor_followup | delay_notice | holding | event_notification | smart_reply`)
+- `recipient_kind` (`client | vendor`), `recipient_id`, `recipient_name`, `recipient_phone`
+- `subject`, `body` (text), `meta` (jsonb — e.g. photos for weekly report, related task/delivery id)
+- `status` (`pending | sent | discarded`), `sent_at`, `created_at`, `updated_at`
+- RLS: `auth.uid() = user_id` for all CRUD (same pattern as existing tables)
 
-## Page layout (mobile-first)
+New table `vendor_deliveries` (needed for #3 follow-up automation; currently no delivery dates exist):
+- `id, user_id, project_id, vendor_id, item text, expected_date date, status (pending|delivered|delayed), created_at, updated_at`
+- RLS: own-user only
+- (Alternative: reuse `tasks` with an `assignee` matching a vendor — simpler but less precise. **Decision: add `vendor_deliveries` for clarity.**)
 
-```text
-┌─────────────────────────────────┐
-│ PMStudio · [EN|HI] · [Share]    │  sticky header
-├─────────────────────────────────┤
-│ Project name (Cormorant)        │
-│ Client · phase tag · ▓▓▓░ 62%   │
-├─────────────────────────────────┤
-│ ⚠ Pending approvals (if any)    │
-├─────────────────────────────────┤
-│ 🌅 Morning update (dark card)   │
-├─────────────────────────────────┤
-│ Timeline · 6 phases vertical    │
-├─────────────────────────────────┤
-│ Progress photos by room         │
-│   Before/After slider per room  │
-├─────────────────────────────────┤
-│ Budget overview + categories    │
-├─────────────────────────────────┤
-│ Document vault grid             │
-└─────────────────────────────────┘
-```
+Add `last_client_message_at` is derivable from `messages` — no schema change needed for #7.
 
-## Sections
+## 2. Server functions (`src/lib/ai-drafts.functions.ts`)
 
-1. **Header** — PMStudio wordmark, language toggle, Share button (clipboard + toast).
-2. **Hero** — project name, client name, phase chip, animated progress bar (CSS keyframe to width).
-3. **Pending Approvals** — pulls `approvals` where `project_id=? and status='pending'`. Approve flow opens dialog requiring typed "I approve" / "मैं स्वीकार करता हूँ" → updates row to `approved` + `approved_at=now()`.
-4. **Morning AI update** — dark card. v1: derived deterministically from yesterday/today task titles (no LLM call) — "Yesterday: <done tasks>. Today: <tasks due today>." Refreshes on load.
-5. **Live Timeline** — 6 phases from `project_phases`. Completed = green tick + end_date. Current = pulsing amber dot + "In progress". Future = grey ring + estimated end_date.
-6. **Progress Photos** — group `photos` by `room`. 3 most recent per room. First chronologically tagged BEFORE, latest tagged LATEST. Tap → fullscreen lightbox. Below grid: per-room before/after draggable comparison slider (pure CSS clip-path + range input).
-7. **Live Budget** — total budget vs spent bar (green/amber/red). Category list from `budget_lines` (approved % → amount vs spent — spent per category derived from `payment_requests` joined to category if available, else show approved only).
-8. **Document Vault** — grid of `photos` rows where storage_path ends in `.pdf` or a new lightweight read. v1: stub with empty state + categories chips (Contracts, Floor Plans, Invoices, Warranties) — wire to storage when documents table exists. Mark as "coming soon" if empty.
-9. **Language toggle** — switches all visible strings via i18n map. Persisted in `?lang=` query.
+All `requireSupabaseAuth`-protected:
+- `listPendingDrafts()` — drafts where status='pending'
+- `sendDraft({id})` — inserts into `messages` (from_me=true, kind matches recipient), sets draft.status='sent', sent_at=now
+- `updateDraftBody({id, body})` — edit
+- `discardDraft({id})` — status='discarded'
+- `generateSmartReplies({messageId})` — calls Lovable AI gateway with project context, returns 3 short reply strings (no DB write; client uses inline)
+- `generateWeeklyReport({projectId})` — assembles completed/planned tasks + last 3 photos, calls AI, inserts draft
+- `generateVendorFollowup({deliveryId})` — template-based, inserts draft
+- `generateDelayNotice({taskId | deliveryId})` — template-based, inserts draft
+- `generateHoldingMessage({clientId})` — template, inserts draft
+- `generateEventNotification({kind, payload})` — WhatsApp-style template, inserts draft
 
-## Share button integration
+AI calls use `google/gemini-3-flash-preview` via `https://ai.gateway.lovable.dev` with `LOVABLE_API_KEY`.
 
-- New `<SharePortalButton projectId>` component using `navigator.clipboard.writeText(\`${origin}/portal/${id}\`)` + sonner toast.
-- Added to:
-  - Project card in `src/routes/_authenticated/projects.index.tsx`
-  - Project detail header in `src/routes/_authenticated/projects.$projectId.tsx`
-  - Wizard success screen (already has "Share Client Portal" — wire to same util).
+## 3. Public cron endpoint (`src/routes/api/public/hooks/ai-drafts-cron.ts`)
 
-## Data exposure & security
+Single POST handler dispatched by `pg_cron` with `apikey` header:
+- **Sunday 09:00** — generate weekly reports for every active project per user
+- **Every hour** — scan vendor_deliveries with `expected_date = today + 3 days` and no existing follow-up draft → generate one
+- **Every hour** — scan tasks `due_date < today AND done=false` and deliveries `status='delayed'` → generate delay notice (dedupe by meta)
+- **Every hour** — scan latest inbound client message per thread; if `> 6h` since arrival and no outgoing reply and no pending holding draft → generate holding message
 
-- Portal data fetched via `getPortalData({ projectId })` server fn using `supabaseAdmin`. Returns: project (name, phase, completion, budget, spent, expected_handover), client (name only), phases, budget_lines, tasks (title/due/done only — no assignee), photos, pending approvals.
-- Never returns: user_id, vendor contacts, internal notes, invoice numbers, profile data.
-- `submitApproval({ approvalId, projectId, phrase })` validates phrase, updates approval row scoped by both ids.
+Uses `supabaseAdmin` to iterate all users. Single cron job hits this endpoint hourly; weekly-report branch self-gates on `dayOfWeek===0 && hour===9`.
+
+## 4. Frontend
+
+### Dashboard (`_authenticated/index.tsx`)
+- New **Pending Approvals** section (above Fire Alerts): list of drafts with `[kind tag] [recipient → project]`, full body preview, **Send Now / Edit / Discard** buttons
+  - Edit → inline textarea + "Send Edited Message"
+  - Discard → AlertDialog confirm
+  - Send Now → toast "Message sent to {name}" + green Sent tag (then row falls out of pending query)
+- **Weekly Report cards** = drafts where `kind='weekly_report'`, rendered with the same approve-and-send action
+
+### Messages page (`_authenticated/messages.tsx`)
+- Below each inbound message, fetch & display 2–3 smart-reply chips
+- Click chip → fills the composer textarea (editable before send)
+
+### New components
+- `src/components/PendingApprovals.tsx` — the hub list (reused on dashboard)
+- `src/components/DraftCard.tsx` — single draft row with the 3 buttons
+- `src/components/SmartReplies.tsx` — inline chips
+
+## 5. WhatsApp Push (#5)
+Triggered in-app when key events happen (new photo, approval needed, invoice sent, milestone): the relevant mutation calls `generateEventNotification` so a draft lands in Pending Approvals with a "WhatsApp" tag. Send Now opens `wa.me/<phone>?text=<body>` in a new tab AND records into `messages`.
+
+## 6. Out of scope (v1)
+- Actual WhatsApp Business API integration (we use `wa.me` deeplinks + record-keeping)
+- Real-time push to designer's phone (in-app only)
+- Multi-language drafts (English only)
+- Editing weekly report photo selection (auto-picks last 3)
 
 ## Files
 
-- New: `src/routes/portal.$projectId.tsx`, `src/lib/portal.functions.ts`, `src/lib/portal-i18n.ts`, `src/components/SharePortalButton.tsx`, `src/components/portal/*` (Timeline, PhotosByRoom, BeforeAfterSlider, BudgetView, ApprovalsList, MorningCard, DocumentVault).
-- Edit: `src/routes/_authenticated/projects.index.tsx` (share btn on card), `src/routes/_authenticated/projects.$projectId.tsx` (share btn in header), `src/components/NewProjectWizard.tsx` (wire success-screen share button).
-- No DB migrations needed — schema already supports it.
+**New**
+- `supabase/migrations/<ts>_ai_drafts.sql`
+- `src/lib/ai-drafts.functions.ts`
+- `src/routes/api/public/hooks/ai-drafts-cron.ts`
+- `src/components/PendingApprovals.tsx`
+- `src/components/DraftCard.tsx`
+- `src/components/SmartReplies.tsx`
 
-## Out of scope (v1)
+**Edited**
+- `src/routes/_authenticated/index.tsx` — add PendingApprovals + weekly report cards
+- `src/routes/_authenticated/messages.tsx` — wire SmartReplies + 6h holding fires server-side via cron
+- `src/routes/_authenticated/vendors.tsx` — add "Add delivery" UI (minimal) so #3 has data to drive
+- `src/routes/_authenticated/projects.$projectId.tsx` — call `generateEventNotification` on photo upload / approval creation / invoice send / milestone complete
 
-- Real LLM-generated morning update (stub from task data).
-- Actual document uploads (vault shows categorized empty state until storage bucket added — flag for follow-up).
-- PWA manifest/service worker (page is already mobile-responsive HTML; can be added in a follow-up if user wants installability).
+## Cron setup
+After migration approval, run one `cron.schedule` insert hitting `/api/public/hooks/ai-drafts-cron` hourly with the project's anon key.
+
+Approve to proceed.
