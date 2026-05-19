@@ -113,8 +113,8 @@ export function AuthScreen({ mode }: { mode: Mode }) {
       <main className="flex-1 flex items-center justify-center px-6 py-10">
         <div className="w-full max-w-md">
           <div className="md:hidden font-display text-3xl leading-none mb-8">
-            <span className="text-foreground">Studio</span>
-            <span className="text-[#c17f5a]">OS</span>
+            <span className="text-foreground">PM</span>
+            <span className="text-[#c17f5a]">Studio</span>
           </div>
 
           <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-3">
