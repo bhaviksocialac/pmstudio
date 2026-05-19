@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Search, Plus, X, Loader2, Phone, Mail } from "lucide-react";
+import { Search, Plus, X, Loader2, Pencil, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -17,6 +17,10 @@ export const Route = createFileRoute("/_authenticated/clients")({
 function ClientsPage() {
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<DbClient | null>(null);
+  const [deleting, setDeleting] = useState<DbClient | null>(null);
+  const qc = useQueryClient();
+
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients"],
     queryFn: async () => {
@@ -26,6 +30,19 @@ function ClientsPage() {
     },
   });
   const filtered = clients.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("clients").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      toast.success("Client deleted");
+      setDeleting(null);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
 
   return (
     <AppShell>
@@ -55,7 +72,7 @@ function ClientsPage() {
           <section className="rounded-[16px] bg-card border border-border overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                <tr>{["Client", "Phone", "Email", "Address"].map((h) => <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>)}</tr>
+                <tr>{["Client", "Phone", "Email", "Address", ""].map((h) => <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered.map((c) => {
@@ -71,6 +88,14 @@ function ClientsPage() {
                       <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{c.phone || "—"}</td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">{c.email || "—"}</td>
                       <td className="px-4 py-3 text-muted-foreground text-xs truncate max-w-xs">{c.address || "—"}</td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <button onClick={() => setEditing(c)} className="h-8 px-2.5 rounded-[6px] border border-border text-xs hover:bg-muted inline-flex items-center gap-1 mr-1">
+                          <Pencil className="h-3 w-3" /> Edit
+                        </button>
+                        <button onClick={() => setDeleting(c)} className="h-8 px-2.5 rounded-[6px] border border-border text-xs text-[#c4685a] hover:bg-[#fff0ee] inline-flex items-center gap-1">
+                          <Trash2 className="h-3 w-3" /> Delete
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -79,7 +104,22 @@ function ClientsPage() {
           </section>
         )}
       </main>
-      {adding && <AddClientModal onClose={() => setAdding(false)} />}
+      {adding && <ClientModal onClose={() => setAdding(false)} />}
+      {editing && <ClientModal client={editing} onClose={() => setEditing(null)} />}
+      {deleting && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setDeleting(null)}>
+          <div className="w-full max-w-sm bg-card rounded-[16px] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-2xl mb-2">Delete {deleting.name}?</h3>
+            <p className="text-sm text-muted-foreground mb-5">This cannot be undone.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeleting(null)} className="h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">Cancel</button>
+              <button onClick={() => del.mutate(deleting.id)} disabled={del.isPending} className="h-10 px-5 rounded-[6px] bg-[#c4685a] text-white text-sm font-medium hover:brightness-95 inline-flex items-center gap-2 disabled:opacity-60">
+                {del.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
@@ -102,27 +142,39 @@ const clientSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
 });
 
-function AddClientModal({ onClose }: { onClose: () => void }) {
+function ClientModal({ onClose, client }: { onClose: () => void; client?: DbClient }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", notes: "" });
+  const editing = !!client;
+  const [form, setForm] = useState({
+    name: client?.name ?? "",
+    phone: client?.phone ?? "",
+    email: client?.email ?? "",
+    address: client?.address ?? "",
+    notes: client?.notes ?? "",
+  });
 
   const save = useMutation({
     mutationFn: async () => {
       const parsed = clientSchema.parse(form);
-      const { error } = await supabase.from("clients").insert({
-        user_id: user!.id,
+      const payload = {
         name: parsed.name,
         phone: parsed.phone || null,
         email: parsed.email || null,
         address: parsed.address || null,
         notes: parsed.notes || null,
-      });
-      if (error) throw error;
+      };
+      if (editing) {
+        const { error } = await supabase.from("clients").update(payload).eq("id", client!.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("clients").insert({ user_id: user!.id, ...payload });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["clients"] });
-      toast.success("Client added");
+      toast.success(editing ? "Client updated" : "Client added");
       onClose();
     },
     onError: (e) => toast.error(e instanceof z.ZodError ? e.issues[0].message : e instanceof Error ? e.message : "Failed"),
@@ -132,21 +184,21 @@ function AddClientModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
       <div className="w-full max-w-md bg-card rounded-[16px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-5 border-b border-border flex items-center justify-between">
-          <h3 className="font-display text-2xl">Add Client</h3>
+          <h3 className="font-display text-2xl">{editing ? "Edit Client" : "Add Client"}</h3>
           <button onClick={onClose} className="h-9 w-9 rounded-[10px] hover:bg-muted flex items-center justify-center"><X className="h-4 w-4" /></button>
         </div>
         <div className="p-6 space-y-4">
           <F label="Full Name" required><input className={ic} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></F>
-          <F label="Phone"><input className={ic} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91 98765 43210" /></F>
-          <F label="Email"><input type="email" className={ic} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></F>
-          <F label="Address"><textarea rows={2} className={`${ic} h-auto py-2`} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></F>
-          <F label="Notes"><textarea rows={2} className={`${ic} h-auto py-2`} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></F>
+          <F label="Phone"><input className={ic} value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91 98765 43210" /></F>
+          <F label="Email"><input type="email" className={ic} value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></F>
+          <F label="Address"><textarea rows={2} className={`${ic} h-auto py-2`} value={form.address ?? ""} onChange={(e) => setForm({ ...form, address: e.target.value })} /></F>
+          <F label="Notes"><textarea rows={2} className={`${ic} h-auto py-2`} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></F>
         </div>
         <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
           <button onClick={onClose} className="h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">Cancel</button>
           <button onClick={() => save.mutate()} disabled={save.isPending} className="h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 inline-flex items-center gap-2 disabled:opacity-60">
             {save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Save Client
+            {editing ? "Save Changes" : "Save Client"}
           </button>
         </div>
       </div>

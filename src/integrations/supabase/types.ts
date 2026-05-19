@@ -338,6 +338,7 @@ export type Database = {
           end_date: string | null
           id: string
           name: string
+          notes: string | null
           order_index: number
           phase: string
           project_id: string
@@ -353,6 +354,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           name: string
+          notes?: string | null
           order_index?: number
           phase: string
           project_id: string
@@ -368,6 +370,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           name?: string
+          notes?: string | null
           order_index?: number
           phase?: string
           project_id?: string
@@ -461,9 +464,11 @@ export type Database = {
       }
       project_phases: {
         Row: {
+          completion: number
           created_at: string
           end_date: string | null
           id: string
+          notes: string | null
           order_index: number
           phase: Database["public"]["Enums"]["project_phase"]
           project_id: string
@@ -473,9 +478,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          completion?: number
           created_at?: string
           end_date?: string | null
           id?: string
+          notes?: string | null
           order_index: number
           phase: Database["public"]["Enums"]["project_phase"]
           project_id: string
@@ -485,9 +492,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          completion?: number
           created_at?: string
           end_date?: string | null
           id?: string
+          notes?: string | null
           order_index?: number
           phase?: Database["public"]["Enums"]["project_phase"]
           project_id?: string
@@ -738,43 +747,64 @@ export type Database = {
       }
       vendors: {
         Row: {
+          bank_account: string | null
           category: string | null
+          company_name: string | null
+          contact_person: string | null
           created_at: string
           email: string | null
+          gst: string | null
           id: string
+          ifsc: string | null
           name: string
           notes: string | null
+          pan: string | null
           payment_terms: string | null
           phone: string | null
           rating: number | null
           updated_at: string
           user_id: string
+          whatsapp: string | null
         }
         Insert: {
+          bank_account?: string | null
           category?: string | null
+          company_name?: string | null
+          contact_person?: string | null
           created_at?: string
           email?: string | null
+          gst?: string | null
           id?: string
+          ifsc?: string | null
           name: string
           notes?: string | null
+          pan?: string | null
           payment_terms?: string | null
           phone?: string | null
           rating?: number | null
           updated_at?: string
           user_id: string
+          whatsapp?: string | null
         }
         Update: {
+          bank_account?: string | null
           category?: string | null
+          company_name?: string | null
+          contact_person?: string | null
           created_at?: string
           email?: string | null
+          gst?: string | null
           id?: string
+          ifsc?: string | null
           name?: string
           notes?: string | null
+          pan?: string | null
           payment_terms?: string | null
           phone?: string | null
           rating?: number | null
           updated_at?: string
           user_id?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }

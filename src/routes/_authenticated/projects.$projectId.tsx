@@ -17,6 +17,8 @@ import { SharePortalButton } from "@/components/SharePortalButton";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { AddTaskPanel } from "@/components/AddTaskPanel";
 import { PhaseSubcategoriesPanel } from "@/components/PhaseSubcategoriesPanel";
+import { AIPhaseBar } from "@/components/AIPhaseBar";
+import { EditPhaseModal } from "@/components/EditPhaseModal";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
@@ -141,6 +143,9 @@ function ProjectDetailView({ project }: { project: Project }) {
           </div>
         </header>
 
+        <AIPhaseBar projectId={project.id} />
+
+
         {/* Tabs */}
         <div className="border-b border-border mb-8 overflow-x-auto">
           <div className="flex gap-1 min-w-max">
@@ -181,6 +186,8 @@ function OverviewTab({ project }: { project: Project }) {
   const qc = useQueryClient();
   const [confirmPhase, setConfirmPhase] = useState<string | null>(null);
   const [addTaskFor, setAddTaskFor] = useState<string | null>(null);
+  const [editPhase, setEditPhase] = useState<string | null>(null);
+
 
   const PHASE_INVOICE_PCT: Record<string, number> = {
     Survey: 5, Design: 15, Procurement: 20, Execution: 35, Finishing: 15, Handover: 10,
@@ -253,7 +260,13 @@ function OverviewTab({ project }: { project: Project }) {
                 <div className={`rounded-[10px] border ${current ? "border-[#d4882a] bg-[#fff7eb]" : "border-border bg-card"} p-4`}>
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <h3 className="font-display text-lg">{ph}</h3>
-                    {mile && <span className="text-[11px] font-mono text-muted-foreground">{mile.date}</span>}
+                    <div className="flex items-center gap-2">
+                      {mile && <span className="text-[11px] font-mono text-muted-foreground">{mile.date}</span>}
+                      <button onClick={(e) => { e.stopPropagation(); setEditPhase(ph); }}
+                        className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px] border border-border hover:bg-white">
+                        Edit
+                      </button>
+                    </div>
                   </div>
                   {(ph === "Procurement" || ph === "Execution") ? (
                     <div className="mt-3">
@@ -289,6 +302,9 @@ function OverviewTab({ project }: { project: Project }) {
           defaultPhase={addTaskFor as "Survey" | "Design" | "Procurement" | "Execution" | "Finishing" | "Handover"}
           onClose={() => setAddTaskFor(null)}
         />
+      )}
+      {editPhase && (
+        <EditPhaseModal projectId={project.id} phase={editPhase} onClose={() => setEditPhase(null)} />
       )}
       {confirmPhase && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setConfirmPhase(null)}>
