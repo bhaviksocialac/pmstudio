@@ -303,6 +303,9 @@ function OverviewTab({ project }: { project: Project }) {
           onClose={() => setAddTaskFor(null)}
         />
       )}
+      {editPhase && (
+        <EditPhaseModal projectId={project.id} phase={editPhase} onClose={() => setEditPhase(null)} />
+      )}
       {confirmPhase && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setConfirmPhase(null)}>
           <div className="bg-card rounded-[16px] p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
