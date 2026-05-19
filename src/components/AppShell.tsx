@@ -210,6 +210,9 @@ function TopBar() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && query.trim()) { askCopilot(query.trim()); setQuery(""); }
+          }}
           placeholder="Ask AI or search anything…"
           className="w-full h-10 pl-10 pr-4 rounded-[10px] bg-card border border-border text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring/30"
         />
