@@ -23,6 +23,7 @@ const navItems = [
   { label: "Vendors", icon: Truck, to: "/vendors" as const },
   { label: "Finance", icon: Wallet, to: "/finance" as const },
   { label: "Messages", icon: MessageSquare, to: "/messages" as const, badge: 7 },
+  { label: "Settings", icon: Settings, to: "/settings" as const },
 ];
 
 export function AppShell({ children, pageTitle }: { children: React.ReactNode; pageTitle?: string }) {
