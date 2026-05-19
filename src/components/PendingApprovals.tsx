@@ -1,6 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { Sparkles } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Sparkles, Loader2, FileText } from "lucide-react";
+import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { generateWeeklyReport } from "@/lib/ai-drafts.functions";
 import { DraftCard, type DraftRow } from "./DraftCard";
 
 export function PendingApprovals() {
