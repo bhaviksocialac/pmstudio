@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useServerFn } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
@@ -176,9 +177,9 @@ export function NewProjectWizard({
         setBasics((b) => ({ ...b, budget: String(result.total_budget_lakhs) }));
       }
       if (result.breakdown.length > 0) {
-        const total = result.total_budget_lakhs || result.breakdown.reduce((s, r) => s + r.amount, 0);
+        const total = result.total_budget_lakhs || result.breakdown.reduce((s: number, r: BudgetRow) => s + r.amount, 0);
         setBudgetRows(
-          result.breakdown.map((r) => ({
+          result.breakdown.map((r: BudgetRow) => ({
             category: r.category,
             percentage: r.percentage,
             amount: r.amount > 0 ? r.amount : +(total * (r.percentage / 100)).toFixed(2),
