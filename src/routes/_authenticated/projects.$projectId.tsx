@@ -260,7 +260,13 @@ function OverviewTab({ project }: { project: Project }) {
                 <div className={`rounded-[10px] border ${current ? "border-[#d4882a] bg-[#fff7eb]" : "border-border bg-card"} p-4`}>
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <h3 className="font-display text-lg">{ph}</h3>
-                    {mile && <span className="text-[11px] font-mono text-muted-foreground">{mile.date}</span>}
+                    <div className="flex items-center gap-2">
+                      {mile && <span className="text-[11px] font-mono text-muted-foreground">{mile.date}</span>}
+                      <button onClick={(e) => { e.stopPropagation(); setEditPhase(ph); }}
+                        className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px] border border-border hover:bg-white">
+                        Edit
+                      </button>
+                    </div>
                   </div>
                   {(ph === "Procurement" || ph === "Execution") ? (
                     <div className="mt-3">
