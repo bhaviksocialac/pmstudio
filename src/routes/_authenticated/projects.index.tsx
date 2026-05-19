@@ -56,7 +56,7 @@ function ProjectsPage() {
               />
             </div>
             <button
-              onClick={() => setCreating(true)}
+              onClick={() => openModal("new-project")}
               className="h-10 px-4 inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95"
             >
               <Plus className="h-4 w-4" /> New Project
@@ -71,7 +71,7 @@ function ProjectsPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <EmptyState onCreate={() => setCreating(true)} />
+          <EmptyState onCreate={() => openModal("new-project")} />
         ) : (
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {filtered.map((p) => (
@@ -80,7 +80,6 @@ function ProjectsPage() {
           </section>
         )}
       </main>
-      {creating && <NewProjectWizard onClose={() => setCreating(false)} />}
     </AppShell>
   );
 }
