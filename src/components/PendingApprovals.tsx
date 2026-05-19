@@ -20,6 +20,9 @@ export function PendingApprovals() {
     },
   });
 
+  const qc = useQueryClient();
+  const genFn = useServerFn(generateWeeklyReport);
+
   const { data: projects = [] } = useQuery({
     queryKey: ["projects", "names"],
     queryFn: async () => {
@@ -28,6 +31,21 @@ export function PendingApprovals() {
     },
   });
   const projectMap = new Map(projects.map((p) => [p.id, p.name]));
+
+  const genWeekly = useMutation({
+    mutationFn: async () => {
+      if (projects.length === 0) throw new Error("No projects to report on");
+      const results = await Promise.allSettled(
+        projects.map((p) => genFn({ data: { projectId: p.id } })),
+      );
+      return results.filter((r) => r.status === "fulfilled").length;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["ai_drafts"] });
+      toast.success(`Generated ${n} weekly report${n === 1 ? "" : "s"}`);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
 
   if (isLoading) {
     return (
