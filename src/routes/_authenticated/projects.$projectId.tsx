@@ -102,6 +102,7 @@ const tabs: { id: Tab; label: string }[] = [
 
 function ProjectDetailView({ project }: { project: Project }) {
   const [tab, setTab] = useState<Tab>("overview");
+  const [editing, setEditing] = useState(false);
   const h = healthMap[project.health as keyof typeof healthMap];
 
   return (
@@ -129,12 +130,39 @@ function ProjectDetailView({ project }: { project: Project }) {
             <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[6px] text-xs font-medium" style={{ background: `${h.color}22`, color: h.color }}>
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: h.color }} /> {h.label}
             </span>
+            <button onClick={() => setEditing(true)} className="h-10 px-3 inline-flex items-center gap-1.5 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">
+              <Pencil className="h-3.5 w-3.5" /> Edit Project
+            </button>
             <button onClick={() => openModal("draft-update")} className="h-10 px-4 inline-flex items-center gap-1.5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
               <Send className="h-3.5 w-3.5" /> Send Update
             </button>
             <SharePortalButton projectId={project.id} variant="outline" size="md" label="Share Portal" stopPropagation={false} />
           </div>
         </header>
+
+        {/* Tabs */}
+        <div className="border-b border-border mb-8 overflow-x-auto">
+          <div className="flex gap-1 min-w-max">
+            {tabs.map((t) => (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                      className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === t.id ? "border-[#c17f5a] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {tab === "overview" && <OverviewTab project={project} />}
+        {tab === "timeline" && <TimelineTab project={project} />}
+        {tab === "photos" && <PhotosTab project={project} />}
+        {tab === "vendors" && <VendorsTab project={project} />}
+        {tab === "finance" && <FinanceTab project={project} />}
+        {tab === "documents" && <DocumentsTab project={project} />}
+      </main>
+      {editing && <NewProjectWizard onClose={() => setEditing(false)} editProjectId={project.id} />}
+    </AppShell>
+  );
+}
 
         {/* Tabs */}
         <div className="border-b border-border mb-8 overflow-x-auto">
