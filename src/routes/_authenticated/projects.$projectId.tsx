@@ -383,43 +383,168 @@ function QA({ icon: Icon, label, onClick }: { icon: React.ComponentType<{ classN
 }
 
 /* ---------------- Timeline (Gantt) ---------------- */
+type TimelineBar = {
+  id: string;
+  label: string;
+  kind: "phase" | "Procurement" | "Execution";
+  start: Date | null;
+  end: Date | null;
+  status: string;
+  assignee?: string | null;
+};
+
+const CAT_FILTERS = ["All", "Phases", "Procurement", "Execution"] as const;
+type CatFilter = typeof CAT_FILTERS[number];
+
 function TimelineTab({ project }: { project: Project }) {
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct"];
-  const phaseColors = ["#7a9e8a","#7a9e8a","#c17f5a","#c17f5a","#d4882a","#d4882a"];
+  const [filter, setFilter] = useState<CatFilter>("All");
+
+  const { data: phaseRows = [] } = useQuery({
+    queryKey: ["project-phases", project.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("project_phases").select("*").eq("project_id", project.id).order("order_index");
+      return data ?? [];
+    },
+  });
+  const { data: subRows = [] } = useQuery({
+    queryKey: ["phase-subs", project.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("phase_subcategories").select("*, vendors(name,company_name)").eq("project_id", project.id).order("order_index");
+      return (data ?? []) as any[];
+    },
+  });
+
+  const parse = (s: string | null | undefined) => (s ? new Date(s) : null);
+
+  const allBars: TimelineBar[] = [
+    ...phaseRows.map((p: any) => ({
+      id: `phase-${p.id}`,
+      label: p.phase,
+      kind: "phase" as const,
+      start: parse(p.start_date),
+      end: parse(p.end_date),
+      status: p.status,
+    })),
+    ...subRows.map((s) => ({
+      id: `sub-${s.id}`,
+      label: s.name,
+      kind: s.phase as "Procurement" | "Execution",
+      start: parse(s.start_date),
+      end: parse(s.end_date),
+      status: s.status,
+      assignee: s.contractor_name || s.vendors?.company_name || s.vendors?.name || null,
+    })),
+  ];
+
+  const bars = allBars.filter((b) => {
+    if (filter === "All") return true;
+    if (filter === "Phases") return b.kind === "phase";
+    return b.kind === filter;
+  });
+
+  // Determine timeline range
+  const projStart = parse(project.startDate) ?? new Date();
+  const projEnd = parse(project.expectedHandover) ?? new Date(projStart.getTime() + 1000 * 60 * 60 * 24 * 180);
+  const startMs = projStart.getTime();
+  const endMs = Math.max(projEnd.getTime(), startMs + 1000 * 60 * 60 * 24 * 30);
+  const totalMs = endMs - startMs;
+
+  // Build month labels
+  const months: { label: string; offsetPct: number }[] = [];
+  const cursor = new Date(projStart.getFullYear(), projStart.getMonth(), 1);
+  while (cursor.getTime() <= endMs) {
+    months.push({
+      label: cursor.toLocaleString("en", { month: "short" }),
+      offsetPct: ((cursor.getTime() - startMs) / totalMs) * 100,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  const today = new Date();
+  const todayPct = ((today.getTime() - startMs) / totalMs) * 100;
+
+  const colorFor = (b: TimelineBar) => {
+    if (b.status === "done") return "#7a9e8a";
+    if (b.status === "delayed") return "#c4685a";
+    if (b.status === "in_progress" || b.status === "active") return "#c17f5a";
+    return "#d4882a";
+  };
 
   return (
     <Card className="p-6 overflow-x-auto">
-      <h2 className="font-display text-2xl mb-1">Timeline</h2>
-      <p className="text-xs text-muted-foreground mb-6">{project.startDate} → {project.expectedHandover}</p>
-      <div className="min-w-[720px] relative">
-        <div className="grid border-b border-border pb-2 mb-3 text-[10px] uppercase tracking-wider text-muted-foreground font-mono" style={{ gridTemplateColumns: `120px repeat(${months.length}, 1fr)` }}>
-          <div></div>
-          {months.map((m) => <div key={m} className="text-center">{m}</div>)}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+        <div>
+          <h2 className="font-display text-2xl">Timeline</h2>
+          <p className="text-xs text-muted-foreground">{project.startDate} → {project.expectedHandover}</p>
         </div>
-        {phases.map((ph, i) => {
-          const start = i * 1.5;
-          const end = start + 2;
-          const delayed = i === 2; // procurement delayed for demo
+        <div className="flex gap-1">
+          {CAT_FILTERS.map((f) => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={`h-8 px-3 rounded-[6px] text-xs font-medium transition-colors ${filter === f ? "bg-[#1a1612] text-white" : "border border-border bg-card hover:bg-muted"}`}>
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="min-w-[720px] relative mt-6">
+        {/* Month header */}
+        <div className="relative h-5 border-b border-border mb-3" style={{ marginLeft: 180 }}>
+          {months.map((m, i) => (
+            <div key={i} className="absolute top-0 text-[10px] uppercase tracking-wider text-muted-foreground font-mono" style={{ left: `${m.offsetPct}%` }}>
+              {m.label}
+            </div>
+          ))}
+        </div>
+
+        {bars.length === 0 && (
+          <div className="py-12 text-center text-sm text-muted-foreground">No timeline items yet. Use the AI Site Update bar above to add some.</div>
+        )}
+
+        {bars.map((b) => {
+          if (!b.start || !b.end) {
+            return (
+              <div key={b.id} className="flex items-center mb-2.5">
+                <div className="w-[180px] pr-3 truncate">
+                  <div className="text-xs font-medium truncate">{b.label}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">{b.kind === "phase" ? "Phase" : b.kind} {b.assignee ? `· ${b.assignee}` : ""}</div>
+                </div>
+                <div className="flex-1 text-[10px] text-muted-foreground italic">no dates set</div>
+              </div>
+            );
+          }
+          const left = Math.max(0, ((b.start.getTime() - startMs) / totalMs) * 100);
+          const width = Math.max(2, ((b.end.getTime() - b.start.getTime()) / totalMs) * 100);
+          const color = colorFor(b);
           return (
-            <div key={ph} className="grid items-center mb-2.5" style={{ gridTemplateColumns: `120px repeat(${months.length}, 1fr)` }}>
-              <div className="text-xs font-medium pr-2 truncate">{ph}</div>
-              <div className="col-span-10 relative h-6">
-                <div className="absolute h-6 rounded-[6px] flex items-center px-2 text-[10px] font-mono text-white"
-                     style={{ left: `${(start / months.length) * 100}%`, width: `${((end - start) / months.length) * 100}%`, background: delayed ? `${phaseColors[i]}99` : phaseColors[i] }}>
-                  {delayed && <span className="text-[9px] uppercase tracking-wider">delayed</span>}
+            <div key={b.id} className="flex items-center mb-2.5">
+              <div className="w-[180px] pr-3 truncate">
+                <div className="text-xs font-medium truncate">{b.label}</div>
+                <div className="text-[10px] text-muted-foreground truncate">{b.kind === "phase" ? "Phase" : b.kind}{b.assignee ? ` · ${b.assignee}` : ""}</div>
+              </div>
+              <div className="flex-1 relative h-7">
+                <div className="absolute h-7 rounded-[6px] flex items-center px-2 text-[10px] font-medium text-white overflow-hidden"
+                  style={{ left: `${left}%`, width: `${width}%`, background: color, opacity: b.status === "planned" ? 0.6 : 1 }}>
+                  <span className="truncate">{b.assignee ?? b.status}</span>
                 </div>
               </div>
             </div>
           );
         })}
+
         {/* Today line */}
-        <div className="absolute top-0 bottom-0 w-px bg-[#c4685a]" style={{ left: `calc(120px + ${(4.5 / months.length) * (100 - (120 / 8))}%)` }} />
+        {todayPct >= 0 && todayPct <= 100 && (
+          <div className="absolute top-0 bottom-0 w-px bg-[#c4685a]" style={{ left: `calc(180px + (100% - 180px) * ${todayPct / 100})` }}>
+            <div className="absolute -top-1 -translate-x-1/2 text-[9px] uppercase tracking-wider text-[#c4685a] font-mono bg-card px-1">Today</div>
+          </div>
+        )}
       </div>
-      <div className="flex gap-4 mt-6 text-[11px] text-muted-foreground">
-        <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-sm bg-[#7a9e8a]" /> Completed</div>
+
+      <div className="flex flex-wrap gap-4 mt-6 text-[11px] text-muted-foreground">
+        <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-sm bg-[#7a9e8a]" /> Done</div>
         <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-sm bg-[#c17f5a]" /> In progress</div>
-        <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-sm bg-[#d4882a]" /> Upcoming</div>
-        <div className="inline-flex items-center gap-2"><span className="h-3 w-px bg-[#c4685a]" /> Today</div>
+        <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-sm bg-[#d4882a]" /> Planned</div>
+        <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-sm bg-[#c4685a]" /> Delayed</div>
       </div>
     </Card>
   );
