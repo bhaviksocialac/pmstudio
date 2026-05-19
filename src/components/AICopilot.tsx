@@ -40,6 +40,13 @@ export function AICopilot() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, pendingAction]);
 
+  useEffect(() => onAskCopilot((q) => {
+    setOpen(true);
+    if (q && q.trim()) {
+      setTimeout(() => ask.mutate(q.trim()), 50);
+    }
+  }), []);
+
   const ask = useMutation({
     mutationFn: async (text: string) => {
       const next: Msg[] = [...messages, { role: "user", content: text }];
