@@ -1,10 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Search, Grid3x3, List, Eye, Send, Pencil, Plus, Home as HomeIcon, Building2 } from "lucide-react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { toast } from "sonner";
+import { Search, Plus, X, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { ProjectCard } from "./index";
-import { projects, healthMap } from "@/lib/projects";
-import { openModal } from "@/lib/app-bus";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { healthMap, PHASES, type DbProject, type Phase } from "@/lib/db-types";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   head: () => ({
@@ -17,23 +20,21 @@ export const Route = createFileRoute("/_authenticated/projects/")({
 });
 
 function ProjectsPage() {
-  const [view, setView] = useState<"grid" | "list">("grid");
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState("All");
+  const [creating, setCreating] = useState(false);
 
-  const filtered = useMemo(() => {
-    return projects.filter((p) => {
-      if (query && !`${p.name} ${p.client} ${p.location}`.toLowerCase().includes(query.toLowerCase())) return false;
-      return true;
-    });
-  }, [query, filter]);
+  const { data: projects = [], isLoading } = useQuery({
+    queryKey: ["projects"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projects").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as DbProject[];
+    },
+  });
 
-  const stats = [
-    { label: "Total Projects", value: projects.length },
-    { label: "Active", value: projects.length },
-    { label: "Completed This Year", value: 4 },
-    { label: "Revenue Managed", value: "₹78L" },
-  ];
+  const filtered = projects.filter((p) =>
+    !query || `${p.name} ${p.location ?? ""}`.toLowerCase().includes(query.toLowerCase()),
+  );
 
   return (
     <AppShell>
@@ -42,85 +43,86 @@ function ProjectsPage() {
           <div>
             <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Studio</div>
             <h1 className="font-display text-4xl md:text-5xl">Projects</h1>
-            <p className="text-muted-foreground mt-2">{projects.length} projects in motion across Mumbai</p>
+            <p className="text-muted-foreground mt-2">
+              {projects.length} project{projects.length === 1 ? "" : "s"} in your studio
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search projects…" className="h-10 pl-10 pr-3 rounded-[10px] bg-card border border-border text-sm w-56 focus:outline-none focus:ring-2 focus:ring-ring/30" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search projects…"
+                className="h-10 pl-10 pr-3 rounded-[10px] bg-card border border-border text-sm w-56 focus:outline-none focus:ring-2 focus:ring-ring/30"
+              />
             </div>
-            <select value={filter} onChange={(e) => setFilter(e.target.value)} className="h-10 px-3 rounded-[10px] bg-card border border-border text-sm">
-              {["All","Active","Completed","On Hold"].map((f) => <option key={f}>{f}</option>)}
-            </select>
-            <div className="flex rounded-[10px] border border-border overflow-hidden bg-card">
-              <button onClick={() => setView("grid")} className={`h-10 w-10 flex items-center justify-center ${view === "grid" ? "bg-muted" : ""}`}><Grid3x3 className="h-4 w-4" /></button>
-              <button onClick={() => setView("list")} className={`h-10 w-10 flex items-center justify-center ${view === "list" ? "bg-muted" : ""}`}><List className="h-4 w-4" /></button>
-            </div>
-            <button onClick={() => openModal("new-project")} className="h-10 px-4 inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
+            <button
+              onClick={() => setCreating(true)}
+              className="h-10 px-4 inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95"
+            >
               <Plus className="h-4 w-4" /> New Project
             </button>
           </div>
         </div>
 
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {stats.map((s) => (
-            <div key={s.label} className="rounded-[16px] bg-card border border-border p-5" style={{ boxShadow: "var(--shadow-card)" }}>
-              <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{s.label}</div>
-              <div className="font-display text-3xl mt-1 tabular-nums">{s.value}</div>
-            </div>
-          ))}
-        </section>
-
-        {filtered.length === 0 ? (
-          <EmptyState />
-        ) : view === "grid" ? (
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {filtered.map((p, i) => <ProjectCard key={p.id} project={p} delay={i * 0.06} />)}
-          </section>
+        {isLoading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="rounded-[16px] bg-card border border-border h-56 animate-pulse" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState onCreate={() => setCreating(true)} />
         ) : (
-          <section className="rounded-[16px] bg-card border border-border overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                <tr>
-                  {["Project","Client","Location","Phase","Completion","Budget","Health","Updated","Actions"].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.map((p) => {
-                  const Icon = p.type === "residential" ? HomeIcon : Building2;
-                  const h = healthMap[p.health];
-                  return (
-                    <tr key={p.id} className="hover:bg-muted/40">
-                      <td className="px-4 py-3"><div className="flex items-center gap-2"><Icon className="h-3.5 w-3.5 text-muted-foreground" /><span className="font-medium">{p.name}</span></div></td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.client}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.location}</td>
-                      <td className="px-4 py-3"><span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px] bg-muted">{p.phase}</span></td>
-                      <td className="px-4 py-3 font-mono tabular-nums">{p.completion}%</td>
-                      <td className="px-4 py-3 font-mono tabular-nums">₹{p.spent}L / ₹{p.budget}L</td>
-                      <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 text-xs"><span className="h-2 w-2 rounded-full" style={{ background: h.color }} />{h.label}</span></td>
-                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">2h ago</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1">
-                          <Link to="/projects/$projectId" params={{ projectId: p.id }} className="h-8 w-8 rounded-[6px] border border-border flex items-center justify-center hover:bg-muted"><Eye className="h-3.5 w-3.5" /></Link>
-                          <button onClick={() => openModal("draft-update")} className="h-8 w-8 rounded-[6px] border border-border flex items-center justify-center hover:bg-muted"><Send className="h-3.5 w-3.5" /></button>
-                          <button className="h-8 w-8 rounded-[6px] border border-border flex items-center justify-center hover:bg-muted"><Pencil className="h-3.5 w-3.5" /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {filtered.map((p) => (
+              <ProjectRow key={p.id} project={p} />
+            ))}
           </section>
         )}
       </main>
+      {creating && <NewProjectModal onClose={() => setCreating(false)} />}
     </AppShell>
   );
 }
 
-function EmptyState() {
+function ProjectRow({ project: p }: { project: DbProject }) {
+  const h = healthMap[p.health];
+  const budgetPct = p.budget > 0 ? Math.round((Number(p.spent) / Number(p.budget)) * 100) : 0;
+  return (
+    <Link
+      to="/projects/$projectId"
+      params={{ projectId: p.id }}
+      className="bg-card rounded-[16px] border border-border p-6 flex flex-col gap-4 hover:-translate-y-[2px] transition-transform"
+      style={{ boxShadow: "var(--shadow-card)" }}
+    >
+      <div className="flex items-center gap-2">
+        <span className="h-1.5 w-1.5 rounded-full" style={{ background: h.color }} />
+        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{h.label}</span>
+        <span className="ml-auto text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px] bg-muted">{p.phase}</span>
+      </div>
+      <div>
+        <h3 className="font-display text-xl">{p.name}</h3>
+        <p className="text-xs text-muted-foreground mt-1">{p.location || "—"}</p>
+      </div>
+      <div>
+        <div className="flex justify-between text-[11px] mb-1.5">
+          <span className="uppercase tracking-[0.18em] text-muted-foreground">Completion</span>
+          <span className="font-mono">{p.completion}%</span>
+        </div>
+        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${p.completion}%`, background: "#c17f5a" }} />
+        </div>
+      </div>
+      <div className="text-xs font-mono text-muted-foreground">
+        ₹{Number(p.spent).toFixed(1)}L / ₹{Number(p.budget).toFixed(1)}L · {budgetPct}% spent
+      </div>
+    </Link>
+  );
+}
+
+function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="rounded-[16px] border border-dashed border-border p-16 text-center">
       <div className="h-16 w-16 mx-auto rounded-full bg-muted flex items-center justify-center mb-4">
@@ -128,7 +130,110 @@ function EmptyState() {
       </div>
       <h3 className="font-display text-2xl">No projects yet</h3>
       <p className="text-muted-foreground mt-2 mb-6">Create your first project to get started.</p>
-      <button onClick={() => openModal("new-project")} className="h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">+ New Project</button>
+      <button
+        onClick={onCreate}
+        className="h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95"
+      >
+        + New Project
+      </button>
     </div>
   );
 }
+
+const projectSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(120),
+  location: z.string().trim().max(200).optional(),
+  phase: z.enum(PHASES),
+  budget: z.coerce.number().min(0).max(100000),
+  type: z.enum(["residential", "commercial"]),
+});
+
+function NewProjectModal({ onClose }: { onClose: () => void }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [form, setForm] = useState({ name: "", location: "", phase: "Survey" as Phase, budget: "", type: "residential" as "residential" | "commercial" });
+
+  const create = useMutation({
+    mutationFn: async () => {
+      const parsed = projectSchema.parse(form);
+      const { error } = await supabase.from("projects").insert({
+        user_id: user!.id,
+        name: parsed.name,
+        location: parsed.location || null,
+        phase: parsed.phase,
+        budget: parsed.budget,
+        type: parsed.type,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Project created");
+      onClose();
+    },
+    onError: (e) => {
+      toast.error(e instanceof z.ZodError ? e.issues[0].message : e instanceof Error ? e.message : "Failed");
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div className="w-full max-w-md bg-card rounded-[16px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-5 border-b border-border flex items-center justify-between">
+          <h3 className="font-display text-2xl">New Project</h3>
+          <button onClick={onClose} className="h-9 w-9 rounded-[10px] hover:bg-muted flex items-center justify-center">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          <FormField label="Project name" required>
+            <input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Banyan House" />
+          </FormField>
+          <FormField label="Location">
+            <input className={inputCls} value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Bandra, Mumbai" />
+          </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Phase">
+              <select className={inputCls} value={form.phase} onChange={(e) => setForm({ ...form, phase: e.target.value as Phase })}>
+                {PHASES.map((p) => <option key={p}>{p}</option>)}
+              </select>
+            </FormField>
+            <FormField label="Type">
+              <select className={inputCls} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as "residential" | "commercial" })}>
+                <option value="residential">Residential</option>
+                <option value="commercial">Commercial</option>
+              </select>
+            </FormField>
+          </div>
+          <FormField label="Budget (in lakhs)">
+            <input type="number" className={inputCls} value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} placeholder="50" />
+          </FormField>
+        </div>
+        <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
+          <button onClick={onClose} className="h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">Cancel</button>
+          <button
+            onClick={() => create.mutate()}
+            disabled={create.isPending}
+            className="h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 inline-flex items-center gap-2 disabled:opacity-60"
+          >
+            {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Create Project
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FormField({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
+  return (
+    <label className="block">
+      <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+        {label}{required && <span className="text-[#c17f5a] ml-1">*</span>}
+      </span>
+      <div className="mt-1.5">{children}</div>
+    </label>
+  );
+}
+
+const inputCls = "w-full h-10 px-3 rounded-[10px] bg-card border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring/30";
