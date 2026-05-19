@@ -5,7 +5,7 @@ import { Search, Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { healthMap, type DbProject } from "@/lib/db-types";
-import { NewProjectWizard } from "@/components/NewProjectWizard";
+import { openModal } from "@/lib/app-bus";
 import { SharePortalButton } from "@/components/SharePortalButton";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
@@ -20,7 +20,6 @@ export const Route = createFileRoute("/_authenticated/projects/")({
 
 function ProjectsPage() {
   const [query, setQuery] = useState("");
-  const [creating, setCreating] = useState(false);
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
@@ -57,7 +56,7 @@ function ProjectsPage() {
               />
             </div>
             <button
-              onClick={() => setCreating(true)}
+              onClick={() => openModal("new-project")}
               className="h-10 px-4 inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95"
             >
               <Plus className="h-4 w-4" /> New Project
@@ -72,7 +71,7 @@ function ProjectsPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <EmptyState onCreate={() => setCreating(true)} />
+          <EmptyState onCreate={() => openModal("new-project")} />
         ) : (
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {filtered.map((p) => (
@@ -81,7 +80,6 @@ function ProjectsPage() {
           </section>
         )}
       </main>
-      {creating && <NewProjectWizard onClose={() => setCreating(false)} />}
     </AppShell>
   );
 }

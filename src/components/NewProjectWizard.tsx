@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
-  X, Loader2, ChevronRight, ChevronLeft, Check, Share2, Send, Plus, Trash2, Sparkles,
+  X, Loader2, ChevronRight, ChevronLeft, Check, Share2, Send, Sparkles, Upload, Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -12,10 +13,27 @@ import {
   PHASES,
   computePhaseSchedule,
   DEFAULT_BUDGET_BREAKDOWN,
-  DEFAULT_ROOMS,
-  DEFAULT_ROOM_ITEMS,
   type Phase,
 } from "@/lib/db-types";
+import { parseBoq } from "@/lib/boq.functions";
+
+const PROPERTY_TYPES = [
+  { value: "residential_apartment", label: "Residential Apartment" },
+  { value: "independent_villa", label: "Independent Villa" },
+  { value: "penthouse", label: "Penthouse" },
+  { value: "commercial_office", label: "Commercial Office" },
+  { value: "retail_shop", label: "Retail Shop" },
+  { value: "restaurant", label: "Restaurant" },
+  { value: "hotel_room", label: "Hotel Room" },
+  { value: "other", label: "Other" },
+] as const;
+
+const PROPERTY_VALUES = PROPERTY_TYPES.map((p) => p.value) as readonly string[];
+
+function labelForType(value: string) {
+  return PROPERTY_TYPES.find((p) => p.value === value)?.label
+    ?? (value === "residential" ? "Residential Apartment" : value === "commercial" ? "Commercial Office" : "Other");
+}
 
 const getBasicsSchema = () =>
   z.object({
@@ -23,7 +41,7 @@ const getBasicsSchema = () =>
     location: z.string().trim().max(200).optional(),
     phase: z.enum(PHASES),
     budget: z.coerce.number().min(0).max(100000),
-    type: z.enum(["residential", "commercial"]),
+    type: z.string().refine((v) => PROPERTY_VALUES.includes(v), "Invalid property type"),
     start_date: z.string().min(1, "Start date is required"),
     client_name: z.string().trim().max(120).optional(),
     client_email: z.string().trim().email().optional().or(z.literal("")),
@@ -36,7 +54,7 @@ interface Basics {
   location: string;
   phase: Phase;
   budget: string;
-  type: "residential" | "commercial";
+  type: string;
   start_date: string;
   client_name: string;
   client_email: string;
@@ -48,15 +66,17 @@ interface BudgetRow {
   amount: number;
 }
 
-interface RoomDraft {
-  name: string;
-  items: { label: string; done: boolean }[];
-}
-
-export function NewProjectWizard({ onClose }: { onClose: () => void }) {
+export function NewProjectWizard({
+  onClose,
+  editProjectId,
+}: {
+  onClose: () => void;
+  editProjectId?: string;
+}) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const isEdit = Boolean(editProjectId);
   const [step, setStep] = useState<Step>(1);
 
   const [basics, setBasics] = useState<Basics>({
@@ -64,46 +84,178 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
     location: "",
     phase: "Survey",
     budget: "",
-    type: "residential",
+    type: "residential_apartment",
     start_date: new Date().toISOString().slice(0, 10),
     client_name: "",
     client_email: "",
   });
 
-  const budgetTotal = Number(basics.budget) || 0;
+  const [roomsText, setRoomsText] = useState("Living Room, Master Bedroom, Kitchen, Bathrooms");
   const [budgetRows, setBudgetRows] = useState<BudgetRow[]>(
     DEFAULT_BUDGET_BREAKDOWN.map((b) => ({ ...b, amount: 0 })),
   );
-
-  // Recompute amounts whenever budget changes via a recompute helper
-  const syncBudgetFromTotal = (total: number) => {
-    setBudgetRows((rows) => rows.map((r) => ({ ...r, amount: +(total * r.percentage / 100).toFixed(2) })));
-  };
-
-  const [rooms, setRooms] = useState<RoomDraft[]>(
-    DEFAULT_ROOMS.map((r) => ({
-      name: r,
-      items: DEFAULT_ROOM_ITEMS.map((i) => ({ label: i, done: true })),
-    })),
-  );
+  const [boqUsed, setBoqUsed] = useState(false);
+  const [parsingBoq, setParsingBoq] = useState(false);
+  const [boqFileName, setBoqFileName] = useState<string | null>(null);
+  const parseBoqFn = useServerFn(parseBoq);
 
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [welcomeMessageId, setWelcomeMessageId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Load existing project data for edit mode
+  const editLoad = useQuery({
+    queryKey: ["edit-project", editProjectId],
+    enabled: !!editProjectId,
+    queryFn: async () => {
+      const [p, b, r] = await Promise.all([
+        supabase.from("projects").select("*").eq("id", editProjectId!).maybeSingle(),
+        supabase.from("budget_lines").select("*").eq("project_id", editProjectId!).order("order_index"),
+        supabase.from("project_rooms").select("*").eq("project_id", editProjectId!).order("order_index"),
+      ]);
+      if (p.error) throw p.error;
+      if (b.error) throw b.error;
+      if (r.error) throw r.error;
+      return { project: p.data, budget: b.data ?? [], rooms: r.data ?? [] };
+    },
+  });
+
+  useEffect(() => {
+    if (!editLoad.data?.project) return;
+    const p = editLoad.data.project;
+    setBasics({
+      name: p.name ?? "",
+      location: p.location ?? "",
+      phase: (p.phase as Phase) ?? "Survey",
+      budget: String(p.budget ?? ""),
+      type: PROPERTY_VALUES.includes(p.type) ? p.type : "residential_apartment",
+      start_date: p.start_date ?? new Date().toISOString().slice(0, 10),
+      client_name: "",
+      client_email: "",
+    });
+    if (editLoad.data.budget.length) {
+      setBudgetRows(
+        editLoad.data.budget.map((b) => ({
+          category: b.category,
+          percentage: Number(b.percentage),
+          amount: Number(b.amount),
+        })),
+      );
+    }
+    if (editLoad.data.rooms.length) {
+      setRoomsText(editLoad.data.rooms.map((r) => r.name).join(", "));
+    }
+  }, [editLoad.data]);
+
+  const budgetTotal = Number(basics.budget) || 0;
+
+  const syncBudgetFromTotal = (total: number) => {
+    setBudgetRows((rows) => rows.map((r) => ({ ...r, amount: +(total * r.percentage / 100).toFixed(2) })));
+  };
 
   const portalLink = useMemo(
     () => (createdProjectId ? `${window.location.origin}/portal/${createdProjectId}` : ""),
     [createdProjectId],
   );
 
-  const create = useMutation({
+  const handleBoqUpload = async (file: File) => {
+    setParsingBoq(true);
+    setBoqFileName(file.name);
+    try {
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      const fileBase64 = btoa(binary);
+
+      const result = await parseBoqFn({
+        data: { fileBase64, filename: file.name, mime: file.type || "application/octet-stream" },
+      });
+
+      if (result.total_budget_lakhs > 0) {
+        setBasics((b) => ({ ...b, budget: String(result.total_budget_lakhs) }));
+      }
+      if (result.breakdown.length > 0) {
+        const total = result.total_budget_lakhs || result.breakdown.reduce((s: number, r: BudgetRow) => s + r.amount, 0);
+        setBudgetRows(
+          result.breakdown.map((r: BudgetRow) => ({
+            category: r.category,
+            percentage: r.percentage,
+            amount: r.amount > 0 ? r.amount : +(total * (r.percentage / 100)).toFixed(2),
+          })),
+        );
+        setBoqUsed(true);
+      }
+      if (result.rooms.length > 0) {
+        setRoomsText(result.rooms.join(", "));
+      }
+      toast.success("BOQ parsed successfully");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to parse BOQ");
+    } finally {
+      setParsingBoq(false);
+    }
+  };
+
+  const save = useMutation({
     mutationFn: async () => {
       const parsed = getBasicsSchema().parse(basics);
+      const roomNames = roomsText.split(",").map((s) => s.trim()).filter(Boolean);
+
+      if (isEdit && editProjectId) {
+        // Update path
+        const { error: uErr } = await supabase
+          .from("projects")
+          .update({
+            name: parsed.name,
+            location: parsed.location || null,
+            phase: parsed.phase,
+            budget: parsed.budget,
+            type: parsed.type,
+            start_date: parsed.start_date,
+          })
+          .eq("id", editProjectId);
+        if (uErr) throw uErr;
+
+        // Replace budget lines
+        await supabase.from("budget_lines").delete().eq("project_id", editProjectId);
+        if (budgetRows.length) {
+          const { error: bErr } = await supabase.from("budget_lines").insert(
+            budgetRows.map((r, i) => ({
+              user_id: user!.id,
+              project_id: editProjectId,
+              category: r.category,
+              percentage: r.percentage,
+              amount: r.amount,
+              order_index: i,
+            })),
+          );
+          if (bErr) throw bErr;
+        }
+
+        // Replace rooms (and their scope items)
+        await supabase.from("room_scope_items").delete().eq("project_id", editProjectId);
+        await supabase.from("project_rooms").delete().eq("project_id", editProjectId);
+        if (roomNames.length) {
+          const { error: rErr } = await supabase.from("project_rooms").insert(
+            roomNames.map((n, i) => ({
+              user_id: user!.id,
+              project_id: editProjectId,
+              name: n,
+              order_index: i,
+            })),
+          );
+          if (rErr) throw rErr;
+        }
+        return { projectId: editProjectId, draft: "", msgId: null as string | null, edited: true };
+      }
+
+      // Create path
       const startDate = new Date(parsed.start_date);
       const schedule = computePhaseSchedule(startDate);
       const handover = schedule[schedule.length - 1].end;
 
-      // 1. Insert project
       const { data: project, error: pErr } = await supabase
         .from("projects")
         .insert({
@@ -119,10 +271,8 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
         .select()
         .single();
       if (pErr) throw pErr;
-
       const projectId = project.id;
 
-      // 2. Phases
       const { error: phErr } = await supabase.from("project_phases").insert(
         schedule.map((s, i) => ({
           user_id: user!.id,
@@ -136,7 +286,6 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
       );
       if (phErr) throw phErr;
 
-      // 3. Budget lines
       if (budgetRows.length) {
         const { error: bErr } = await supabase.from("budget_lines").insert(
           budgetRows.map((r, i) => ({
@@ -151,42 +300,25 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
         if (bErr) throw bErr;
       }
 
-      // 4. Rooms + scope items
-      for (let i = 0; i < rooms.length; i++) {
-        const r = rooms[i];
-        const { data: room, error: rErr } = await supabase
-          .from("project_rooms")
-          .insert({ user_id: user!.id, project_id: projectId, name: r.name, order_index: i })
-          .select()
-          .single();
+      if (roomNames.length) {
+        const { error: rErr } = await supabase.from("project_rooms").insert(
+          roomNames.map((n, i) => ({
+            user_id: user!.id,
+            project_id: projectId,
+            name: n,
+            order_index: i,
+          })),
+        );
         if (rErr) throw rErr;
-        if (r.items.length) {
-          const { error: iErr } = await supabase.from("room_scope_items").insert(
-            r.items.map((it, j) => ({
-              user_id: user!.id,
-              project_id: projectId,
-              room_id: room.id,
-              label: it.label,
-              done: it.done,
-              order_index: j,
-            })),
-          );
-          if (iErr) throw iErr;
-        }
       }
 
-      // 5. Upsert client and link
       let clientId: string | null = null;
       const clientName = parsed.client_name?.trim();
       const clientEmail = parsed.client_email?.trim();
       if (clientName) {
         const { data: client, error: cErr } = await supabase
           .from("clients")
-          .insert({
-            user_id: user!.id,
-            name: clientName,
-            email: clientEmail || null,
-          })
+          .insert({ user_id: user!.id, name: clientName, email: clientEmail || null })
           .select()
           .single();
         if (cErr) throw cErr;
@@ -194,9 +326,8 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
         await supabase.from("projects").update({ client_id: clientId }).eq("id", projectId);
       }
 
-      // 6. Draft welcome message
       const portal = `${window.location.origin}/portal/${projectId}`;
-      const draft = `Hi ${clientName || "there"}, your project ${parsed.name} is now set up on PMStudio. You can track progress, approve designs, and view updates anytime at ${portal}. Looking forward to creating a beautiful home for you!`;
+      const draft = `Hi ${clientName || "there"}, your project ${parsed.name} is now set up on PMStudio. You can track progress, approve designs, and view updates anytime at ${portal}.`;
       let msgId: string | null = null;
       if (clientId) {
         const { data: msg } = await supabase
@@ -214,10 +345,16 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
         msgId = msg?.id ?? null;
       }
 
-      return { projectId, draft, msgId };
+      return { projectId, draft, msgId, edited: false };
     },
-    onSuccess: ({ projectId, draft, msgId }) => {
+    onSuccess: ({ projectId, draft, msgId, edited }) => {
       qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["project", projectId] });
+      if (edited) {
+        toast.success("Project updated");
+        onClose();
+        return;
+      }
       setCreatedProjectId(projectId);
       setWelcomeMessage(draft);
       setWelcomeMessageId(msgId);
@@ -228,15 +365,41 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
     },
   });
 
+  const deleteProject = useMutation({
+    mutationFn: async () => {
+      if (!editProjectId) return;
+      // Cascade delete dependent tables
+      const tables = [
+        "tasks", "project_phases", "budget_lines", "room_scope_items",
+        "project_rooms", "photos", "invoices", "vendor_deliveries",
+        "payment_requests", "approvals",
+      ] as const;
+      for (const t of tables) {
+        await supabase.from(t).delete().eq("project_id", editProjectId);
+      }
+      const { error } = await supabase.from("projects").delete().eq("id", editProjectId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Project deleted");
+      onClose();
+      navigate({ to: "/projects" });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to delete"),
+  });
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-full max-w-2xl max-h-[90vh] bg-card rounded-[16px] shadow-2xl flex flex-col"
+        className="absolute right-0 top-0 bottom-0 w-full max-w-xl bg-card flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-5 border-b border-border flex items-center justify-between flex-shrink-0">
           <div>
-            <h3 className="font-display text-2xl">{step === 4 ? "Project Created" : "New Project"}</h3>
+            <h3 className="font-display text-2xl">
+              {step === 4 ? "Project Created" : isEdit ? "Edit Project" : "New Project"}
+            </h3>
             {step !== 4 && (
               <div className="flex gap-1.5 mt-2">
                 {[1, 2, 3].map((n) => (
@@ -255,20 +418,24 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="p-6 overflow-y-auto flex-1">
-          {step === 1 && (
-            <BasicsStep
-              basics={basics}
-              setBasics={setBasics}
-              onTotalChange={(t) => syncBudgetFromTotal(t)}
+          {step === 1 && <BasicsStep basics={basics} setBasics={setBasics} onTotalChange={syncBudgetFromTotal} />}
+          {step === 2 && (
+            <ScopeStep
+              roomsText={roomsText}
+              setRoomsText={setRoomsText}
+              onUpload={handleBoqUpload}
+              parsing={parsingBoq}
+              boqFileName={boqFileName}
+              boqUsed={boqUsed}
+              clearBoq={() => {
+                setBoqUsed(false);
+                setBoqFileName(null);
+              }}
             />
           )}
-          {step === 2 && (
-            <BudgetStep total={budgetTotal} rows={budgetRows} setRows={setBudgetRows} />
-          )}
-          {step === 3 && <RoomsStep rooms={rooms} setRooms={setRooms} />}
+          {step === 3 && <BudgetStep total={budgetTotal} rows={budgetRows} setRows={setBudgetRows} boqUsed={boqUsed} />}
           {step === 4 && createdProjectId && (
             <SuccessStep
-              projectId={createdProjectId}
               portalLink={portalLink}
               welcomeMessage={welcomeMessage}
               setWelcomeMessage={setWelcomeMessage}
@@ -282,43 +449,73 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
         </div>
 
         {step !== 4 && (
-          <div className="px-6 py-4 border-t border-border flex justify-between gap-2 flex-shrink-0">
-            {step > 1 ? (
-              <button
-                onClick={() => setStep((s) => (s - 1) as Step)}
-                className="h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted inline-flex items-center gap-1.5"
-              >
-                <ChevronLeft className="h-4 w-4" /> Back
-              </button>
-            ) : (
-              <span />
-            )}
-            {step < 3 ? (
-              <button
-                onClick={() => {
-                  if (step === 1) {
-                    const result = getBasicsSchema().safeParse(basics);
-                    if (!result.success) {
-                      toast.error(result.error.issues[0].message);
-                      return;
+          <div className="px-6 py-4 border-t border-border flex flex-col gap-3 flex-shrink-0">
+            <div className="flex justify-between gap-2">
+              {step > 1 ? (
+                <button
+                  onClick={() => setStep((s) => (s - 1) as Step)}
+                  className="h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted inline-flex items-center gap-1.5"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Back
+                </button>
+              ) : <span />}
+              {step < 3 ? (
+                <button
+                  onClick={() => {
+                    if (step === 1) {
+                      const r = getBasicsSchema().safeParse(basics);
+                      if (!r.success) { toast.error(r.error.issues[0].message); return; }
+                      if (!boqUsed) syncBudgetFromTotal(Number(basics.budget) || 0);
                     }
-                    syncBudgetFromTotal(Number(basics.budget) || 0);
-                  }
-                  setStep((s) => (s + 1) as Step);
-                }}
-                className="h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 inline-flex items-center gap-1.5"
-              >
-                Next <ChevronRight className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                onClick={() => create.mutate()}
-                disabled={create.isPending}
-                className="h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 inline-flex items-center gap-2 disabled:opacity-60"
-              >
-                {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                Create Project
-              </button>
+                    setStep((s) => (s + 1) as Step);
+                  }}
+                  className="h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 inline-flex items-center gap-1.5"
+                >
+                  Next <ChevronRight className="h-4 w-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => save.mutate()}
+                  disabled={save.isPending}
+                  className="h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 inline-flex items-center gap-2 disabled:opacity-60"
+                >
+                  {save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {isEdit ? "Save Changes" : "Create Project"}
+                </button>
+              )}
+            </div>
+
+            {isEdit && (
+              <div className="border-t border-border pt-3">
+                {!confirmDelete ? (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="w-full h-10 px-4 rounded-[6px] border border-[#c4685a]/40 text-[#c4685a] text-sm font-medium hover:bg-[#c4685a]/10 inline-flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" /> Delete Project
+                  </button>
+                ) : (
+                  <div className="rounded-[10px] border border-[#c4685a]/40 bg-[#c4685a]/5 p-3 space-y-2">
+                    <p className="text-sm font-medium">Are you sure? This cannot be undone.</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setConfirmDelete(false)}
+                        className="flex-1 h-9 rounded-[6px] border border-border text-sm font-medium hover:bg-muted"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => deleteProject.mutate()}
+                        disabled={deleteProject.isPending}
+                        className="flex-1 h-9 rounded-[6px] bg-[#c4685a] text-white text-sm font-medium hover:brightness-95 inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+                      >
+                        {deleteProject.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        Yes, Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -351,10 +548,9 @@ function BasicsStep({
             {PHASES.map((p) => <option key={p}>{p}</option>)}
           </select>
         </Field>
-        <Field label="Type">
-          <select className={inputCls} value={basics.type} onChange={(e) => setBasics({ ...basics, type: e.target.value as "residential" | "commercial" })}>
-            <option value="residential">Residential</option>
-            <option value="commercial">Commercial</option>
+        <Field label="Property type">
+          <select className={inputCls} value={basics.type} onChange={(e) => setBasics({ ...basics, type: e.target.value })}>
+            {PROPERTY_TYPES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </Field>
       </div>
@@ -390,28 +586,103 @@ function BasicsStep({
   );
 }
 
-/* ---------------- Step 2: Budget ---------------- */
+/* ---------------- Step 2: Scope & BOQ ---------------- */
+function ScopeStep({
+  roomsText,
+  setRoomsText,
+  onUpload,
+  parsing,
+  boqFileName,
+  boqUsed,
+  clearBoq,
+}: {
+  roomsText: string;
+  setRoomsText: (s: string) => void;
+  onUpload: (f: File) => void;
+  parsing: boolean;
+  boqFileName: string | null;
+  boqUsed: boolean;
+  clearBoq: () => void;
+}) {
+  return (
+    <div className="space-y-5">
+      <Field label="Rooms in scope" required>
+        <input
+          className={inputCls}
+          value={roomsText}
+          onChange={(e) => setRoomsText(e.target.value)}
+          placeholder="Living Room, Master Bedroom, Kitchen, Bathrooms"
+        />
+        <p className="text-[11px] text-muted-foreground mt-1.5">Separate with commas.</p>
+      </Field>
+
+      <div className="rounded-[12px] border border-dashed border-border p-5">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles className="h-4 w-4 text-[#c17f5a]" />
+          <span className="text-sm font-medium">Upload BOQ or Quotation</span>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          AI reads Excel or PDF and auto-fills budget, breakdown, and rooms. Everything stays editable.
+        </p>
+
+        {parsing ? (
+          <div className="flex items-center gap-2 text-sm text-[#c17f5a]">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            AI reading your BOQ...
+          </div>
+        ) : boqUsed && boqFileName ? (
+          <div className="flex items-center justify-between rounded-[8px] bg-[#7a9e8a]/10 px-3 py-2">
+            <span className="text-sm inline-flex items-center gap-2">
+              <Check className="h-4 w-4 text-[#7a9e8a]" /> {boqFileName}
+            </span>
+            <button onClick={clearBoq} className="text-xs text-muted-foreground hover:text-foreground">Remove</button>
+          </div>
+        ) : (
+          <label className="inline-flex items-center gap-2 h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted cursor-pointer">
+            <Upload className="h-4 w-4" />
+            Choose file (Excel or PDF)
+            <input
+              type="file"
+              accept=".xlsx,.xls,.pdf,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onUpload(f);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Step 3: Budget ---------------- */
 function BudgetStep({
   total,
   rows,
   setRows,
+  boqUsed,
 }: {
   total: number;
   rows: BudgetRow[];
   setRows: React.Dispatch<React.SetStateAction<BudgetRow[]>>;
+  boqUsed: boolean;
 }) {
   const sumAmount = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
   const sumPct = rows.reduce((s, r) => s + Number(r.percentage || 0), 0);
 
-  const updateRow = (i: number, field: "percentage" | "amount", value: number) => {
+  const updateRow = (i: number, field: "percentage" | "amount" | "category", value: number | string) => {
     setRows((rs) =>
       rs.map((r, idx) => {
         if (idx !== i) return r;
+        if (field === "category") return { ...r, category: String(value) };
         if (field === "percentage") {
-          const pct = value;
+          const pct = Number(value);
           return { ...r, percentage: pct, amount: total ? +(total * pct / 100).toFixed(2) : r.amount };
         }
-        const amount = value;
+        const amount = Number(value);
         const pct = total ? +((amount / total) * 100).toFixed(2) : 0;
         return { ...r, amount, percentage: pct };
       }),
@@ -423,30 +694,34 @@ function BudgetStep({
       <div>
         <h4 className="font-display text-lg mb-1">Budget breakdown</h4>
         <p className="text-xs text-muted-foreground">
-          Auto-filled from ₹{total}L total. Adjust any line to fit the project.
+          {boqUsed ? "Extracted from your BOQ. " : "Auto-filled from total. "}Adjust any line to fit the project.
         </p>
       </div>
 
       <div className="space-y-2">
-        <div className="grid grid-cols-[1fr_90px_120px] gap-2 text-[10px] uppercase tracking-wider text-muted-foreground px-3">
+        <div className="grid grid-cols-[1fr_80px_110px] gap-2 text-[10px] uppercase tracking-wider text-muted-foreground px-3">
           <span>Category</span>
           <span className="text-right">%</span>
           <span className="text-right">Amount (₹L)</span>
         </div>
         {rows.map((r, i) => (
-          <div key={r.category} className="grid grid-cols-[1fr_90px_120px] gap-2 items-center">
-            <span className="text-sm font-medium px-3">{r.category}</span>
+          <div key={i} className="grid grid-cols-[1fr_80px_110px] gap-2 items-center">
+            <input
+              className={`${inputCls} text-sm`}
+              value={r.category}
+              onChange={(e) => updateRow(i, "category", e.target.value)}
+            />
             <input
               type="number"
               className={`${inputCls} text-right tabular-nums`}
               value={r.percentage}
-              onChange={(e) => updateRow(i, "percentage", Number(e.target.value))}
+              onChange={(e) => updateRow(i, "percentage", e.target.value)}
             />
             <input
               type="number"
               className={`${inputCls} text-right tabular-nums`}
               value={r.amount}
-              onChange={(e) => updateRow(i, "amount", Number(e.target.value))}
+              onChange={(e) => updateRow(i, "amount", e.target.value)}
             />
           </div>
         ))}
@@ -458,97 +733,11 @@ function BudgetStep({
           ₹{sumAmount.toFixed(1)}L · {sumPct.toFixed(0)}%
         </span>
       </div>
-      {Math.abs(sumAmount - total) > 0.5 && (
+      {total > 0 && Math.abs(sumAmount - total) > 0.5 && (
         <p className="text-xs text-[#c4685a]">
           Allocation differs from total budget by ₹{(sumAmount - total).toFixed(1)}L
         </p>
       )}
-    </div>
-  );
-}
-
-/* ---------------- Step 3: Rooms ---------------- */
-function RoomsStep({
-  rooms,
-  setRooms,
-}: {
-  rooms: RoomDraft[];
-  setRooms: React.Dispatch<React.SetStateAction<RoomDraft[]>>;
-}) {
-  const [newRoom, setNewRoom] = useState("");
-
-  const toggleItem = (rIdx: number, iIdx: number) => {
-    setRooms((rs) =>
-      rs.map((r, i) =>
-        i === rIdx ? { ...r, items: r.items.map((it, j) => (j === iIdx ? { ...it, done: !it.done } : it)) } : r,
-      ),
-    );
-  };
-
-  const removeRoom = (i: number) => setRooms((rs) => rs.filter((_, idx) => idx !== i));
-
-  const addRoom = () => {
-    const name = newRoom.trim();
-    if (!name) return;
-    setRooms((rs) => [
-      ...rs,
-      { name, items: DEFAULT_ROOM_ITEMS.map((label) => ({ label, done: true })) },
-    ]);
-    setNewRoom("");
-  };
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <h4 className="font-display text-lg mb-1">Room-by-room scope</h4>
-        <p className="text-xs text-muted-foreground">Check the items included for each room. You can adjust later.</p>
-      </div>
-
-      <div className="space-y-3">
-        {rooms.map((room, rIdx) => (
-          <details key={`${room.name}-${rIdx}`} open className="rounded-[10px] border border-border">
-            <summary className="px-4 py-3 cursor-pointer flex items-center justify-between text-sm font-medium">
-              <span>{room.name}</span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  removeRoom(rIdx);
-                }}
-                className="h-7 w-7 rounded-[6px] hover:bg-muted flex items-center justify-center text-muted-foreground"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </summary>
-            <div className="px-4 pb-4 grid grid-cols-2 gap-2">
-              {room.items.map((it, iIdx) => (
-                <label key={it.label} className="flex items-center gap-2 text-xs cursor-pointer">
-                  <input type="checkbox" checked={it.done} onChange={() => toggleItem(rIdx, iIdx)} className="accent-[#c17f5a]" />
-                  <span>{it.label}</span>
-                </label>
-              ))}
-            </div>
-          </details>
-        ))}
-      </div>
-
-      <div className="flex gap-2">
-        <input
-          className={inputCls}
-          placeholder="Add room (e.g. Study)"
-          value={newRoom}
-          onChange={(e) => setNewRoom(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              addRoom();
-            }
-          }}
-        />
-        <button onClick={addRoom} className="h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted inline-flex items-center gap-1">
-          <Plus className="h-4 w-4" /> Add
-        </button>
-      </div>
     </div>
   );
 }
@@ -561,7 +750,6 @@ function SuccessStep({
   welcomeMessageId,
   onView,
 }: {
-  projectId: string;
   portalLink: string;
   welcomeMessage: string;
   setWelcomeMessage: (s: string) => void;
@@ -579,10 +767,7 @@ function SuccessStep({
       .from("messages")
       .update({ body: welcomeMessage, sent_at: new Date().toISOString() })
       .eq("id", welcomeMessageId);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) { toast.error(error.message); return; }
     setSent(true);
     toast.success("Welcome message sent");
   };
@@ -593,31 +778,20 @@ function SuccessStep({
         <div className="h-16 w-16 mx-auto rounded-full bg-[#7a9e8a] flex items-center justify-center mb-4">
           <Check className="h-8 w-8 text-white" strokeWidth={3} />
         </div>
-        <h3 className="font-display text-3xl">Project created in under 8 minutes</h3>
-        <p className="text-muted-foreground text-sm mt-2 inline-flex items-center gap-1.5">
-          <Sparkles className="h-3.5 w-3.5 text-[#c17f5a]" />
-          Timeline, budget breakdown and scope are all live.
-        </p>
+        <h3 className="font-display text-3xl">Project created</h3>
+        <p className="text-muted-foreground text-sm mt-2">Timeline, budget, and scope are live.</p>
       </div>
-
       <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={onView}
-          className="h-12 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 inline-flex items-center justify-center gap-2"
-        >
+        <button onClick={onView} className="h-12 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 inline-flex items-center justify-center gap-2">
           View Project <ChevronRight className="h-4 w-4" />
         </button>
         <button
-          onClick={() => {
-            navigator.clipboard?.writeText(portalLink).catch(() => {});
-            toast.success("Portal link copied");
-          }}
+          onClick={() => { navigator.clipboard?.writeText(portalLink).catch(() => {}); toast.success("Portal link copied"); }}
           className="h-12 rounded-[6px] border border-border text-sm font-medium hover:bg-muted inline-flex items-center justify-center gap-2"
         >
           <Share2 className="h-4 w-4" /> Share Client Portal
         </button>
       </div>
-
       <div className="rounded-[10px] border border-border p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Welcome message draft</div>
@@ -656,3 +830,5 @@ function Field({ label, children, required }: { label: string; children: React.R
 
 const inputCls =
   "w-full h-10 px-3 rounded-[10px] bg-card border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring/30";
+
+export { labelForType };

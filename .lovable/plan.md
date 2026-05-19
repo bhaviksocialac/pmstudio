@@ -1,85 +1,90 @@
-# WhatsApp Intelligence Module
+# Plan: Fix New Project form + Project Detail page
 
-A large module spanning 8 features. Single migration, several new components, edits to dashboard / messages / settings / projects pages.
+Two-part fix. Prompt 1 rebuilds the New Project flow and unifies the trigger across the app. Prompt 2 makes the Project Detail page fully editable and wires up phase completion + task creation with AI suggestions.
 
-## 1. Database migration (one)
+## Prompt 1 — New Project form
 
-New table `whatsapp_groups`:
-- `id, user_id, label` (text: e.g. "Client Group"), `kind` (enum: `client|design|execution|accounts`), `phone` (text), `created_at, updated_at`
-- RLS: own-user only. Unique (user_id, kind).
+### 1.1 Database migration
+The `projects.type` column is a `project_type` enum (`residential | commercial`). To support 8 property types without breaking existing rows, convert it to `text` with a CHECK constraint:
 
-Add to existing `photos`:
-- `status` (enum: `pending|approved|rejected`, default `pending`)
-- (room column already exists)
+```text
+ALTER TABLE projects ALTER COLUMN type TYPE text USING type::text;
+ALTER TABLE projects ADD CONSTRAINT projects_type_check
+  CHECK (type IN ('residential_apartment','independent_villa','penthouse',
+                  'commercial_office','retail_shop','restaurant',
+                  'hotel_room','other','residential','commercial'));
+ALTER TABLE projects ALTER COLUMN type SET DEFAULT 'residential_apartment';
+```
+(Old `residential`/`commercial` values kept so existing data still loads.)
 
-Add to existing `tasks`:
-- `delayed` (boolean, default false) — set by cron / on-read derivation
+### 1.2 Replace `NewProjectWizard.tsx` with a single slide-in panel
+- Slide-in from right (full-height drawer), used by BOTH the dashboard and the projects page. Remove the centered-modal version.
+- Step 1 — Basics:
+  - Property type dropdown: 8 new options listed above (display labels: "Residential Apartment" etc.).
+  - Remove the **Design Style** field entirely (it doesn't exist as a column today but is referenced in copy/UI — remove any mention).
+  - Keep name, location, phase, start date, budget, client name/email.
+- Step 2 — Scope & BOQ:
+  - Replace the scope-of-work checkbox grid with a single text input **"Rooms in scope"** (comma-separated). On save, split by comma → create one `project_rooms` row per name.
+  - Add **"Upload BOQ or Quotation (Excel/PDF)"** file input (`.xlsx,.xls,.pdf`).
+  - When a file is chosen: show **"AI reading your BOQ..."** spinner, call a new `parseBoq` server fn, then populate: total budget, budget breakdown rows, and a comma-joined rooms list. All fields remain editable.
+- Step 3 — Budget breakdown:
+  - If no file was uploaded → keep current slider/percentage editor.
+  - If a file was uploaded → seed rows from AI extraction; editable.
+- Submit unchanged (insert project + phases + budget_lines + rooms + welcome message).
 
-(Freshness tags are derived from existing `updated_at` — no schema change.)
+### 1.3 New server function `parseBoq`
+`src/lib/boq.functions.ts` — `createServerFn({ method: "POST" })` with `requireSupabaseAuth`. Accepts base64-encoded file + filename + mime. Sends to Lovable AI Gateway (`google/gemini-2.5-flash`, multimodal) with a strict JSON schema prompt requesting:
+```json
+{ "total_budget_lakhs": number,
+  "breakdown": [{ "category": string, "percentage": number, "amount": number }],
+  "rooms": [string] }
+```
+Returns parsed JSON. Handles PDF (gemini reads natively) and Excel (convert to text server-side via a lightweight xlsx-to-csv parse using `xlsx` npm package, then send text).
 
-## 2. New server functions (`src/lib/whatsapp.functions.ts`)
+### 1.4 Fix "shows nothing" from dashboard
+- Add a visible **+ New Project** button on the dashboard header and bind it directly to the same panel (lift open state into AppShell so any page can trigger via `openModal("new-project")`).
+- Remove the legacy `NewProjectPanel` inside `AppShell.tsx` and route `openModal("new-project")` to render the rebuilt `<NewProjectPanel onClose={...} />` from `NewProjectWizard.tsx`.
+- `projects.index.tsx` New Project button → also dispatches `openModal("new-project")` (single source of truth, no local state).
 
-All `requireSupabaseAuth`:
-- `listGroups()` / `upsertGroup({kind, label, phone})` / `deleteGroup({id})`
-- `suggestRoute({messageBody})` — calls Lovable AI, returns `{ kind: "client"|"design"|"execution"|"accounts"|"dm", reason: string }`
-- `translateToHindi({text})` — Lovable AI, returns Hindi text
-- `approvePhoto({id})` / `rejectPhoto({id})` — sets status
-- `listPendingPhotos()` — status='pending'
-- `tagPhotoRoom({id, room})` — updates room
-- `flagOverdueTasks()` — finds `due_date < today AND done=false AND delayed=false`, sets delayed=true, creates delay_notice draft per project (dedupe)
+## Prompt 2 — Project Detail page
 
-Add to cron endpoint: call `flagOverdueTasks` per user each hour (extend existing `ai-drafts-cron.ts`).
+### 2.1 Edit Project button
+- Top-right of `projects.$projectId.tsx` header: **Edit Project** button next to Share Portal.
+- Opens the same slide-in panel from Prompt 1, but in **edit mode**: loads current project + budget_lines + rooms, pre-fills all fields, "Create Project" → "Save Changes". On save, updates row + replaces budget_lines / rooms (delete + reinsert) and invalidates `["project", id]` + `["projects"]`.
 
-## 3. UI components (new)
+### 2.2 Delete Project
+- Inside Edit panel footer, red **Delete Project** button. Confirm dialog: "Are you sure? This cannot be undone."
+- On confirm: cascade delete `tasks`, `project_phases`, `budget_lines`, `project_rooms`, `room_scope_items`, `photos`, `invoices`, `vendor_deliveries`, `payment_requests`, `approvals` (all filtered by `project_id`), then delete `projects` row. Navigate to `/projects` and toast.
 
-- `src/components/WhatsAppGroupsSettings.tsx` — 4 group rows (Client/Design/Execution/Accounts), label + phone inputs, save.
-- `src/components/RouteMessageModal.tsx` — modal listing 4 groups + "Individual DM", AI-suggested option highlighted with badge. Opens `wa.me/<phone>?text=<body>`.
-- `src/components/PhotoStaging.tsx` — dashboard card listing pending photos (room, caption, project), Approve/Reject buttons + count badge.
-- `src/components/FreshnessTag.tsx` — pure presentational, takes `updated_at`, renders green/yellow/red dot+label. Used in finance + budget.
-- `src/components/HindiToggle.tsx` — toggle + preview panel rendering translated text; reused inside `DraftCard` and messages composer.
-- `src/components/VoiceNoteUploader.tsx` — file input (audio/*), uploads to storage, inserts message with body "🎙 Voice note — Transcription pending (Whisper API required)".
-- `src/components/PhotoRoomTagModal.tsx` — appears after photo insert; room dropdown (loads project_rooms), Save, includes "Auto-tagging available when Google Vision API is connected." note.
+### 2.3 Mark Phase Complete
+- Replace the toast stub at line 209. On click → confirmation dialog "Mark this phase as complete and unlock next phase?"
+- On confirm, in a single mutation:
+  - Update current `project_phases` row: `status='done'`, `end_date=today`.
+  - Update next phase row (by `order_index+1`): `status='active'`.
+  - Update `projects.phase` to next phase, increment `projects.completion` by `Math.round(100/6)` (capped at 100).
+  - Insert draft invoice into `invoices` (`status='draft'`, `milestone=<current phase name>`, `amount = budget * phase_percentage` where phase_percentage = a simple lookup: Survey 5%, Design 15%, Procurement 20%, Execution 35%, Finishing 15%, Handover 10%).
+- Invalidate `["project", id]`, `["projects"]`, `["invoices"]`.
 
-## 4. Page edits
+### 2.4 Add Task slide-in panel
+- Replace the toast stub at line 210 with a new `<AddTaskPanel projectId phase onClose />` slide-in.
+- Fields: Title (required), Description (textarea — stored in `tasks.title` suffix or new field; reuse existing schema by appending to title since `tasks` has no description column today — acceptable since out-of-scope to migrate), Assigned to (text → `tasks.assignee`), Due date, Priority (High/Medium/Low — store in title prefix `[High]` for v1 since no column), Phase dropdown (6 phases — stored as note prefix for v1).
+- On save: insert into `tasks`, invalidate `["tasks"]` + dashboard query.
 
-- `src/routes/_authenticated/index.tsx` (Dashboard) — add `<PhotoStaging />` above Pending Approvals.
-- Add a new Settings route `src/routes/_authenticated/settings.tsx` (if absent) hosting `WhatsAppGroupsSettings`. *(check first; if no settings route exists, add nav entry in AppShell.)*
-- `src/routes/_authenticated/messages.tsx` — "Route Message" button on each thread → `RouteMessageModal`; Hindi toggle on composer; `VoiceNoteUploader` button.
-- `src/routes/_authenticated/finance.tsx` — `FreshnessTag` on each invoice / payment row; block "Share with client" action when red until refreshed.
-- `src/routes/_authenticated/projects.$projectId.tsx` — `FreshnessTag` on budget; show "Delayed" badge on overdue tasks in timeline; on photo upload show `PhotoRoomTagModal`; only `status=approved` photos shown to client portal.
-- `src/components/DraftCard.tsx` — embed `HindiToggle` so any draft can translate before send.
-- `src/routes/portal.$projectId.tsx` — filter photos by `status='approved'` only.
-- `src/routes/api/public/hooks/ai-drafts-cron.ts` — add `flagOverdueTasks` step per user.
+### 2.5 AI Task Suggestions inside Add Task panel
+- Top section: **AI Suggested Tasks for this Phase** with 3-4 chips.
+- New server fn `suggestPhaseTasks({ phase, projectName })` calls Lovable AI (`google/gemini-2.5-flash-lite`) with a one-shot prompt: "Return 4 short concrete tasks for the {phase} phase of an interior design project. JSON array of strings." Returns array.
+- Clicking a chip fills Title (and clears other fields). Caches result per-phase with React Query.
 
-## 5. Out of scope (v1)
+## Out of scope (v1)
+- Real `tasks.description`, `tasks.priority`, `tasks.phase` columns (we encode in title for now to avoid schema churn; flag this in completion message).
+- BOQ parsing for image-only scans (we rely on Gemini's PDF reading; pure-image PDFs may yield poor results).
+- Undo for project deletion.
 
-- Real WhatsApp Business API (use `wa.me` deeplinks)
-- Real Whisper transcription (placeholder badge)
-- Real Google Vision auto-tag (manual modal)
-- Real-time Hindi quality tuning (single-pass Gemini)
+## Files touched
+- **Migration**: convert `projects.type` to text + CHECK.
+- **New**: `src/lib/boq.functions.ts`, `src/lib/tasks-ai.functions.ts`, `src/components/AddTaskPanel.tsx`, `src/components/DeleteProjectConfirm.tsx`.
+- **Rewritten**: `src/components/NewProjectWizard.tsx` (slide-in, edit mode, file upload, new fields).
+- **Edited**: `src/components/AppShell.tsx` (route `openModal("new-project")` to new panel, remove legacy `NewProjectPanel`), `src/routes/_authenticated/index.tsx` (add header New Project button), `src/routes/_authenticated/projects.index.tsx` (use `openModal`), `src/routes/_authenticated/projects.$projectId.tsx` (Edit/Delete buttons, Mark Phase Complete wiring, Add Task wiring).
+- **Dependency**: `bun add xlsx` for server-side Excel→text in `boq.functions.ts`.
 
-## Files
-
-**New**
-- `supabase/migrations/<ts>_whatsapp_intel.sql`
-- `src/lib/whatsapp.functions.ts`
-- `src/components/WhatsAppGroupsSettings.tsx`
-- `src/components/RouteMessageModal.tsx`
-- `src/components/PhotoStaging.tsx`
-- `src/components/FreshnessTag.tsx`
-- `src/components/HindiToggle.tsx`
-- `src/components/VoiceNoteUploader.tsx`
-- `src/components/PhotoRoomTagModal.tsx`
-- possibly `src/routes/_authenticated/settings.tsx`
-
-**Edited**
-- `src/routes/_authenticated/index.tsx`
-- `src/routes/_authenticated/messages.tsx`
-- `src/routes/_authenticated/finance.tsx`
-- `src/routes/_authenticated/projects.$projectId.tsx`
-- `src/routes/portal.$projectId.tsx`
-- `src/routes/api/public/hooks/ai-drafts-cron.ts`
-- `src/components/DraftCard.tsx`
-- `src/components/AppShell.tsx` (nav entry for Settings if added)
-
-Approve to proceed.
+Ready to implement on approval.

@@ -15,6 +15,7 @@ import {
   notifications as notifs, type Client, type Vendor,
 } from "@/lib/studio-data";
 import { onModal, openModal, type ModalEvent } from "@/lib/app-bus";
+import { NewProjectWizard } from "@/components/NewProjectWizard";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/" as const },
@@ -316,7 +317,7 @@ function GlobalModals() {
 
   if (!open) return null;
   switch (open.name) {
-    case "new-project": return <NewProjectPanel onClose={close} />;
+    case "new-project": return <NewProjectWizard onClose={close} />;
     case "draft-update": return <DraftUpdateModal onClose={close} />;
     case "view-impact": return <ViewImpactPanel onClose={close} />;
     case "add-client": return <AddClientModal onClose={close} />;

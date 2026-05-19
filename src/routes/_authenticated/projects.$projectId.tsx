@@ -1,19 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Send, Check, Phone, Mail, Plus, Upload, Image as ImageIcon,
-  FileText, MessageCircle, Download, FileDown, Pencil, Folder, FilePlus,
-  Loader2,
+  FileText, MessageCircle, FilePlus, Loader2, Pencil,
 } from "lucide-react";
 import { phases, healthMap, type Project } from "@/lib/projects";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import type { DbProject } from "@/lib/db-types";
 import { formatINR } from "@/lib/studio-data";
 import { AppShell } from "@/components/AppShell";
 import { openModal } from "@/lib/app-bus";
 import { toast } from "sonner";
 import { SharePortalButton } from "@/components/SharePortalButton";
+import { NewProjectWizard } from "@/components/NewProjectWizard";
+import { AddTaskPanel } from "@/components/AddTaskPanel";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
@@ -100,6 +102,7 @@ const tabs: { id: Tab; label: string }[] = [
 
 function ProjectDetailView({ project }: { project: Project }) {
   const [tab, setTab] = useState<Tab>("overview");
+  const [editing, setEditing] = useState(false);
   const h = healthMap[project.health as keyof typeof healthMap];
 
   return (
@@ -127,6 +130,9 @@ function ProjectDetailView({ project }: { project: Project }) {
             <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[6px] text-xs font-medium" style={{ background: `${h.color}22`, color: h.color }}>
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: h.color }} /> {h.label}
             </span>
+            <button onClick={() => setEditing(true)} className="h-10 px-3 inline-flex items-center gap-1.5 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">
+              <Pencil className="h-3.5 w-3.5" /> Edit Project
+            </button>
             <button onClick={() => openModal("draft-update")} className="h-10 px-4 inline-flex items-center gap-1.5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
               <Send className="h-3.5 w-3.5" /> Send Update
             </button>
@@ -153,6 +159,7 @@ function ProjectDetailView({ project }: { project: Project }) {
         {tab === "finance" && <FinanceTab project={project} />}
         {tab === "documents" && <DocumentsTab project={project} />}
       </main>
+      {editing && <NewProjectWizard onClose={() => setEditing(false)} editProjectId={project.id} />}
     </AppShell>
   );
 }
@@ -169,6 +176,57 @@ const Card: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = "", 
 function OverviewTab({ project }: { project: Project }) {
   const phaseIdx = phases.indexOf(project.phase);
   const budgetPct = Math.round((project.spent / project.budget) * 100);
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [confirmPhase, setConfirmPhase] = useState<string | null>(null);
+  const [addTaskFor, setAddTaskFor] = useState<string | null>(null);
+
+  const PHASE_INVOICE_PCT: Record<string, number> = {
+    Survey: 5, Design: 15, Procurement: 20, Execution: 35, Finishing: 15, Handover: 10,
+  };
+
+  const markPhaseComplete = useMutation({
+    mutationFn: async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const currentPhase = project.phase;
+      const nextPhase = phases[phaseIdx + 1];
+      // Update current phase row
+      await supabase.from("project_phases")
+        .update({ status: "done", end_date: today })
+        .eq("project_id", project.id)
+        .eq("phase", currentPhase);
+      // Update next phase
+      if (nextPhase) {
+        await supabase.from("project_phases")
+          .update({ status: "active" })
+          .eq("project_id", project.id)
+          .eq("phase", nextPhase);
+      }
+      // Update project
+      const newCompletion = Math.min(100, Math.round(((phaseIdx + 1) / phases.length) * 100));
+      await supabase.from("projects")
+        .update({ phase: nextPhase ?? currentPhase, completion: newCompletion })
+        .eq("id", project.id);
+      // Draft invoice
+      const pct = PHASE_INVOICE_PCT[currentPhase] ?? 10;
+      const amount = +(project.budget * 100000 * (pct / 100)).toFixed(0);
+      await supabase.from("invoices").insert({
+        user_id: user!.id,
+        project_id: project.id,
+        amount,
+        milestone: `${currentPhase} complete`,
+        status: "draft",
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["project", project.id] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("Phase marked complete. Draft invoice created.");
+      setConfirmPhase(null);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
@@ -206,8 +264,8 @@ function OverviewTab({ project }: { project: Project }) {
                   </div>
                   {current && (
                     <div className="flex gap-2 mt-3 pt-3 border-t border-[#e8d9c9]">
-                      <button onClick={() => toast.success("Phase marked complete")} className="h-8 px-3 rounded-[6px] bg-[#7a9e8a] text-white text-xs font-medium hover:brightness-110">Mark Phase Complete</button>
-                      <button onClick={() => toast("New task added")} className="h-8 px-3 rounded-[6px] border border-border text-xs font-medium hover:bg-white">+ Add Task</button>
+                      <button onClick={() => setConfirmPhase(ph)} className="h-8 px-3 rounded-[6px] bg-[#7a9e8a] text-white text-xs font-medium hover:brightness-110">Mark Phase Complete</button>
+                      <button onClick={() => setAddTaskFor(ph)} className="h-8 px-3 rounded-[6px] border border-border text-xs font-medium hover:bg-white">+ Add Task</button>
                     </div>
                   )}
                 </div>
