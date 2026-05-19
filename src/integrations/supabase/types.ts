@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_drafts: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["ai_draft_kind"]
+          meta: Json
+          project_id: string | null
+          recipient_id: string | null
+          recipient_kind: string
+          recipient_name: string | null
+          recipient_phone: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["ai_draft_status"]
+          subject: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["ai_draft_kind"]
+          meta?: Json
+          project_id?: string | null
+          recipient_id?: string | null
+          recipient_kind: string
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["ai_draft_status"]
+          subject?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["ai_draft_kind"]
+          meta?: Json
+          project_id?: string | null
+          recipient_id?: string | null
+          recipient_kind?: string
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["ai_draft_status"]
+          subject?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       approvals: {
         Row: {
           approved_at: string | null
@@ -565,6 +619,42 @@ export type Database = {
           },
         ]
       }
+      vendor_deliveries: {
+        Row: {
+          created_at: string
+          expected_date: string
+          id: string
+          item: string
+          project_id: string
+          status: Database["public"]["Enums"]["vendor_delivery_status"]
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expected_date: string
+          id?: string
+          item: string
+          project_id: string
+          status?: Database["public"]["Enums"]["vendor_delivery_status"]
+          updated_at?: string
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expected_date?: string
+          id?: string
+          item?: string
+          project_id?: string
+          status?: Database["public"]["Enums"]["vendor_delivery_status"]
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: []
+      }
       vendors: {
         Row: {
           category: string | null
@@ -615,6 +705,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      ai_draft_kind:
+        | "weekly_report"
+        | "vendor_followup"
+        | "delay_notice"
+        | "holding"
+        | "event_notification"
+      ai_draft_status: "pending" | "sent" | "discarded"
       approval_status: "pending" | "approved" | "rejected"
       invoice_status: "draft" | "sent" | "paid" | "overdue"
       message_kind: "client" | "vendor"
@@ -628,6 +725,7 @@ export type Database = {
         | "Finishing"
         | "Handover"
       project_type: "residential" | "commercial"
+      vendor_delivery_status: "pending" | "delivered" | "delayed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -755,6 +853,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_draft_kind: [
+        "weekly_report",
+        "vendor_followup",
+        "delay_notice",
+        "holding",
+        "event_notification",
+      ],
+      ai_draft_status: ["pending", "sent", "discarded"],
       approval_status: ["pending", "approved", "rejected"],
       invoice_status: ["draft", "sent", "paid", "overdue"],
       message_kind: ["client", "vendor"],
@@ -769,6 +875,7 @@ export const Constants = {
         "Handover",
       ],
       project_type: ["residential", "commercial"],
+      vendor_delivery_status: ["pending", "delivered", "delayed"],
     },
   },
 } as const
