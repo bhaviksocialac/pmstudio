@@ -20,6 +20,7 @@ import { Route as AuthenticatedFinanceRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects.index'
 import { Route as AuthenticatedProjectsProjectIdRouteImport } from './routes/_authenticated/projects.$projectId'
+import { Route as ApiPublicHooksAiDraftsCronRouteImport } from './routes/api/public/hooks/ai-drafts-cron'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -77,6 +78,12 @@ const AuthenticatedProjectsProjectIdRoute =
     path: '/projects/$projectId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const ApiPublicHooksAiDraftsCronRoute =
+  ApiPublicHooksAiDraftsCronRouteImport.update({
+    id: '/api/public/hooks/ai-drafts-cron',
+    path: '/api/public/hooks/ai-drafts-cron',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/portal/$projectId': typeof PortalProjectIdRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
+  '/api/public/hooks/ai-drafts-cron': typeof ApiPublicHooksAiDraftsCronRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -101,6 +109,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
+  '/api/public/hooks/ai-drafts-cron': typeof ApiPublicHooksAiDraftsCronRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -115,6 +124,7 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
+  '/api/public/hooks/ai-drafts-cron': typeof ApiPublicHooksAiDraftsCronRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/portal/$projectId'
     | '/projects/$projectId'
     | '/projects/'
+    | '/api/public/hooks/ai-drafts-cron'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/'
     | '/projects/$projectId'
     | '/projects'
+    | '/api/public/hooks/ai-drafts-cron'
   id:
     | '__root__'
     | '/_authenticated'
@@ -154,6 +166,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/projects/$projectId'
     | '/_authenticated/projects/'
+    | '/api/public/hooks/ai-drafts-cron'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -161,6 +174,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   PortalProjectIdRoute: typeof PortalProjectIdRoute
+  ApiPublicHooksAiDraftsCronRoute: typeof ApiPublicHooksAiDraftsCronRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -242,6 +256,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjectsProjectIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/api/public/hooks/ai-drafts-cron': {
+      id: '/api/public/hooks/ai-drafts-cron'
+      path: '/api/public/hooks/ai-drafts-cron'
+      fullPath: '/api/public/hooks/ai-drafts-cron'
+      preLoaderRoute: typeof ApiPublicHooksAiDraftsCronRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -274,7 +295,18 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   PortalProjectIdRoute: PortalProjectIdRoute,
+  ApiPublicHooksAiDraftsCronRoute: ApiPublicHooksAiDraftsCronRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
