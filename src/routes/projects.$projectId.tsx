@@ -52,7 +52,7 @@ const tabs: { id: Tab; label: string }[] = [
 function ProjectDetail() {
   const { project } = Route.useLoaderData();
   const [tab, setTab] = useState<Tab>("overview");
-  const h = healthMap[project.health];
+  const h = healthMap[project.health as keyof typeof healthMap];
 
   return (
     <AppShell>
