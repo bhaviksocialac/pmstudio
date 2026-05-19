@@ -1,13 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
-import { toast } from "sonner";
-import { Search, Plus, X, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Search, Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
-import { healthMap, PHASES, type DbProject, type Phase } from "@/lib/db-types";
+import { healthMap, type DbProject } from "@/lib/db-types";
+import { NewProjectWizard } from "@/components/NewProjectWizard";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   head: () => ({
