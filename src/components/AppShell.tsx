@@ -16,6 +16,7 @@ import {
 } from "@/lib/studio-data";
 import { onModal, openModal, type ModalEvent } from "@/lib/app-bus";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
+import { AICopilot } from "@/components/AICopilot";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/" as const },
@@ -47,6 +48,7 @@ export function AppShell({ children, pageTitle }: { children: React.ReactNode; p
       </div>
 
       <GlobalModals />
+      <AICopilot />
     </div>
   );
 }
@@ -208,7 +210,7 @@ function TopBar() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search projects, clients, vendors…"
+          placeholder="Ask AI or search anything…"
           className="w-full h-10 pl-10 pr-4 rounded-[10px] bg-card border border-border text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring/30"
         />
         {enabled && (
