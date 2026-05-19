@@ -438,7 +438,7 @@ function TimelineTab({ project }: { project: Project }) {
       start: parse(s.start_date),
       end: parse(s.end_date),
       status: s.status,
-      assignee: s.contractor_name || s.vendors?.company_name || s.vendors?.name || null,
+      assignee: s.contractor_name || s.vendor_name || null,
     })),
   ];
 
