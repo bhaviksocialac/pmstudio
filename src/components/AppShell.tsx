@@ -327,7 +327,7 @@ function GlobalModals() {
     case "add-vendor": return <AddVendorModal onClose={close} />;
     case "vendor-panel": return <VendorPanel vendor={open.data as Vendor} onClose={close} />;
     case "new-invoice": return <NewInvoiceModal onClose={close} />;
-    case "upload-photos": return <UploadPhotosModal onClose={close} />;
+    case "upload-photos": return <UploadPhotosModal onClose={close} presetProjectId={(open.data as { projectId?: string } | undefined)?.projectId} />;
     case "lightbox": return <Lightbox data={open.data as { src: string; caption: string }} onClose={close} />;
     default: return null;
   }

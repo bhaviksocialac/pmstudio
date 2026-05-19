@@ -305,8 +305,8 @@ function OverviewTab({ project }: { project: Project }) {
         <Card className="p-6">
           <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-3">Quick Actions</div>
           <div className="grid grid-cols-2 gap-2">
-            <QA icon={Upload} label="Upload Photos" onClick={() => openModal("upload-photos")} />
-            <QA icon={Plus} label="Add Task" onClick={() => toast("Task added")} />
+            <QA icon={Upload} label="Upload Photos" onClick={() => openModal("upload-photos", { projectId: project.id })} />
+            <QA icon={Plus} label="Add Task" onClick={() => setAddTaskFor(project.phase)} />
             <QA icon={FileText} label="Send Invoice" onClick={() => openModal("new-invoice")} />
             <QA icon={Plus} label="Add Vendor" onClick={() => openModal("add-vendor")} />
           </div>
