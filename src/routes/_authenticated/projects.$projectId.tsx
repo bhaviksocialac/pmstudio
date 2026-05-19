@@ -462,13 +462,23 @@ function VendorsTab({ project }: { project: Project }) {
 
 /* ---------------- Finance ---------------- */
 function FinanceTab({ project }: { project: Project }) {
-  const projectInvoices = invoices.filter((inv) => inv.projectId === project.id);
+  const { data: projectInvoices = [] } = useQuery({
+    queryKey: ["invoices", project.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("invoices").select("*")
+        .eq("project_id", project.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MiniCard label="Project Budget" value={`₹${project.budget}L`} />
         <MiniCard label="Spent" value={`₹${project.spent}L`} tone="#c17f5a" />
-        <MiniCard label="Pending POs" value="₹1.2L" tone="#d4882a" />
+        <MiniCard label="Pending POs" value="₹0" tone="#d4882a" />
         <MiniCard label="Available" value={`₹${(project.budget - project.spent).toFixed(1)}L`} tone="#7a9e8a" />
       </div>
       <Card className="overflow-hidden">
@@ -480,20 +490,20 @@ function FinanceTab({ project }: { project: Project }) {
         </div>
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            <tr>{["#","Milestone","Amount","Status","Sent","Paid"].map((h) => <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>)}</tr>
+            <tr>{["#","Milestone","Amount","Status","Sent","Due"].map((h) => <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-border">
             {projectInvoices.length === 0 && (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">No invoices yet for this project.</td></tr>
             )}
             {projectInvoices.map((inv) => (
-              <tr key={inv.no} className="hover:bg-muted/40">
-                <td className="px-4 py-3 font-mono text-xs">{inv.no}</td>
-                <td className="px-4 py-3">{inv.milestone}</td>
-                <td className="px-4 py-3 font-mono tabular-nums">{formatINR(inv.amount)}</td>
+              <tr key={inv.id} className="hover:bg-muted/40">
+                <td className="px-4 py-3 font-mono text-xs">{inv.number ?? inv.id.slice(0, 6)}</td>
+                <td className="px-4 py-3">{inv.milestone ?? "—"}</td>
+                <td className="px-4 py-3 font-mono tabular-nums">{formatINR(Number(inv.amount))}</td>
                 <td className="px-4 py-3 capitalize">{inv.status}</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{inv.sent}</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{inv.status === "paid" ? inv.due : "—"}</td>
+                <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{inv.sent_at ?? "—"}</td>
+                <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{inv.due_at ?? "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -502,6 +512,7 @@ function FinanceTab({ project }: { project: Project }) {
     </div>
   );
 }
+
 
 function MiniCard({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
