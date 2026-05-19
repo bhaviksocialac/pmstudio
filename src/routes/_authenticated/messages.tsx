@@ -192,11 +192,6 @@ function MessagesPage() {
           </section>
         </div>
       </main>
-              </>
-            )}
-          </section>
-        </div>
-      </main>
     </AppShell>
   );
 }
