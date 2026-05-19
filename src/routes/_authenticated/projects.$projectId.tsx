@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, Send, Check, Phone, Mail, Plus, Upload, Image as ImageIcon,
   FileText, MessageCircle, Download, FileDown, Pencil, Folder, FilePlus,
-  Share2, Loader2,
+  Loader2,
 } from "lucide-react";
 import { phases, healthMap, type Project } from "@/lib/projects";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,7 @@ import { formatINR } from "@/lib/studio-data";
 import { AppShell } from "@/components/AppShell";
 import { openModal } from "@/lib/app-bus";
 import { toast } from "sonner";
+import { SharePortalButton } from "@/components/SharePortalButton";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
@@ -129,10 +130,7 @@ function ProjectDetailView({ project }: { project: Project }) {
             <button onClick={() => openModal("draft-update")} className="h-10 px-4 inline-flex items-center gap-1.5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
               <Send className="h-3.5 w-3.5" /> Send Update
             </button>
-            <button onClick={() => { navigator.clipboard?.writeText(`https://studioos.app/portal/${project.id}`).catch(() => {}); toast.success("Portal link copied"); }}
-                    className="h-10 px-4 inline-flex items-center gap-1.5 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">
-              <Share2 className="h-3.5 w-3.5" /> Share Portal
-            </button>
+            <SharePortalButton projectId={project.id} variant="outline" size="md" label="Share Portal" stopPropagation={false} />
           </div>
         </header>
 

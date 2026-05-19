@@ -6,6 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { healthMap, type DbProject } from "@/lib/db-types";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
+import { SharePortalButton } from "@/components/SharePortalButton";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   head: () => ({
@@ -89,34 +90,41 @@ function ProjectRow({ project: p }: { project: DbProject }) {
   const h = healthMap[p.health];
   const budgetPct = p.budget > 0 ? Math.round((Number(p.spent) / Number(p.budget)) * 100) : 0;
   return (
-    <Link
-      to="/projects/$projectId"
-      params={{ projectId: p.id }}
-      className="bg-card rounded-[16px] border border-border p-6 flex flex-col gap-4 hover:-translate-y-[2px] transition-transform"
+    <div
+      className="bg-card rounded-[16px] border border-border flex flex-col hover:-translate-y-[2px] transition-transform overflow-hidden"
       style={{ boxShadow: "var(--shadow-card)" }}
     >
-      <div className="flex items-center gap-2">
-        <span className="h-1.5 w-1.5 rounded-full" style={{ background: h.color }} />
-        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{h.label}</span>
-        <span className="ml-auto text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px] bg-muted">{p.phase}</span>
-      </div>
-      <div>
-        <h3 className="font-display text-xl">{p.name}</h3>
-        <p className="text-xs text-muted-foreground mt-1">{p.location || "—"}</p>
-      </div>
-      <div>
-        <div className="flex justify-between text-[11px] mb-1.5">
-          <span className="uppercase tracking-[0.18em] text-muted-foreground">Completion</span>
-          <span className="font-mono">{p.completion}%</span>
+      <Link
+        to="/projects/$projectId"
+        params={{ projectId: p.id }}
+        className="p-6 flex flex-col gap-4"
+      >
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: h.color }} />
+          <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{h.label}</span>
+          <span className="ml-auto text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px] bg-muted">{p.phase}</span>
         </div>
-        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-          <div className="h-full rounded-full" style={{ width: `${p.completion}%`, background: "#c17f5a" }} />
+        <div>
+          <h3 className="font-display text-xl">{p.name}</h3>
+          <p className="text-xs text-muted-foreground mt-1">{p.location || "—"}</p>
         </div>
+        <div>
+          <div className="flex justify-between text-[11px] mb-1.5">
+            <span className="uppercase tracking-[0.18em] text-muted-foreground">Completion</span>
+            <span className="font-mono">{p.completion}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+            <div className="h-full rounded-full" style={{ width: `${p.completion}%`, background: "#c17f5a" }} />
+          </div>
+        </div>
+        <div className="text-xs font-mono text-muted-foreground">
+          ₹{Number(p.spent).toFixed(1)}L / ₹{Number(p.budget).toFixed(1)}L · {budgetPct}% spent
+        </div>
+      </Link>
+      <div className="border-t border-border px-3 py-2">
+        <SharePortalButton projectId={p.id} variant="ghost" size="sm" label="Share Client Portal" className="w-full" />
       </div>
-      <div className="text-xs font-mono text-muted-foreground">
-        ₹{Number(p.spent).toFixed(1)}L / ₹{Number(p.budget).toFixed(1)}L · {budgetPct}% spent
-      </div>
-    </Link>
+    </div>
   );
 }
 
