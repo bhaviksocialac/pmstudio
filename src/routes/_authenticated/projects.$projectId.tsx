@@ -143,6 +143,9 @@ function ProjectDetailView({ project }: { project: Project }) {
           </div>
         </header>
 
+        <AIPhaseBar projectId={project.id} />
+
+
         {/* Tabs */}
         <div className="border-b border-border mb-8 overflow-x-auto">
           <div className="flex gap-1 min-w-max">
