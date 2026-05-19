@@ -1,43 +1,91 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, Send, Check, Phone, Mail, Plus, Upload, Image as ImageIcon,
   FileText, MessageCircle, Download, FileDown, Pencil, Folder, FilePlus,
-  Share2,
+  Share2, Loader2,
 } from "lucide-react";
-import { getProjectById, phases, healthMap, type Project } from "@/lib/projects";
-import { invoices, formatINR } from "@/lib/studio-data";
+import { phases, healthMap, type Project } from "@/lib/projects";
+import { supabase } from "@/integrations/supabase/client";
+import type { DbProject } from "@/lib/db-types";
+import { formatINR } from "@/lib/studio-data";
 import { AppShell } from "@/components/AppShell";
 import { openModal } from "@/lib/app-bus";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
-    const p = getProjectById(params.projectId);
-    const title = p ? `${p.name} — StudioOS` : "Project — StudioOS";
-    const desc = p ? `${p.client} · ${p.location} · ${p.phase}` : "Project details";
-    return { meta: [{ title }, { name: "description", content: desc }, { property: "og:title", content: title }, { property: "og:description", content: desc }] };
+    const title = "Project — StudioOS";
+    return { meta: [{ title }, { name: "description", content: `Project ${params.projectId}` }] };
   },
-  loader: ({ params }) => {
-    const project = getProjectById(params.projectId);
-    if (!project) throw notFound();
-    return { project };
-  },
-  notFoundComponent: () => (
-    <AppShell>
-      <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-3">404</div>
-          <h1 className="font-display text-4xl mb-3">Project not found</h1>
-          <Link to="/" className="inline-flex items-center gap-2 h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
-            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-          </Link>
-        </div>
-      </div>
-    </AppShell>
-  ),
   component: ProjectDetail,
 });
+
+// Adapt a DB project row into the rich Project shape the UI expects.
+function adaptProject(row: DbProject): Project {
+  return {
+    id: row.id,
+    name: row.name,
+    client: "—",
+    location: row.location ?? "",
+    phase: (row.phase as Project["phase"]) ?? "Survey",
+    completion: row.completion ?? 0,
+    spent: Number(row.spent ?? 0),
+    budget: Number(row.budget ?? 0),
+    health: (row.health as Project["health"]) ?? "on-track",
+    type: (row.type as Project["type"]) ?? "residential",
+    startDate: row.start_date ?? "—",
+    expectedHandover: row.expected_handover ?? "—",
+    description: row.description ?? "",
+    team: [],
+    vendors: [],
+    milestones: phases.map((p) => ({ label: p, date: "—", done: false })),
+    gallery: [],
+    budgetBreakdown: [],
+    notes: [],
+  };
+}
+
+function ProjectDetail() {
+  const { projectId } = Route.useParams();
+  const { data: project, isLoading, error } = useQuery({
+    queryKey: ["project", projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
+      if (error) throw error;
+      return data ? adaptProject(data as DbProject) : null;
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <AppShell>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <AppShell>
+        <div className="min-h-[60vh] flex items-center justify-center px-4">
+          <div className="text-center max-w-md">
+            <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-3">404</div>
+            <h1 className="font-display text-4xl mb-3">Project not found</h1>
+            <Link to="/" className="inline-flex items-center gap-2 h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
+              <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  return <ProjectDetailView project={project} />;
+}
 
 type Tab = "overview" | "timeline" | "photos" | "vendors" | "finance" | "documents";
 const tabs: { id: Tab; label: string }[] = [
@@ -49,8 +97,7 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "documents", label: "Documents" },
 ];
 
-function ProjectDetail() {
-  const { project } = Route.useLoaderData();
+function ProjectDetailView({ project }: { project: Project }) {
   const [tab, setTab] = useState<Tab>("overview");
   const h = healthMap[project.health as keyof typeof healthMap];
 
@@ -415,13 +462,23 @@ function VendorsTab({ project }: { project: Project }) {
 
 /* ---------------- Finance ---------------- */
 function FinanceTab({ project }: { project: Project }) {
-  const projectInvoices = invoices.filter((inv) => inv.projectId === project.id);
+  const { data: projectInvoices = [] } = useQuery({
+    queryKey: ["invoices", project.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("invoices").select("*")
+        .eq("project_id", project.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MiniCard label="Project Budget" value={`₹${project.budget}L`} />
         <MiniCard label="Spent" value={`₹${project.spent}L`} tone="#c17f5a" />
-        <MiniCard label="Pending POs" value="₹1.2L" tone="#d4882a" />
+        <MiniCard label="Pending POs" value="₹0" tone="#d4882a" />
         <MiniCard label="Available" value={`₹${(project.budget - project.spent).toFixed(1)}L`} tone="#7a9e8a" />
       </div>
       <Card className="overflow-hidden">
@@ -433,20 +490,20 @@ function FinanceTab({ project }: { project: Project }) {
         </div>
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            <tr>{["#","Milestone","Amount","Status","Sent","Paid"].map((h) => <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>)}</tr>
+            <tr>{["#","Milestone","Amount","Status","Sent","Due"].map((h) => <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-border">
             {projectInvoices.length === 0 && (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">No invoices yet for this project.</td></tr>
             )}
             {projectInvoices.map((inv) => (
-              <tr key={inv.no} className="hover:bg-muted/40">
-                <td className="px-4 py-3 font-mono text-xs">{inv.no}</td>
-                <td className="px-4 py-3">{inv.milestone}</td>
-                <td className="px-4 py-3 font-mono tabular-nums">{formatINR(inv.amount)}</td>
+              <tr key={inv.id} className="hover:bg-muted/40">
+                <td className="px-4 py-3 font-mono text-xs">{inv.number ?? inv.id.slice(0, 6)}</td>
+                <td className="px-4 py-3">{inv.milestone ?? "—"}</td>
+                <td className="px-4 py-3 font-mono tabular-nums">{formatINR(Number(inv.amount))}</td>
                 <td className="px-4 py-3 capitalize">{inv.status}</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{inv.sent}</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{inv.status === "paid" ? inv.due : "—"}</td>
+                <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{inv.sent_at ?? "—"}</td>
+                <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{inv.due_at ?? "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -455,6 +512,7 @@ function FinanceTab({ project }: { project: Project }) {
     </div>
   );
 }
+
 
 function MiniCard({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (

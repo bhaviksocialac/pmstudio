@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, Plus, Send, FileDown, Check, Pencil, TrendingUp } from "lucide-react";
+import { Download, Plus, Send, FileDown, Check, Pencil, TrendingUp, Loader2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
-import { invoices, paymentRequests, monthlyRevenue, formatINR } from "@/lib/studio-data";
+import { supabase } from "@/integrations/supabase/client";
+import { formatINR, monthlyRevenue } from "@/lib/studio-data";
 import { openModal } from "@/lib/app-bus";
 import { toast } from "sonner";
-import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/finance")({
   head: () => ({ meta: [{ title: "Finance — StudioOS" }, { name: "description", content: "Invoices, payments, receivables and cashflow for your studio." }] }),
@@ -19,8 +20,52 @@ const statusTone: Record<string, { bg: string; color: string; label: string }> =
 };
 
 function FinancePage() {
-  const [approved, setApproved] = useState<string[]>([]);
+  const qc = useQueryClient();
   const maxRev = Math.max(...monthlyRevenue.map((m) => m.value));
+
+  const { data: invoices = [], isLoading: invLoading } = useQuery({
+    queryKey: ["finance", "invoices"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("invoices")
+        .select("*, projects(name), clients(name)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: requests = [], isLoading: reqLoading } = useQuery({
+    queryKey: ["finance", "payment_requests"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payment_requests")
+        .select("*, vendors(name), projects(name)")
+        .order("submitted_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const collected = invoices.filter((i) => i.status === "paid").reduce((s, i) => s + Number(i.amount), 0);
+  const pending = invoices.filter((i) => i.status === "sent" || i.status === "overdue").reduce((s, i) => s + Number(i.amount), 0);
+  const overdueCount = invoices.filter((i) => i.status === "overdue").length;
+
+  const setInvoiceStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: "draft" | "sent" | "paid" | "overdue" }) => {
+      const { error } = await supabase.from("invoices").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["finance", "invoices"] }),
+  });
+
+  const setRequestStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: "pending" | "approved" | "held" | "paid" }) => {
+      const { error } = await supabase.from("payment_requests").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["finance", "payment_requests"] }),
+  });
 
   return (
     <AppShell>
@@ -32,9 +77,6 @@ function FinancePage() {
             <p className="text-muted-foreground mt-2">Every rupee in motion this month</p>
           </div>
           <div className="flex items-center gap-2">
-            <select className="h-10 px-3 rounded-[10px] bg-card border border-border text-sm">
-              <option>May 2026</option><option>April 2026</option><option>March 2026</option>
-            </select>
             <button onClick={() => toast.success("Report downloaded")} className="h-10 px-4 inline-flex items-center gap-2 rounded-[6px] border border-border bg-card text-sm font-medium hover:bg-muted">
               <Download className="h-4 w-4" /> Download Report
             </button>
@@ -42,14 +84,13 @@ function FinancePage() {
         </div>
 
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <SummaryCard label="Collected This Month" value="₹8,40,000" tone="#7a9e8a" trend="↑ 18%" />
-          <SummaryCard label="Pending Collection" value="₹5,20,000" tone="#d4882a" trend="2 overdue" />
-          <SummaryCard label="Total Expenses" value="₹4,30,000" tone="#3d3530" />
-          <SummaryCard label="Net Profit" value="₹4,10,000" tone="#7a9e8a" trend="↑ 12%" />
+          <SummaryCard label="Collected" value={formatINR(collected)} tone="#7a9e8a" />
+          <SummaryCard label="Pending Collection" value={formatINR(pending)} tone="#d4882a" trend={overdueCount > 0 ? `${overdueCount} overdue` : undefined} />
+          <SummaryCard label="Total Invoices" value={String(invoices.length)} tone="#3d3530" />
+          <SummaryCard label="Payment Requests" value={String(requests.length)} tone="#7a9e8a" />
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.85fr_1fr] gap-6">
-          {/* Left column */}
           <div className="space-y-6">
             <section className="rounded-[16px] bg-card border border-border overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
               <div className="px-6 py-4 border-b border-border flex items-center justify-between">
@@ -59,34 +100,42 @@ function FinancePage() {
                 </button>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                    <tr>{["#","Project","Milestone","Amount","Due","Status","Actions"].map((h) => <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>)}</tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {invoices.map((inv) => {
-                      const t = statusTone[inv.status];
-                      return (
-                        <tr key={inv.no} className="hover:bg-muted/40">
-                          <td className="px-4 py-3 font-mono text-xs">{inv.no}</td>
-                          <td className="px-4 py-3"><div className="font-medium">{inv.project}</div><div className="text-[11px] text-muted-foreground">{inv.client}</div></td>
-                          <td className="px-4 py-3 text-muted-foreground">{inv.milestone}</td>
-                          <td className="px-4 py-3 font-mono tabular-nums">{formatINR(inv.amount)}</td>
-                          <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{inv.due}</td>
-                          <td className="px-4 py-3"><span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px]" style={{ background: t.bg, color: t.color }}>{t.label}</span></td>
-                          <td className="px-4 py-3">
-                            <div className="flex gap-1">
-                              <IconBtn icon={Send} onClick={() => toast.success(`${inv.no} sent`)} />
-                              <IconBtn icon={FileDown} onClick={() => toast.success("PDF downloaded")} />
-                              <IconBtn icon={Check} onClick={() => toast.success(`${inv.no} marked paid`)} />
-                              <IconBtn icon={Pencil} onClick={() => openModal("new-invoice")} />
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                {invLoading ? (
+                  <div className="p-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                ) : invoices.length === 0 ? (
+                  <div className="p-10 text-center text-sm text-muted-foreground">No invoices yet.</div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                      <tr>{["#","Project","Milestone","Amount","Due","Status","Actions"].map((h) => <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>)}</tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {invoices.map((inv) => {
+                        const t = statusTone[inv.status] ?? statusTone.draft;
+                        const projectName = (inv as { projects?: { name?: string } | null }).projects?.name ?? "—";
+                        const clientName = (inv as { clients?: { name?: string } | null }).clients?.name ?? "";
+                        return (
+                          <tr key={inv.id} className="hover:bg-muted/40">
+                            <td className="px-4 py-3 font-mono text-xs">{inv.number ?? inv.id.slice(0, 6)}</td>
+                            <td className="px-4 py-3"><div className="font-medium">{projectName}</div><div className="text-[11px] text-muted-foreground">{clientName}</div></td>
+                            <td className="px-4 py-3 text-muted-foreground">{inv.milestone ?? "—"}</td>
+                            <td className="px-4 py-3 font-mono tabular-nums">{formatINR(Number(inv.amount))}</td>
+                            <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{inv.due_at ?? "—"}</td>
+                            <td className="px-4 py-3"><span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px]" style={{ background: t.bg, color: t.color }}>{t.label}</span></td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-1">
+                                <IconBtn icon={Send} onClick={() => { setInvoiceStatus.mutate({ id: inv.id, status: "sent" }); toast.success("Invoice sent"); }} />
+                                <IconBtn icon={FileDown} onClick={() => toast.success("PDF downloaded")} />
+                                <IconBtn icon={Check} onClick={() => { setInvoiceStatus.mutate({ id: inv.id, status: "paid" }); toast.success("Marked paid"); }} />
+                                <IconBtn icon={Pencil} onClick={() => openModal("new-invoice")} />
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </section>
 
@@ -94,33 +143,40 @@ function FinancePage() {
               <div className="px-6 py-4 border-b border-border">
                 <h2 className="font-display text-xl">Contractor Payment Requests</h2>
               </div>
-              <div className="divide-y divide-border">
-                {paymentRequests.map((r) => {
-                  const isApproved = approved.includes(r.id);
-                  return (
-                    <div key={r.id} className="px-6 py-4 flex flex-wrap items-center gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium">{r.vendor}</div>
-                        <div className="text-xs text-muted-foreground">{r.scope} · {r.project}</div>
-                        <div className="text-[11px] text-muted-foreground font-mono mt-0.5">Submitted {r.submitted}</div>
-                      </div>
-                      <div className="font-display text-2xl tabular-nums">{formatINR(r.amount)}</div>
-                      {isApproved ? (
-                        <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-[6px]" style={{ background: "rgba(122,158,138,0.18)", color: "#7a9e8a" }}>Payment Sent</span>
-                      ) : (
-                        <div className="flex gap-2">
-                          <button onClick={() => { setApproved((a) => [...a, r.id]); toast.success("Payment approved"); }} className="h-9 px-4 rounded-[6px] bg-[#7a9e8a] text-white text-xs font-medium hover:brightness-110">Approve</button>
-                          <button onClick={() => toast("Held for review")} className="h-9 px-4 rounded-[6px] border border-border text-xs font-medium hover:bg-muted">Hold</button>
+              {reqLoading ? (
+                <div className="p-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+              ) : requests.length === 0 ? (
+                <div className="p-10 text-center text-sm text-muted-foreground">No payment requests.</div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {requests.map((r) => {
+                    const vendorName = (r as { vendors?: { name?: string } | null }).vendors?.name ?? "Vendor";
+                    const projectName = (r as { projects?: { name?: string } | null }).projects?.name ?? "—";
+                    const isApproved = r.status === "approved" || r.status === "paid";
+                    return (
+                      <div key={r.id} className="px-6 py-4 flex flex-wrap items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium">{vendorName}</div>
+                          <div className="text-xs text-muted-foreground">{r.scope ?? "—"} · {projectName}</div>
+                          <div className="text-[11px] text-muted-foreground font-mono mt-0.5">Submitted {new Date(r.submitted_at).toLocaleDateString()}</div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                        <div className="font-display text-2xl tabular-nums">{formatINR(Number(r.amount))}</div>
+                        {isApproved ? (
+                          <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-[6px]" style={{ background: "rgba(122,158,138,0.18)", color: "#7a9e8a" }}>{r.status}</span>
+                        ) : (
+                          <div className="flex gap-2">
+                            <button onClick={() => { setRequestStatus.mutate({ id: r.id, status: "approved" }); toast.success("Payment approved"); }} className="h-9 px-4 rounded-[6px] bg-[#7a9e8a] text-white text-xs font-medium hover:brightness-110">Approve</button>
+                            <button onClick={() => { setRequestStatus.mutate({ id: r.id, status: "held" }); toast("Held for review"); }} className="h-9 px-4 rounded-[6px] border border-border text-xs font-medium hover:bg-muted">Hold</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           </div>
 
-          {/* Right column */}
           <div className="space-y-6">
             <section className="rounded-[16px] bg-card border border-border p-6" style={{ boxShadow: "var(--shadow-card)" }}>
               <div className="flex items-center justify-between mb-4">
@@ -140,26 +196,8 @@ function FinancePage() {
 
             <section className="rounded-[16px] bg-card border border-border p-6" style={{ boxShadow: "var(--shadow-card)" }}>
               <h3 className="font-display text-lg mb-1">Accounts Receivable</h3>
-              <div className="font-display text-3xl tabular-nums mb-4">₹5,20,000</div>
-              <div className="space-y-2.5">
-                {[{ l: "0–30 days", v: "₹3,20,000", c: "#7a9e8a", w: 62 },
-                  { l: "30–60 days", v: "₹1,40,000", c: "#d4882a", w: 27 },
-                  { l: "60+ days", v: "₹60,000", c: "#c4685a", w: 11 }].map((r) => (
-                  <div key={r.l}>
-                    <div className="flex justify-between text-xs mb-1"><span>{r.l}</span><span className="font-mono">{r.v}</span></div>
-                    <div className="h-1.5 rounded-full bg-muted overflow-hidden"><div className="h-full" style={{ width: `${r.w}%`, background: r.c }} /></div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-[16px] bg-card border border-border p-6" style={{ boxShadow: "var(--shadow-card)" }}>
-              <h3 className="font-display text-lg mb-1">Accounts Payable</h3>
-              <div className="font-display text-3xl tabular-nums mb-4">₹1,23,000</div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Suresh Electricals</span><span className="font-mono">₹78,000</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Ramesh Kumar</span><span className="font-mono">₹45,000</span></div>
-              </div>
+              <div className="font-display text-3xl tabular-nums mb-4">{formatINR(pending)}</div>
+              <div className="text-xs text-muted-foreground">{overdueCount > 0 ? `${overdueCount} overdue invoice${overdueCount === 1 ? "" : "s"}` : "All invoices on schedule."}</div>
             </section>
           </div>
         </div>

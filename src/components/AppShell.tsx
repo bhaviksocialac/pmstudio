@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Search, Plus, LayoutDashboard, FolderKanban, Users, Truck, Wallet,
   MessageSquare, Bell, X, ChevronRight, Check, Phone, Mail, Link2,
   Settings, LogOut, HelpCircle, CreditCard, UserCircle,
   Sparkles, AlertTriangle,
 } from "lucide-react";
-import { projects } from "@/lib/projects";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import type { DbClient, DbVendor, DbProject } from "@/lib/db-types";
 import {
-  clients, vendors, notifications as notifs, type Client, type Vendor,
+  notifications as notifs, type Client, type Vendor,
 } from "@/lib/studio-data";
 import { onModal, openModal, type ModalEvent } from "@/lib/app-bus";
 
@@ -46,8 +49,42 @@ export function AppShell({ children, pageTitle }: { children: React.ReactNode; p
   );
 }
 
+function useProjectsList() {
+  return useQuery({
+    queryKey: ["projects", "list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projects").select("id,name,location").order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 function Sidebar({ pathname }: { pathname: string }) {
   const [profileOpen, setProfileOpen] = useState(false);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("full_name,studio_name").eq("user_id", user!.id).maybeSingle();
+      return data;
+    },
+  });
+  const fullName = profile?.full_name || user?.email || "Studio";
+  const initials = fullName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
+
+  const handleSignOut = async () => {
+    setProfileOpen(false);
+    const { error } = await supabase.auth.signOut();
+    if (error) { toast.error(error.message); return; }
+    queryClient.clear();
+    toast.success("Signed out");
+    navigate({ to: "/login" });
+  };
+
   return (
     <aside className="hidden md:flex w-64 shrink-0 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border sticky top-0 h-screen">
       <div className="px-6 pt-8 pb-10">
@@ -82,20 +119,18 @@ function Sidebar({ pathname }: { pathname: string }) {
         {profileOpen && (
           <div className="absolute bottom-full left-3 right-3 mb-2 rounded-[10px] bg-white text-foreground shadow-lg border border-border overflow-hidden z-50">
             {[
-              { icon: UserCircle, label: "My Profile" },
-              { icon: Settings, label: "Studio Settings" },
-              { icon: CreditCard, label: "Billing & Plan", meta: "Studio" },
-              { icon: HelpCircle, label: "Help & Support" },
-              { icon: LogOut, label: "Sign Out" },
+              { icon: UserCircle, label: "My Profile", onClick: () => { setProfileOpen(false); toast("My Profile coming soon"); } },
+              { icon: Settings, label: "Studio Settings", onClick: () => { setProfileOpen(false); toast("Studio Settings coming soon"); } },
+              { icon: HelpCircle, label: "Help & Support", onClick: () => { setProfileOpen(false); toast("Help & Support coming soon"); } },
+              { icon: LogOut, label: "Sign Out", onClick: handleSignOut },
             ].map((it) => (
               <button
                 key={it.label}
-                onClick={() => { setProfileOpen(false); toast(it.label + " coming soon"); }}
+                onClick={it.onClick}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-muted text-left"
               >
                 <it.icon className="h-4 w-4 text-muted-foreground" />
                 <span className="flex-1">{it.label}</span>
-                {it.meta && <span className="text-[10px] font-mono text-[#c17f5a]">{it.meta}</span>}
               </button>
             ))}
           </div>
@@ -104,10 +139,10 @@ function Sidebar({ pathname }: { pathname: string }) {
           onClick={() => setProfileOpen((v) => !v)}
           className="w-full flex items-center gap-3 p-3 rounded-[10px] bg-sidebar-accent border border-sidebar-border hover:bg-[#332b25] transition-colors"
         >
-          <span className="h-9 w-9 rounded-full bg-[#c17f5a] text-white flex items-center justify-center text-xs font-medium">BS</span>
+          <span className="h-9 w-9 rounded-full bg-[#c17f5a] text-white flex items-center justify-center text-xs font-medium">{initials || "S"}</span>
           <div className="flex-1 text-left min-w-0">
-            <div className="text-sm font-medium text-white truncate">Bhavik Shah</div>
-            <div className="text-[10px] font-mono text-white/45">Studio Plan</div>
+            <div className="text-sm font-medium text-white truncate">{fullName}</div>
+            <div className="text-[10px] font-mono text-white/45 truncate">{profile?.studio_name || "Studio"}</div>
           </div>
           <ChevronRight className={`h-3.5 w-3.5 text-white/50 transition-transform ${profileOpen ? "rotate-90" : ""}`} />
         </button>
@@ -130,14 +165,38 @@ function TopBar() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  const results = useMemo(() => {
-    if (!query.trim()) return null;
-    const q = query.toLowerCase();
-    const ps = projects.filter((p) => p.name.toLowerCase().includes(q) || p.client.toLowerCase().includes(q)).slice(0, 3);
-    const cs = clients.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 3);
-    const vs = vendors.filter((v) => v.name.toLowerCase().includes(q) || v.category.toLowerCase().includes(q)).slice(0, 3);
-    return { ps, cs, vs };
-  }, [query]);
+  const q = query.trim().toLowerCase();
+  const enabled = q.length > 0;
+
+  const { data: searchProjects = [] } = useQuery({
+    queryKey: ["search", "projects", q],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projects").select("id,name,location").ilike("name", `%${q}%`).limit(3);
+      if (error) throw error;
+      return (data ?? []) as Pick<DbProject, "id" | "name" | "location">[];
+    },
+  });
+  const { data: searchClients = [] } = useQuery({
+    queryKey: ["search", "clients", q],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clients").select("id,name,email").ilike("name", `%${q}%`).limit(3);
+      if (error) throw error;
+      return (data ?? []) as Pick<DbClient, "id" | "name" | "email">[];
+    },
+  });
+  const { data: searchVendors = [] } = useQuery({
+    queryKey: ["search", "vendors", q],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("vendors").select("id,name,category").ilike("name", `%${q}%`).limit(3);
+      if (error) throw error;
+      return (data ?? []) as Pick<DbVendor, "id" | "name" | "category">[];
+    },
+  });
+
+  const hasResults = enabled && (searchProjects.length || searchClients.length || searchVendors.length);
 
   return (
     <header className="h-16 border-b border-border bg-background/85 backdrop-blur flex items-center px-4 md:px-8 gap-3 sticky top-0 z-30">
@@ -150,27 +209,27 @@ function TopBar() {
           placeholder="Search projects, clients, vendors…"
           className="w-full h-10 pl-10 pr-4 rounded-[10px] bg-card border border-border text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring/30"
         />
-        {results && (
+        {enabled && (
           <div className="absolute top-full left-0 right-0 mt-2 rounded-[10px] bg-card border border-border shadow-lg overflow-hidden z-40 max-h-[60vh] overflow-y-auto">
-            {results.ps.length === 0 && results.cs.length === 0 && results.vs.length === 0 && (
+            {!hasResults && (
               <div className="px-4 py-6 text-sm text-muted-foreground text-center">No results for "{query}"</div>
             )}
-            {results.ps.length > 0 && (
-              <SearchSection title="Projects" items={results.ps.map((p) => ({
-                key: p.id, label: p.name, sub: `${p.client} · ${p.location}`,
+            {searchProjects.length > 0 && (
+              <SearchSection title="Projects" items={searchProjects.map((p) => ({
+                key: p.id, label: p.name, sub: p.location || "—",
                 onClick: () => { navigate({ to: "/projects/$projectId", params: { projectId: p.id } }); setQuery(""); },
               }))} />
             )}
-            {results.cs.length > 0 && (
-              <SearchSection title="Clients" items={results.cs.map((c) => ({
-                key: c.id, label: c.name, sub: c.projectName,
-                onClick: () => { navigate({ to: "/clients" }); openModal("client-panel", c); setQuery(""); },
+            {searchClients.length > 0 && (
+              <SearchSection title="Clients" items={searchClients.map((c) => ({
+                key: c.id, label: c.name, sub: c.email || "—",
+                onClick: () => { navigate({ to: "/clients" }); setQuery(""); },
               }))} />
             )}
-            {results.vs.length > 0 && (
-              <SearchSection title="Vendors" items={results.vs.map((v) => ({
-                key: v.id, label: v.name, sub: v.category,
-                onClick: () => { navigate({ to: "/vendors" }); openModal("vendor-panel", v); setQuery(""); },
+            {searchVendors.length > 0 && (
+              <SearchSection title="Vendors" items={searchVendors.map((v) => ({
+                key: v.id, label: v.name, sub: v.category || "—",
+                onClick: () => { navigate({ to: "/vendors" }); setQuery(""); },
               }))} />
             )}
           </div>
@@ -503,7 +562,8 @@ function AddClientModal({ onClose }: { onClose: () => void }) {
           <Field label="Assign to Project">
             <select className={inputCls}>
               <option>+ Create new project</option>
-              {projects.map((p) => <option key={p.id}>{p.name}</option>)}
+              <ProjectOptions />
+
             </select>
           </Field>
         </div>
@@ -545,7 +605,7 @@ function NewInvoiceModal({ onClose }: { onClose: () => void }) {
       <div className="w-full max-w-lg bg-card rounded-[16px] shadow-2xl">
         <ModalHeader title="New Invoice" subtitle="Auto-numbered INV-006" onClose={onClose} />
         <div className="p-6 space-y-4">
-          <Field label="Project"><select className={inputCls}>{projects.map((p) => <option key={p.id}>{p.name}</option>)}</select></Field>
+          <Field label="Project"><select className={inputCls}><ProjectOptions /></select></Field>
           <Field label="Milestone"><input className={inputCls} placeholder="Procurement Start" /></Field>
           <Field label="Description"><textarea rows={3} className={`${inputCls} h-auto py-2`} /></Field>
           <div className="grid grid-cols-3 gap-3">
@@ -604,10 +664,15 @@ function ModalFooter({ onPrimary, primaryLabel }: { onPrimary: () => void; prima
   );
 }
 
+function ProjectOptions() {
+  const { data = [] } = useProjectsList();
+  return <>{data.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</>;
+}
+
 /* ------ Client / Vendor side panels ------ */
 function ClientPanel({ client, onClose }: { client: Client; onClose: () => void }) {
   if (!client) return null;
-  const project = projects.find((p) => p.id === client.projectId);
+  const project = undefined as { completion?: number } | undefined;
   return (
     <Overlay onClose={onClose} align="right">
       <div className="w-[440px] max-w-[100vw] h-full bg-background flex flex-col shadow-2xl">
