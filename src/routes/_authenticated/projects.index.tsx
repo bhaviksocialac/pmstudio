@@ -80,7 +80,7 @@ function ProjectsPage() {
           </section>
         )}
       </main>
-      {creating && <NewProjectModal onClose={() => setCreating(false)} />}
+      {creating && <NewProjectWizard onClose={() => setCreating(false)} />}
     </AppShell>
   );
 }
