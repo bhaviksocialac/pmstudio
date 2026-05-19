@@ -664,10 +664,15 @@ function ModalFooter({ onPrimary, primaryLabel }: { onPrimary: () => void; prima
   );
 }
 
+function ProjectOptions() {
+  const { data = [] } = useProjectsList();
+  return <>{data.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</>;
+}
+
 /* ------ Client / Vendor side panels ------ */
 function ClientPanel({ client, onClose }: { client: Client; onClose: () => void }) {
   if (!client) return null;
-  const project = projects.find((p) => p.id === client.projectId);
+  const project: { completion?: number } | undefined = undefined;
   return (
     <Overlay onClose={onClose} align="right">
       <div className="w-[440px] max-w-[100vw] h-full bg-background flex flex-col shadow-2xl">
