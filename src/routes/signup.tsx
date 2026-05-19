@@ -12,8 +12,8 @@ export const Route = createFileRoute("/signup")({
   },
   head: () => ({
     meta: [
-      { title: "Create your studio — StudioOS" },
-      { name: "description", content: "Create your StudioOS workspace and run your design practice from one place." },
+      { title: "Create your studio — PMStudio" },
+      { name: "description", content: "Create your PMStudio workspace and run your design practice from one place." },
     ],
   }),
   component: () => <AuthScreen mode="signup" />,

@@ -45,7 +45,7 @@ export function AuthScreen({ mode }: { mode: Mode }) {
           },
         });
         if (error) throw error;
-        toast.success("Welcome to StudioOS");
+        toast.success("Welcome to PMStudio");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: parsedEmail,
@@ -91,8 +91,8 @@ export function AuthScreen({ mode }: { mode: Mode }) {
           style={{ background: "radial-gradient(circle at 30% 20%, rgba(193,127,90,0.22), transparent 55%)" }}
         />
         <div className="relative font-display text-3xl leading-none">
-          <span className="text-white">Studio</span>
-          <span className="text-[#c17f5a]">OS</span>
+          <span className="text-white">PM</span>
+          <span className="text-[#c17f5a]">Studio</span>
           <div className="text-[10px] uppercase tracking-[0.22em] text-white/35 mt-2 font-sans">Design Command Centre</div>
         </div>
         <div className="relative">
@@ -105,7 +105,7 @@ export function AuthScreen({ mode }: { mode: Mode }) {
           </p>
         </div>
         <div className="relative text-[11px] uppercase tracking-[0.22em] text-white/35 font-mono">
-          © StudioOS 2026
+          © PMStudio 2026
         </div>
       </aside>
 
@@ -113,8 +113,8 @@ export function AuthScreen({ mode }: { mode: Mode }) {
       <main className="flex-1 flex items-center justify-center px-6 py-10">
         <div className="w-full max-w-md">
           <div className="md:hidden font-display text-3xl leading-none mb-8">
-            <span className="text-foreground">Studio</span>
-            <span className="text-[#c17f5a]">OS</span>
+            <span className="text-foreground">PM</span>
+            <span className="text-[#c17f5a]">Studio</span>
           </div>
 
           <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-3">

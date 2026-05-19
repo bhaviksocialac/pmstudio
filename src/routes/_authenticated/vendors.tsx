@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 import type { DbVendor } from "@/lib/db-types";
 
 export const Route = createFileRoute("/_authenticated/vendors")({
-  head: () => ({ meta: [{ title: "Vendors — StudioOS" }, { name: "description", content: "All vendors with categories and contact details." }] }),
+  head: () => ({ meta: [{ title: "Vendors — PMStudio" }, { name: "description", content: "All vendors with categories and contact details." }] }),
   component: VendorsPage,
 });
 

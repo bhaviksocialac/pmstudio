@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — StudioOS" },
+      { title: "Dashboard — PMStudio" },
       { name: "description", content: "Run every project, client, vendor and rupee from one premium command center." },
     ],
   }),
@@ -177,7 +177,7 @@ function EmptyProjects() {
       <div className="h-16 w-16 mx-auto rounded-full bg-muted flex items-center justify-center mb-4">
         <Sparkles className="h-6 w-6 text-[#c17f5a]" />
       </div>
-      <h3 className="font-display text-2xl">Welcome to StudioOS</h3>
+      <h3 className="font-display text-2xl">Welcome to PMStudio</h3>
       <p className="text-muted-foreground mt-2 mb-6 max-w-md mx-auto">
         Create your first project — clients, vendors, finance and updates will all flow from here.
       </p>

@@ -89,7 +89,7 @@ function Sidebar({ pathname }: { pathname: string }) {
     <aside className="hidden md:flex w-64 shrink-0 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border sticky top-0 h-screen">
       <div className="px-6 pt-8 pb-10">
         <Link to="/" className="font-display text-3xl leading-none">
-          <span className="text-white">Studio</span><span className="text-[#c17f5a]">OS</span>
+          <span className="text-white">PM</span><span className="text-[#c17f5a]">Studio</span>
         </Link>
         <div className="text-[10px] uppercase tracking-[0.22em] text-white/35 mt-2">Design Command Centre</div>
       </div>

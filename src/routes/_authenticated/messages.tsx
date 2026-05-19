@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/messages")({
-  head: () => ({ meta: [{ title: "Messages — StudioOS" }, { name: "description", content: "All client and vendor conversations in one inbox." }] }),
+  head: () => ({ meta: [{ title: "Messages — PMStudio" }, { name: "description", content: "All client and vendor conversations in one inbox." }] }),
   component: MessagesPage,
 });
 

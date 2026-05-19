@@ -12,8 +12,8 @@ export const Route = createFileRoute("/login")({
   },
   head: () => ({
     meta: [
-      { title: "Sign in — StudioOS" },
-      { name: "description", content: "Sign in to your StudioOS design command centre." },
+      { title: "Sign in — PMStudio" },
+      { name: "description", content: "Sign in to your PMStudio design command centre." },
     ],
   }),
   component: () => <AuthScreen mode="login" />,
