@@ -728,34 +728,58 @@ function NewInvoiceModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function UploadPhotosModal({ onClose }: { onClose: () => void }) {
+function UploadPhotosModal({ onClose, presetProjectId }: { onClose: () => void; presetProjectId?: string }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const { data: projects = [] } = useProjectsList();
-  const [projectId, setProjectId] = useState<string>("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [projectId, setProjectId] = useState<string>(presetProjectId ?? "");
   const [room, setRoom] = useState("Living Room");
   const [caption, setCaption] = useState("");
   const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-open native picker when modal first opens
+  useEffect(() => {
+    inputRef.current?.click();
+  }, []);
 
   const upload = async () => {
     if (!user) return;
-    if (!projectId && projects.length) {
-      toast.error("Pick a project");
-      return;
-    }
+    const pid = projectId || presetProjectId || projects[0]?.id;
+    if (!pid) { toast.error("No project to attach photos to"); return; }
+    if (files.length === 0) { toast.error("Pick at least one photo"); return; }
     setBusy(true);
-    const { error } = await supabase.from("photos").insert({
-      user_id: user.id,
-      project_id: projectId || projects[0]?.id || null,
-      room,
-      caption: caption.trim() || null,
-      status: "pending",
-    });
-    setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    qc.invalidateQueries({ queryKey: ["photos"] });
-    onClose();
-    toast.success("Photo staged — approve from the dashboard before it reaches the client");
+    try {
+      for (const file of files) {
+        const ext = file.name.split(".").pop() || "jpg";
+        const path = `${user.id}/${pid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("project-photos").upload(path, file, {
+          contentType: file.type,
+          upsert: false,
+        });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from("project-photos").getPublicUrl(path);
+        const { error: insErr } = await supabase.from("photos").insert({
+          user_id: user.id,
+          project_id: pid,
+          room,
+          caption: caption.trim() || null,
+          storage_path: path,
+          image_url: pub.publicUrl,
+          status: "approved",
+        });
+        if (insErr) throw insErr;
+      }
+      qc.invalidateQueries({ queryKey: ["photos"] });
+      qc.invalidateQueries({ queryKey: ["project-photos"] });
+      onClose();
+      toast.success(`${files.length} photo${files.length > 1 ? "s" : ""} uploaded`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -763,7 +787,21 @@ function UploadPhotosModal({ onClose }: { onClose: () => void }) {
       <div className="w-full max-w-md bg-card rounded-[16px] shadow-2xl">
         <ModalHeader title="Upload Photos" onClose={onClose} />
         <div className="p-6 space-y-4">
-          {projects.length > 0 && (
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+          />
+          <button onClick={() => inputRef.current?.click()}
+            className="w-full rounded-[10px] border-2 border-dashed border-border hover:border-[#c17f5a] hover:bg-[#fff7eb] p-6 text-center transition-colors">
+            <div className="text-sm font-medium">{files.length > 0 ? `${files.length} file${files.length > 1 ? "s" : ""} selected` : "Click to choose photos"}</div>
+            <div className="text-[11px] text-muted-foreground mt-1">JPG / PNG · multiple allowed</div>
+          </button>
+
+          {!presetProjectId && projects.length > 0 && (
             <Field label="Project" required>
               <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
                 <option value="">Select a project…</option>
@@ -771,15 +809,16 @@ function UploadPhotosModal({ onClose }: { onClose: () => void }) {
               </select>
             </Field>
           )}
-          <Field label="Room"><select value={room} onChange={(e) => setRoom(e.target.value)} className={inputCls}>{["Living Room","Master Bedroom","Kitchen","Bathroom","Dining","Balcony","Others"].map((r) => <option key={r}>{r}</option>)}</select></Field>
-          <Field label="Caption"><input value={caption} maxLength={200} onChange={(e) => setCaption(e.target.value)} className={inputCls} placeholder="Coral arch finish, day 3" /></Field>
-          <div className="rounded-[10px] border-2 border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-            <div className="text-[11px] uppercase tracking-wider font-mono mb-1">Photo will be staged</div>
-            Approve on dashboard before it shows on the client portal.
-            <div className="text-[10px] mt-2 text-muted-foreground/80">Auto-tagging available when Google Vision API is connected.</div>
-          </div>
+          <Field label="Room" required>
+            <select value={room} onChange={(e) => setRoom(e.target.value)} className={inputCls}>
+              {["Living Room","Master Bedroom","Bedroom 2","Bedroom 3","Kitchen","Bathroom","Dining","Balcony","Study","Other"].map((r) => <option key={r}>{r}</option>)}
+            </select>
+          </Field>
+          <Field label="Caption (optional)">
+            <input value={caption} maxLength={200} onChange={(e) => setCaption(e.target.value)} className={inputCls} placeholder="Coral arch finish, day 3" />
+          </Field>
         </div>
-        <ModalFooter onPrimary={upload} primaryLabel={busy ? "Uploading…" : "Stage Photo"} />
+        <ModalFooter onPrimary={upload} primaryLabel={busy ? "Uploading…" : `Upload ${files.length || ""} photo${files.length === 1 ? "" : "s"}`} />
       </div>
     </Overlay>
   );
