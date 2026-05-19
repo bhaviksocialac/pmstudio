@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { conversations, type Conversation } from "@/lib/studio-data";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/messages")({
+export const Route = createFileRoute("/_authenticated/messages")({
   head: () => ({ meta: [{ title: "Messages — StudioOS" }, { name: "description", content: "All client and vendor conversations in one inbox, with AI drafts." }] }),
   component: MessagesPage,
 });

@@ -14,7 +14,458 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      approvals: {
+        Row: {
+          approved_at: string | null
+          created_at: string
+          id: string
+          project_id: string | null
+          status: Database["public"]["Enums"]["approval_status"]
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["approval_status"]
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["approval_status"]
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approvals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      invoices: {
+        Row: {
+          amount: number
+          client_id: string | null
+          created_at: string
+          due_at: string | null
+          id: string
+          milestone: string | null
+          number: string | null
+          project_id: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          client_id?: string | null
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          milestone?: string | null
+          number?: string | null
+          project_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string | null
+          created_at?: string
+          due_at?: string | null
+          id?: string
+          milestone?: string | null
+          number?: string | null
+          project_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          body: string
+          created_at: string
+          from_me: boolean
+          id: string
+          kind: Database["public"]["Enums"]["message_kind"]
+          sent_at: string
+          thread_with: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          from_me?: boolean
+          id?: string
+          kind?: Database["public"]["Enums"]["message_kind"]
+          sent_at?: string
+          thread_with?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          from_me?: boolean
+          id?: string
+          kind?: Database["public"]["Enums"]["message_kind"]
+          sent_at?: string
+          thread_with?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payment_requests: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          project_id: string | null
+          scope: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          submitted_at: string
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          scope?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          submitted_at?: string
+          updated_at?: string
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          scope?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          submitted_at?: string
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_requests_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          project_id: string | null
+          room: string | null
+          storage_path: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          room?: string | null
+          storage_path?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          room?: string | null
+          storage_path?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photos_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          studio_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          studio_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          studio_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          budget: number
+          client_id: string | null
+          completion: number
+          created_at: string
+          description: string | null
+          expected_handover: string | null
+          health: Database["public"]["Enums"]["project_health"]
+          id: string
+          location: string | null
+          name: string
+          phase: Database["public"]["Enums"]["project_phase"]
+          spent: number
+          start_date: string | null
+          type: Database["public"]["Enums"]["project_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          budget?: number
+          client_id?: string | null
+          completion?: number
+          created_at?: string
+          description?: string | null
+          expected_handover?: string | null
+          health?: Database["public"]["Enums"]["project_health"]
+          id?: string
+          location?: string | null
+          name: string
+          phase?: Database["public"]["Enums"]["project_phase"]
+          spent?: number
+          start_date?: string | null
+          type?: Database["public"]["Enums"]["project_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          budget?: number
+          client_id?: string | null
+          completion?: number
+          created_at?: string
+          description?: string | null
+          expected_handover?: string | null
+          health?: Database["public"]["Enums"]["project_health"]
+          id?: string
+          location?: string | null
+          name?: string
+          phase?: Database["public"]["Enums"]["project_phase"]
+          spent?: number
+          start_date?: string | null
+          type?: Database["public"]["Enums"]["project_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assignee: string | null
+          created_at: string
+          done: boolean
+          due_date: string | null
+          id: string
+          project_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assignee?: string | null
+          created_at?: string
+          done?: boolean
+          due_date?: string | null
+          id?: string
+          project_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assignee?: string | null
+          created_at?: string
+          done?: boolean
+          due_date?: string | null
+          id?: string
+          project_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendors: {
+        Row: {
+          category: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          payment_terms: string | null
+          phone: string | null
+          rating: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          rating?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          rating?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +474,19 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      approval_status: "pending" | "approved" | "rejected"
+      invoice_status: "draft" | "sent" | "paid" | "overdue"
+      message_kind: "client" | "vendor"
+      payment_status: "pending" | "approved" | "paid" | "held"
+      project_health: "on-track" | "attention" | "urgent"
+      project_phase:
+        | "Survey"
+        | "Design"
+        | "Procurement"
+        | "Execution"
+        | "Finishing"
+        | "Handover"
+      project_type: "residential" | "commercial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +613,21 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      approval_status: ["pending", "approved", "rejected"],
+      invoice_status: ["draft", "sent", "paid", "overdue"],
+      message_kind: ["client", "vendor"],
+      payment_status: ["pending", "approved", "paid", "held"],
+      project_health: ["on-track", "attention", "urgent"],
+      project_phase: [
+        "Survey",
+        "Design",
+        "Procurement",
+        "Execution",
+        "Finishing",
+        "Handover",
+      ],
+      project_type: ["residential", "commercial"],
+    },
   },
 } as const

@@ -6,7 +6,7 @@ import { openModal } from "@/lib/app-bus";
 import { toast } from "sonner";
 import { useState } from "react";
 
-export const Route = createFileRoute("/finance")({
+export const Route = createFileRoute("/_authenticated/finance")({
   head: () => ({ meta: [{ title: "Finance — StudioOS" }, { name: "description", content: "Invoices, payments, receivables and cashflow for your studio." }] }),
   component: FinancePage,
 });
