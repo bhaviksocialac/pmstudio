@@ -492,7 +492,7 @@ export type Database = {
           phase: Database["public"]["Enums"]["project_phase"]
           spent: number
           start_date: string | null
-          type: Database["public"]["Enums"]["project_type"]
+          type: string
           updated_at: string
           user_id: string
         }
@@ -510,7 +510,7 @@ export type Database = {
           phase?: Database["public"]["Enums"]["project_phase"]
           spent?: number
           start_date?: string | null
-          type?: Database["public"]["Enums"]["project_type"]
+          type?: string
           updated_at?: string
           user_id: string
         }
@@ -528,7 +528,7 @@ export type Database = {
           phase?: Database["public"]["Enums"]["project_phase"]
           spent?: number
           start_date?: string | null
-          type?: Database["public"]["Enums"]["project_type"]
+          type?: string
           updated_at?: string
           user_id?: string
         }
