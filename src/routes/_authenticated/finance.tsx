@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatINR, monthlyRevenue } from "@/lib/studio-data";
 import { openModal } from "@/lib/app-bus";
 import { toast } from "sonner";
+import { FreshnessTag, freshnessLevel } from "@/components/FreshnessTag";
 
 export const Route = createFileRoute("/_authenticated/finance")({
   head: () => ({ meta: [{ title: "Finance — PMStudio" }, { name: "description", content: "Invoices, payments, receivables and cashflow for your studio." }] }),
@@ -121,10 +122,16 @@ function FinancePage() {
                             <td className="px-4 py-3 text-muted-foreground">{inv.milestone ?? "—"}</td>
                             <td className="px-4 py-3 font-mono tabular-nums">{formatINR(Number(inv.amount))}</td>
                             <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{inv.due_at ?? "—"}</td>
-                            <td className="px-4 py-3"><span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px]" style={{ background: t.bg, color: t.color }}>{t.label}</span></td>
+                            <td className="px-4 py-3"><span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px] mr-1" style={{ background: t.bg, color: t.color }}>{t.label}</span><FreshnessTag updatedAt={inv.updated_at} showLabel={false} /></td>
                             <td className="px-4 py-3">
                               <div className="flex gap-1">
-                                <IconBtn icon={Send} onClick={() => { setInvoiceStatus.mutate({ id: inv.id, status: "sent" }); toast.success("Invoice sent"); }} />
+                                <IconBtn icon={Send} onClick={() => {
+                                  if (freshnessLevel(inv.updated_at) === "red") {
+                                    toast.error("Data is stale. Refresh before sharing with client.");
+                                    return;
+                                  }
+                                  setInvoiceStatus.mutate({ id: inv.id, status: "sent" }); toast.success("Invoice sent");
+                                }} />
                                 <IconBtn icon={FileDown} onClick={() => toast.success("PDF downloaded")} />
                                 <IconBtn icon={Check} onClick={() => { setInvoiceStatus.mutate({ id: inv.id, status: "paid" }); toast.success("Marked paid"); }} />
                                 <IconBtn icon={Pencil} onClick={() => openModal("new-invoice")} />

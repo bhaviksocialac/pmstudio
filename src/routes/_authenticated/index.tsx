@@ -13,6 +13,7 @@ import {
 } from "@/lib/db-types";
 import { useAuth } from "@/lib/auth";
 import { PendingApprovals } from "@/components/PendingApprovals";
+import { PhotoStaging } from "@/components/PhotoStaging";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -126,6 +127,8 @@ function Dashboard() {
           <StatCard icon={Clock} label="Total Spent" value={`₹${totalSpent.toFixed(1)}L`} accent="#d4882a" />
           <StatCard icon={AlertTriangle} label="Need Attention" value={`${attention}`} accent="#c4685a" />
         </section>
+
+        <PhotoStaging />
 
         <PendingApprovals />
 

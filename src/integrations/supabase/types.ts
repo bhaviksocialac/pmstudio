@@ -338,6 +338,7 @@ export type Database = {
           id: string
           project_id: string | null
           room: string | null
+          status: Database["public"]["Enums"]["photo_status"]
           storage_path: string | null
           updated_at: string
           user_id: string
@@ -348,6 +349,7 @@ export type Database = {
           id?: string
           project_id?: string | null
           room?: string | null
+          status?: Database["public"]["Enums"]["photo_status"]
           storage_path?: string | null
           updated_at?: string
           user_id: string
@@ -358,6 +360,7 @@ export type Database = {
           id?: string
           project_id?: string | null
           room?: string | null
+          status?: Database["public"]["Enums"]["photo_status"]
           storage_path?: string | null
           updated_at?: string
           user_id?: string
@@ -579,6 +582,7 @@ export type Database = {
         Row: {
           assignee: string | null
           created_at: string
+          delayed: boolean
           done: boolean
           due_date: string | null
           id: string
@@ -590,6 +594,7 @@ export type Database = {
         Insert: {
           assignee?: string | null
           created_at?: string
+          delayed?: boolean
           done?: boolean
           due_date?: string | null
           id?: string
@@ -601,6 +606,7 @@ export type Database = {
         Update: {
           assignee?: string | null
           created_at?: string
+          delayed?: boolean
           done?: boolean
           due_date?: string | null
           id?: string
@@ -697,6 +703,36 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_groups: {
+        Row: {
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["whatsapp_group_kind"]
+          label: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["whatsapp_group_kind"]
+          label: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["whatsapp_group_kind"]
+          label?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -716,6 +752,7 @@ export type Database = {
       invoice_status: "draft" | "sent" | "paid" | "overdue"
       message_kind: "client" | "vendor"
       payment_status: "pending" | "approved" | "paid" | "held"
+      photo_status: "pending" | "approved" | "rejected"
       project_health: "on-track" | "attention" | "urgent"
       project_phase:
         | "Survey"
@@ -726,6 +763,7 @@ export type Database = {
         | "Handover"
       project_type: "residential" | "commercial"
       vendor_delivery_status: "pending" | "delivered" | "delayed"
+      whatsapp_group_kind: "client" | "design" | "execution" | "accounts"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -865,6 +903,7 @@ export const Constants = {
       invoice_status: ["draft", "sent", "paid", "overdue"],
       message_kind: ["client", "vendor"],
       payment_status: ["pending", "approved", "paid", "held"],
+      photo_status: ["pending", "approved", "rejected"],
       project_health: ["on-track", "attention", "urgent"],
       project_phase: [
         "Survey",
@@ -876,6 +915,7 @@ export const Constants = {
       ],
       project_type: ["residential", "commercial"],
       vendor_delivery_status: ["pending", "delivered", "delayed"],
+      whatsapp_group_kind: ["client", "design", "execution", "accounts"],
     },
   },
 } as const
