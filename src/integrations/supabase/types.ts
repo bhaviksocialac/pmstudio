@@ -55,6 +55,42 @@ export type Database = {
           },
         ]
       }
+      budget_lines: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          id: string
+          order_index: number
+          percentage: number
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          category: string
+          created_at?: string
+          id?: string
+          order_index?: number
+          percentage?: number
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          id?: string
+          order_index?: number
+          percentage?: number
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           address: string | null
@@ -315,6 +351,75 @@ export type Database = {
         }
         Relationships: []
       }
+      project_phases: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          id: string
+          order_index: number
+          phase: Database["public"]["Enums"]["project_phase"]
+          project_id: string
+          start_date: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          order_index: number
+          phase: Database["public"]["Enums"]["project_phase"]
+          project_id: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          order_index?: number
+          phase?: Database["public"]["Enums"]["project_phase"]
+          project_id?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      project_rooms: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          order_index: number
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          order_index?: number
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          order_index?: number
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           budget: number
@@ -379,6 +484,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      room_scope_items: {
+        Row: {
+          created_at: string
+          done: boolean
+          id: string
+          label: string
+          order_index: number
+          project_id: string
+          room_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          done?: boolean
+          id?: string
+          label: string
+          order_index?: number
+          project_id: string
+          room_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          done?: boolean
+          id?: string
+          label?: string
+          order_index?: number
+          project_id?: string
+          room_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       tasks: {
         Row: {
