@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   Search, Plus, LayoutDashboard, FolderKanban, Users, Truck, Wallet,
   MessageSquare, Bell, X, ChevronRight, Check, Phone, Mail, Link2,
-  MessageCircle, Settings, LogOut, HelpCircle, CreditCard, UserCircle,
+  Settings, LogOut, HelpCircle, CreditCard, UserCircle,
   Sparkles, AlertTriangle,
 } from "lucide-react";
 import { projects } from "@/lib/projects";
