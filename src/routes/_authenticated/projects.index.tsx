@@ -6,7 +6,7 @@ import { ProjectCard } from "./index";
 import { projects, healthMap } from "@/lib/projects";
 import { openModal } from "@/lib/app-bus";
 
-export const Route = createFileRoute("/projects/")({
+export const Route = createFileRoute("/_authenticated/projects/")({
   head: () => ({
     meta: [
       { title: "Projects — StudioOS" },

@@ -15,8 +15,8 @@ import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FinanceRouteImport } from './routes/finance'
 import { Route as ClientsRouteImport } from './routes/clients'
-import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 
 const VendorsRoute = VendorsRouteImport.update({
@@ -49,14 +49,14 @@ const ClientsRoute = ClientsRouteImport.update({
   path: '/clients',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+  id: '/_authenticated/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
@@ -66,7 +66,6 @@ const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
   '/clients': typeof ClientsRoute
   '/finance': typeof FinanceRoute
   '/login': typeof LoginRoute
@@ -74,10 +73,10 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/vendors': typeof VendorsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/': typeof AuthenticatedIndexRoute
   '/projects/': typeof ProjectsIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
   '/clients': typeof ClientsRoute
   '/finance': typeof FinanceRoute
   '/login': typeof LoginRoute
@@ -85,11 +84,11 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/vendors': typeof VendorsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/': typeof AuthenticatedIndexRoute
   '/projects': typeof ProjectsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/clients': typeof ClientsRoute
   '/finance': typeof FinanceRoute
   '/login': typeof LoginRoute
@@ -97,12 +96,12 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/vendors': typeof VendorsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
   '/projects/': typeof ProjectsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
     | '/clients'
     | '/finance'
     | '/login'
@@ -110,10 +109,10 @@ export interface FileRouteTypes {
     | '/signup'
     | '/vendors'
     | '/projects/$projectId'
+    | '/'
     | '/projects/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/clients'
     | '/finance'
     | '/login'
@@ -121,10 +120,10 @@ export interface FileRouteTypes {
     | '/signup'
     | '/vendors'
     | '/projects/$projectId'
+    | '/'
     | '/projects'
   id:
     | '__root__'
-    | '/'
     | '/clients'
     | '/finance'
     | '/login'
@@ -132,11 +131,11 @@ export interface FileRouteTypes {
     | '/signup'
     | '/vendors'
     | '/projects/$projectId'
+    | '/_authenticated/'
     | '/projects/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   ClientsRoute: typeof ClientsRoute
   FinanceRoute: typeof FinanceRoute
   LoginRoute: typeof LoginRoute
@@ -144,6 +143,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   VendorsRoute: typeof VendorsRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
 }
 
@@ -191,18 +191,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/projects/': {
       id: '/projects/'
       path: '/projects'
       fullPath: '/projects/'
       preLoaderRoute: typeof ProjectsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/': {
+      id: '/_authenticated/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/$projectId': {
@@ -216,7 +216,6 @@ declare module '@tanstack/react-router' {
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   ClientsRoute: ClientsRoute,
   FinanceRoute: FinanceRoute,
   LoginRoute: LoginRoute,
@@ -224,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   VendorsRoute: VendorsRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
 }
 export const routeTree = rootRouteImport

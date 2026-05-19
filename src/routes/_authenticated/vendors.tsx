@@ -6,7 +6,7 @@ import { vendors } from "@/lib/studio-data";
 import { openModal } from "@/lib/app-bus";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/vendors")({
+export const Route = createFileRoute("/_authenticated/vendors")({
   head: () => ({ meta: [{ title: "Vendors — StudioOS" }, { name: "description", content: "All vendors with performance, payments and active projects." }] }),
   component: VendorsPage,
 });

@@ -11,7 +11,7 @@ import { AppShell } from "@/components/AppShell";
 import { openModal } from "@/lib/app-bus";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/projects/$projectId")({
+export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
     const p = getProjectById(params.projectId);
     const title = p ? `${p.name} — StudioOS` : "Project — StudioOS";

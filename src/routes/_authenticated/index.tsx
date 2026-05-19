@@ -8,7 +8,7 @@ import { projects, phases, healthMap, type Project } from "@/lib/projects";
 import { AppShell } from "@/components/AppShell";
 import { openModal } from "@/lib/app-bus";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "Dashboard — StudioOS" },

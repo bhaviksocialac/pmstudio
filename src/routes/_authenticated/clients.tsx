@@ -6,7 +6,7 @@ import { clients } from "@/lib/studio-data";
 import { openModal } from "@/lib/app-bus";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/clients")({
+export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({ meta: [{ title: "Clients — StudioOS" }, { name: "description", content: "Track every client, their project status and portal activity." }] }),
   component: ClientsPage,
 });
