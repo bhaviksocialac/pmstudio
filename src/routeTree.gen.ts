@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VendorsRouteImport } from './routes/vendors'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 
+const VendorsRoute = VendorsRouteImport.update({
+  id: '/vendors',
+  path: '/vendors',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientsRoute = ClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
@@ -38,12 +44,14 @@ const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/clients': typeof ClientsRoute
+  '/vendors': typeof VendorsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/projects/': typeof ProjectsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/clients': typeof ClientsRoute
+  '/vendors': typeof VendorsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/projects': typeof ProjectsIndexRoute
 }
@@ -51,25 +59,45 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/clients': typeof ClientsRoute
+  '/vendors': typeof VendorsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/projects/': typeof ProjectsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/clients' | '/projects/$projectId' | '/projects/'
+  fullPaths:
+    | '/'
+    | '/clients'
+    | '/vendors'
+    | '/projects/$projectId'
+    | '/projects/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/clients' | '/projects/$projectId' | '/projects'
-  id: '__root__' | '/' | '/clients' | '/projects/$projectId' | '/projects/'
+  to: '/' | '/clients' | '/vendors' | '/projects/$projectId' | '/projects'
+  id:
+    | '__root__'
+    | '/'
+    | '/clients'
+    | '/vendors'
+    | '/projects/$projectId'
+    | '/projects/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ClientsRoute: typeof ClientsRoute
+  VendorsRoute: typeof VendorsRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/vendors': {
+      id: '/vendors'
+      path: '/vendors'
+      fullPath: '/vendors'
+      preLoaderRoute: typeof VendorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clients': {
       id: '/clients'
       path: '/clients'
@@ -104,6 +132,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ClientsRoute: ClientsRoute,
+  VendorsRoute: VendorsRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
 }
 export const routeTree = rootRouteImport
