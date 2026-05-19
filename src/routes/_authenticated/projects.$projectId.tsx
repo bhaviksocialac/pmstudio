@@ -17,6 +17,8 @@ import { SharePortalButton } from "@/components/SharePortalButton";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { AddTaskPanel } from "@/components/AddTaskPanel";
 import { PhaseSubcategoriesPanel } from "@/components/PhaseSubcategoriesPanel";
+import { AIPhaseBar } from "@/components/AIPhaseBar";
+import { EditPhaseModal } from "@/components/EditPhaseModal";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
