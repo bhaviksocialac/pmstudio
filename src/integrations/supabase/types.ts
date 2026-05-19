@@ -331,11 +331,60 @@ export type Database = {
           },
         ]
       }
+      phase_subcategories: {
+        Row: {
+          contractor_name: string | null
+          created_at: string
+          end_date: string | null
+          id: string
+          name: string
+          order_index: number
+          phase: string
+          project_id: string
+          start_date: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          vendor_id: string | null
+        }
+        Insert: {
+          contractor_name?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          name: string
+          order_index?: number
+          phase: string
+          project_id: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          vendor_id?: string | null
+        }
+        Update: {
+          contractor_name?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          name?: string
+          order_index?: number
+          phase?: string
+          project_id?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string | null
+        }
+        Relationships: []
+      }
       photos: {
         Row: {
           caption: string | null
           created_at: string
           id: string
+          image_url: string | null
           project_id: string | null
           room: string | null
           status: Database["public"]["Enums"]["photo_status"]
@@ -347,6 +396,7 @@ export type Database = {
           caption?: string | null
           created_at?: string
           id?: string
+          image_url?: string | null
           project_id?: string | null
           room?: string | null
           status?: Database["public"]["Enums"]["photo_status"]
@@ -358,6 +408,7 @@ export type Database = {
           caption?: string | null
           created_at?: string
           id?: string
+          image_url?: string | null
           project_id?: string | null
           room?: string | null
           status?: Database["public"]["Enums"]["photo_status"]
@@ -624,6 +675,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_options: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          user_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          user_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          user_id?: string
+          value?: string
+        }
+        Relationships: []
       }
       vendor_deliveries: {
         Row: {
