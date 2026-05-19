@@ -5,7 +5,7 @@ import { Search, Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { healthMap, type DbProject } from "@/lib/db-types";
-import { NewProjectWizard } from "@/components/NewProjectWizard";
+import { openModal } from "@/lib/app-bus";
 import { SharePortalButton } from "@/components/SharePortalButton";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
@@ -20,7 +20,6 @@ export const Route = createFileRoute("/_authenticated/projects/")({
 
 function ProjectsPage() {
   const [query, setQuery] = useState("");
-  const [creating, setCreating] = useState(false);
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
