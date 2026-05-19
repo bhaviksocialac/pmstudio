@@ -186,6 +186,8 @@ function OverviewTab({ project }: { project: Project }) {
   const qc = useQueryClient();
   const [confirmPhase, setConfirmPhase] = useState<string | null>(null);
   const [addTaskFor, setAddTaskFor] = useState<string | null>(null);
+  const [editPhase, setEditPhase] = useState<string | null>(null);
+
 
   const PHASE_INVOICE_PCT: Record<string, number> = {
     Survey: 5, Design: 15, Procurement: 20, Execution: 35, Finishing: 15, Handover: 10,
