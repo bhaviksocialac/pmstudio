@@ -176,6 +176,57 @@ const Card: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = "", 
 function OverviewTab({ project }: { project: Project }) {
   const phaseIdx = phases.indexOf(project.phase);
   const budgetPct = Math.round((project.spent / project.budget) * 100);
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [confirmPhase, setConfirmPhase] = useState<string | null>(null);
+  const [addTaskFor, setAddTaskFor] = useState<string | null>(null);
+
+  const PHASE_INVOICE_PCT: Record<string, number> = {
+    Survey: 5, Design: 15, Procurement: 20, Execution: 35, Finishing: 15, Handover: 10,
+  };
+
+  const markPhaseComplete = useMutation({
+    mutationFn: async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const currentPhase = project.phase;
+      const nextPhase = phases[phaseIdx + 1];
+      // Update current phase row
+      await supabase.from("project_phases")
+        .update({ status: "done", end_date: today })
+        .eq("project_id", project.id)
+        .eq("phase", currentPhase);
+      // Update next phase
+      if (nextPhase) {
+        await supabase.from("project_phases")
+          .update({ status: "active" })
+          .eq("project_id", project.id)
+          .eq("phase", nextPhase);
+      }
+      // Update project
+      const newCompletion = Math.min(100, Math.round(((phaseIdx + 1) / phases.length) * 100));
+      await supabase.from("projects")
+        .update({ phase: nextPhase ?? currentPhase, completion: newCompletion })
+        .eq("id", project.id);
+      // Draft invoice
+      const pct = PHASE_INVOICE_PCT[currentPhase] ?? 10;
+      const amount = +(project.budget * 100000 * (pct / 100)).toFixed(0);
+      await supabase.from("invoices").insert({
+        user_id: user!.id,
+        project_id: project.id,
+        amount,
+        milestone: `${currentPhase} complete`,
+        status: "draft",
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["project", project.id] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("Phase marked complete. Draft invoice created.");
+      setConfirmPhase(null);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
@@ -213,8 +264,8 @@ function OverviewTab({ project }: { project: Project }) {
                   </div>
                   {current && (
                     <div className="flex gap-2 mt-3 pt-3 border-t border-[#e8d9c9]">
-                      <button onClick={() => toast.success("Phase marked complete")} className="h-8 px-3 rounded-[6px] bg-[#7a9e8a] text-white text-xs font-medium hover:brightness-110">Mark Phase Complete</button>
-                      <button onClick={() => toast("New task added")} className="h-8 px-3 rounded-[6px] border border-border text-xs font-medium hover:bg-white">+ Add Task</button>
+                      <button onClick={() => setConfirmPhase(ph)} className="h-8 px-3 rounded-[6px] bg-[#7a9e8a] text-white text-xs font-medium hover:brightness-110">Mark Phase Complete</button>
+                      <button onClick={() => setAddTaskFor(ph)} className="h-8 px-3 rounded-[6px] border border-border text-xs font-medium hover:bg-white">+ Add Task</button>
                     </div>
                   )}
                 </div>
