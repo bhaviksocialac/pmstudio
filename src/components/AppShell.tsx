@@ -49,8 +49,42 @@ export function AppShell({ children, pageTitle }: { children: React.ReactNode; p
   );
 }
 
+function useProjectsList() {
+  return useQuery({
+    queryKey: ["projects", "list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projects").select("id,name,location").order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 function Sidebar({ pathname }: { pathname: string }) {
   const [profileOpen, setProfileOpen] = useState(false);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("full_name,studio_name").eq("user_id", user!.id).maybeSingle();
+      return data;
+    },
+  });
+  const fullName = profile?.full_name || user?.email || "Studio";
+  const initials = fullName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
+
+  const handleSignOut = async () => {
+    setProfileOpen(false);
+    const { error } = await supabase.auth.signOut();
+    if (error) { toast.error(error.message); return; }
+    queryClient.clear();
+    toast.success("Signed out");
+    navigate({ to: "/login" });
+  };
+
   return (
     <aside className="hidden md:flex w-64 shrink-0 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border sticky top-0 h-screen">
       <div className="px-6 pt-8 pb-10">
@@ -85,20 +119,18 @@ function Sidebar({ pathname }: { pathname: string }) {
         {profileOpen && (
           <div className="absolute bottom-full left-3 right-3 mb-2 rounded-[10px] bg-white text-foreground shadow-lg border border-border overflow-hidden z-50">
             {[
-              { icon: UserCircle, label: "My Profile" },
-              { icon: Settings, label: "Studio Settings" },
-              { icon: CreditCard, label: "Billing & Plan", meta: "Studio" },
-              { icon: HelpCircle, label: "Help & Support" },
-              { icon: LogOut, label: "Sign Out" },
+              { icon: UserCircle, label: "My Profile", onClick: () => { setProfileOpen(false); toast("My Profile coming soon"); } },
+              { icon: Settings, label: "Studio Settings", onClick: () => { setProfileOpen(false); toast("Studio Settings coming soon"); } },
+              { icon: HelpCircle, label: "Help & Support", onClick: () => { setProfileOpen(false); toast("Help & Support coming soon"); } },
+              { icon: LogOut, label: "Sign Out", onClick: handleSignOut },
             ].map((it) => (
               <button
                 key={it.label}
-                onClick={() => { setProfileOpen(false); toast(it.label + " coming soon"); }}
+                onClick={it.onClick}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-muted text-left"
               >
                 <it.icon className="h-4 w-4 text-muted-foreground" />
                 <span className="flex-1">{it.label}</span>
-                {it.meta && <span className="text-[10px] font-mono text-[#c17f5a]">{it.meta}</span>}
               </button>
             ))}
           </div>
@@ -107,10 +139,10 @@ function Sidebar({ pathname }: { pathname: string }) {
           onClick={() => setProfileOpen((v) => !v)}
           className="w-full flex items-center gap-3 p-3 rounded-[10px] bg-sidebar-accent border border-sidebar-border hover:bg-[#332b25] transition-colors"
         >
-          <span className="h-9 w-9 rounded-full bg-[#c17f5a] text-white flex items-center justify-center text-xs font-medium">BS</span>
+          <span className="h-9 w-9 rounded-full bg-[#c17f5a] text-white flex items-center justify-center text-xs font-medium">{initials || "S"}</span>
           <div className="flex-1 text-left min-w-0">
-            <div className="text-sm font-medium text-white truncate">Bhavik Shah</div>
-            <div className="text-[10px] font-mono text-white/45">Studio Plan</div>
+            <div className="text-sm font-medium text-white truncate">{fullName}</div>
+            <div className="text-[10px] font-mono text-white/45 truncate">{profile?.studio_name || "Studio"}</div>
           </div>
           <ChevronRight className={`h-3.5 w-3.5 text-white/50 transition-transform ${profileOpen ? "rotate-90" : ""}`} />
         </button>
