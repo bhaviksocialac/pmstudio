@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Search, Plus, LayoutDashboard, FolderKanban, Users, Truck, Wallet,
   MessageSquare, Bell, X, ChevronRight, Check, Phone, Mail, Link2,
   Settings, LogOut, HelpCircle, CreditCard, UserCircle,
   Sparkles, AlertTriangle,
 } from "lucide-react";
-import { projects } from "@/lib/projects";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import type { DbClient, DbVendor, DbProject } from "@/lib/db-types";
 import {
-  clients, vendors, notifications as notifs, type Client, type Vendor,
+  notifications as notifs, type Client, type Vendor,
 } from "@/lib/studio-data";
 import { onModal, openModal, type ModalEvent } from "@/lib/app-bus";
 
