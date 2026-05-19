@@ -6,6 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { healthMap, type DbProject } from "@/lib/db-types";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
+import { SharePortalButton } from "@/components/SharePortalButton";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   head: () => ({
@@ -115,6 +116,9 @@ function ProjectRow({ project: p }: { project: DbProject }) {
       </div>
       <div className="text-xs font-mono text-muted-foreground">
         ₹{Number(p.spent).toFixed(1)}L / ₹{Number(p.budget).toFixed(1)}L · {budgetPct}% spent
+      </div>
+      <div className="pt-2 border-t border-border -mx-6 px-6 -mb-6 pb-4 mt-1">
+        <SharePortalButton projectId={p.id} variant="ghost" size="sm" label="Share Client Portal" className="w-full" />
       </div>
     </Link>
   );
