@@ -26,7 +26,7 @@ export const getPortalData = createServerFn({ method: "GET" })
         admin.from("project_phases").select("phase, order_index, start_date, end_date, status").eq("project_id", projectId).order("order_index"),
         admin.from("budget_lines").select("category, percentage, amount, order_index").eq("project_id", projectId).order("order_index"),
         admin.from("tasks").select("id, title, due_date, done, updated_at").eq("project_id", projectId).order("due_date", { ascending: true }),
-        admin.from("photos").select("id, room, caption, storage_path, created_at").eq("project_id", projectId).order("created_at", { ascending: false }),
+        admin.from("photos").select("id, room, caption, storage_path, created_at").eq("project_id", projectId).eq("status", "approved").order("created_at", { ascending: false }),
         admin.from("approvals").select("id, title, status, created_at, approved_at").eq("project_id", projectId).order("created_at", { ascending: false }),
       ]);
 

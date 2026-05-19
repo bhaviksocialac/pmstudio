@@ -54,10 +54,12 @@ export const Route = createFileRoute("/api/public/hooks/ai-drafts-cron")({
           stats.followup++;
         }
 
-        // ---- Delay notices (overdue tasks) ----
+        // ---- Delay notices (overdue tasks) + flag delayed=true ----
         const { data: overdue } = await admin.from("tasks")
           .select("*, projects(id, user_id, name, client_id, clients(name, phone))")
           .eq("done", false).lt("due_date", todayStr).limit(50);
+        const overdueIds = (overdue ?? []).filter((t) => !t.delayed).map((t) => t.id);
+        if (overdueIds.length) await admin.from("tasks").update({ delayed: true }).in("id", overdueIds);
         for (const t of overdue ?? []) {
           const p = (t as { projects?: { id?: string; user_id?: string; name?: string; client_id?: string; clients?: { name?: string; phone?: string } | null } | null }).projects;
           if (!p?.id || !p?.user_id) continue;
