@@ -126,16 +126,29 @@ function MessagesPage() {
                   <div className="font-medium capitalize">{active.kind} thread</div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-[#faf8f5]/40">
-                  {active.messages.map((m) => (
-                    <div key={m.id} className={`flex ${m.from_me ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[75%] rounded-[16px] px-4 py-2.5 text-sm ${m.from_me ? "bg-[#c17f5a] text-white rounded-br-[6px]" : "bg-card border border-border rounded-bl-[6px]"}`}>
-                        <div>{m.body}</div>
-                        <div className={`text-[10px] mt-1 font-mono ${m.from_me ? "text-white/70" : "text-muted-foreground"}`}>
-                          {new Date(m.sent_at).toLocaleString()}
+                  {active.messages.map((m, idx) => {
+                    const isLastInbound = !m.from_me && idx === active.messages.length - 1;
+                    return (
+                      <div key={m.id}>
+                        <div className={`flex ${m.from_me ? "justify-end" : "justify-start"}`}>
+                          <div className={`max-w-[75%] rounded-[16px] px-4 py-2.5 text-sm ${m.from_me ? "bg-[#c17f5a] text-white rounded-br-[6px]" : "bg-card border border-border rounded-bl-[6px]"}`}>
+                            <div>{m.body}</div>
+                            <div className={`text-[10px] mt-1 font-mono ${m.from_me ? "text-white/70" : "text-muted-foreground"}`}>
+                              {new Date(m.sent_at).toLocaleString()}
+                            </div>
+                          </div>
                         </div>
+                        {isLastInbound && (
+                          <SmartReplies
+                            messageId={m.id}
+                            messageBody={m.body}
+                            kind={m.kind}
+                            onPick={(t) => setDraft(t)}
+                          />
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="border-t border-border p-4">
                   <div className="flex items-center gap-2">
