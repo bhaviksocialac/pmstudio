@@ -52,7 +52,7 @@ function FinancePage() {
   const overdueCount = invoices.filter((i) => i.status === "overdue").length;
 
   const setInvoiceStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status }: { id: string; status: "draft" | "sent" | "paid" | "overdue" }) => {
       const { error } = await supabase.from("invoices").update({ status }).eq("id", id);
       if (error) throw error;
     },
@@ -60,7 +60,7 @@ function FinancePage() {
   });
 
   const setRequestStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status }: { id: string; status: "pending" | "approved" | "held" | "paid" }) => {
       const { error } = await supabase.from("payment_requests").update({ status }).eq("id", id);
       if (error) throw error;
     },
