@@ -1,19 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Send, Check, Phone, Mail, Plus, Upload, Image as ImageIcon,
-  FileText, MessageCircle, Download, FileDown, Pencil, Folder, FilePlus,
-  Loader2,
+  FileText, MessageCircle, FilePlus, Loader2, Pencil,
 } from "lucide-react";
 import { phases, healthMap, type Project } from "@/lib/projects";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import type { DbProject } from "@/lib/db-types";
 import { formatINR } from "@/lib/studio-data";
 import { AppShell } from "@/components/AppShell";
 import { openModal } from "@/lib/app-bus";
 import { toast } from "sonner";
 import { SharePortalButton } from "@/components/SharePortalButton";
+import { NewProjectWizard } from "@/components/NewProjectWizard";
+import { AddTaskPanel } from "@/components/AddTaskPanel";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
