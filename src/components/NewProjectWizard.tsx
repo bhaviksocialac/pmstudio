@@ -17,16 +17,17 @@ import {
   type Phase,
 } from "@/lib/db-types";
 
-const basicsSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(120),
-  location: z.string().trim().max(200).optional(),
-  phase: z.enum(PHASES),
-  budget: z.coerce.number().min(0).max(100000),
-  type: z.enum(["residential", "commercial"]),
-  start_date: z.string().min(1, "Start date is required"),
-  client_name: z.string().trim().max(120).optional(),
-  client_email: z.string().trim().email().optional().or(z.literal("")),
-});
+const getBasicsSchema = () =>
+  z.object({
+    name: z.string().trim().min(1, "Name is required").max(120),
+    location: z.string().trim().max(200).optional(),
+    phase: z.enum(PHASES),
+    budget: z.coerce.number().min(0).max(100000),
+    type: z.enum(["residential", "commercial"]),
+    start_date: z.string().min(1, "Start date is required"),
+    client_name: z.string().trim().max(120).optional(),
+    client_email: z.string().trim().email().optional().or(z.literal("")),
+  });
 
 type Step = 1 | 2 | 3 | 4;
 
