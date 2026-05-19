@@ -628,19 +628,57 @@ function NewInvoiceModal({ onClose }: { onClose: () => void }) {
 }
 
 function UploadPhotosModal({ onClose }: { onClose: () => void }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data: projects = [] } = useProjectsList();
+  const [projectId, setProjectId] = useState<string>("");
+  const [room, setRoom] = useState("Living Room");
+  const [caption, setCaption] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const upload = async () => {
+    if (!user) return;
+    if (!projectId && projects.length) {
+      toast.error("Pick a project");
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.from("photos").insert({
+      user_id: user.id,
+      project_id: projectId || projects[0]?.id || null,
+      room,
+      caption: caption.trim() || null,
+      status: "pending",
+    });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["photos"] });
+    onClose();
+    toast.success("Photo staged — approve from the dashboard before it reaches the client");
+  };
+
   return (
     <Overlay onClose={onClose}>
       <div className="w-full max-w-md bg-card rounded-[16px] shadow-2xl">
         <ModalHeader title="Upload Photos" onClose={onClose} />
         <div className="p-6 space-y-4">
-          <Field label="Room"><select className={inputCls}><option>Living Room</option><option>Master Bedroom</option><option>Kitchen</option><option>Bathroom</option></select></Field>
-          <Field label="Caption"><input className={inputCls} placeholder="Coral arch finish, day 3" /></Field>
-          <div className="rounded-[10px] border-2 border-dashed border-border p-8 text-center text-sm text-muted-foreground hover:border-[#c17f5a] cursor-pointer">
-            <div className="text-[11px] uppercase tracking-wider font-mono mb-2">Drop file here</div>
-            or click to browse
+          {projects.length > 0 && (
+            <Field label="Project" required>
+              <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
+                <option value="">Select a project…</option>
+                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </Field>
+          )}
+          <Field label="Room"><select value={room} onChange={(e) => setRoom(e.target.value)} className={inputCls}>{["Living Room","Master Bedroom","Kitchen","Bathroom","Dining","Balcony","Others"].map((r) => <option key={r}>{r}</option>)}</select></Field>
+          <Field label="Caption"><input value={caption} maxLength={200} onChange={(e) => setCaption(e.target.value)} className={inputCls} placeholder="Coral arch finish, day 3" /></Field>
+          <div className="rounded-[10px] border-2 border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+            <div className="text-[11px] uppercase tracking-wider font-mono mb-1">Photo will be staged</div>
+            Approve on dashboard before it shows on the client portal.
+            <div className="text-[10px] mt-2 text-muted-foreground/80">Auto-tagging available when Google Vision API is connected.</div>
           </div>
         </div>
-        <ModalFooter onPrimary={() => { onClose(); toast.success("Photo uploaded"); }} primaryLabel="Upload" />
+        <ModalFooter onPrimary={upload} primaryLabel={busy ? "Uploading…" : "Stage Photo"} />
       </div>
     </Overlay>
   );
