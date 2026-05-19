@@ -165,14 +165,38 @@ function TopBar() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  const results = useMemo(() => {
-    if (!query.trim()) return null;
-    const q = query.toLowerCase();
-    const ps = projects.filter((p) => p.name.toLowerCase().includes(q) || p.client.toLowerCase().includes(q)).slice(0, 3);
-    const cs = clients.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 3);
-    const vs = vendors.filter((v) => v.name.toLowerCase().includes(q) || v.category.toLowerCase().includes(q)).slice(0, 3);
-    return { ps, cs, vs };
-  }, [query]);
+  const q = query.trim().toLowerCase();
+  const enabled = q.length > 0;
+
+  const { data: searchProjects = [] } = useQuery({
+    queryKey: ["search", "projects", q],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projects").select("id,name,location").ilike("name", `%${q}%`).limit(3);
+      if (error) throw error;
+      return (data ?? []) as Pick<DbProject, "id" | "name" | "location">[];
+    },
+  });
+  const { data: searchClients = [] } = useQuery({
+    queryKey: ["search", "clients", q],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clients").select("id,name,email").ilike("name", `%${q}%`).limit(3);
+      if (error) throw error;
+      return (data ?? []) as Pick<DbClient, "id" | "name" | "email">[];
+    },
+  });
+  const { data: searchVendors = [] } = useQuery({
+    queryKey: ["search", "vendors", q],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("vendors").select("id,name,category").ilike("name", `%${q}%`).limit(3);
+      if (error) throw error;
+      return (data ?? []) as Pick<DbVendor, "id" | "name" | "category">[];
+    },
+  });
+
+  const hasResults = enabled && (searchProjects.length || searchClients.length || searchVendors.length);
 
   return (
     <header className="h-16 border-b border-border bg-background/85 backdrop-blur flex items-center px-4 md:px-8 gap-3 sticky top-0 z-30">
@@ -185,27 +209,27 @@ function TopBar() {
           placeholder="Search projects, clients, vendors…"
           className="w-full h-10 pl-10 pr-4 rounded-[10px] bg-card border border-border text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring/30"
         />
-        {results && (
+        {enabled && (
           <div className="absolute top-full left-0 right-0 mt-2 rounded-[10px] bg-card border border-border shadow-lg overflow-hidden z-40 max-h-[60vh] overflow-y-auto">
-            {results.ps.length === 0 && results.cs.length === 0 && results.vs.length === 0 && (
+            {!hasResults && (
               <div className="px-4 py-6 text-sm text-muted-foreground text-center">No results for "{query}"</div>
             )}
-            {results.ps.length > 0 && (
-              <SearchSection title="Projects" items={results.ps.map((p) => ({
-                key: p.id, label: p.name, sub: `${p.client} · ${p.location}`,
+            {searchProjects.length > 0 && (
+              <SearchSection title="Projects" items={searchProjects.map((p) => ({
+                key: p.id, label: p.name, sub: p.location || "—",
                 onClick: () => { navigate({ to: "/projects/$projectId", params: { projectId: p.id } }); setQuery(""); },
               }))} />
             )}
-            {results.cs.length > 0 && (
-              <SearchSection title="Clients" items={results.cs.map((c) => ({
-                key: c.id, label: c.name, sub: c.projectName,
-                onClick: () => { navigate({ to: "/clients" }); openModal("client-panel", c); setQuery(""); },
+            {searchClients.length > 0 && (
+              <SearchSection title="Clients" items={searchClients.map((c) => ({
+                key: c.id, label: c.name, sub: c.email || "—",
+                onClick: () => { navigate({ to: "/clients" }); setQuery(""); },
               }))} />
             )}
-            {results.vs.length > 0 && (
-              <SearchSection title="Vendors" items={results.vs.map((v) => ({
-                key: v.id, label: v.name, sub: v.category,
-                onClick: () => { navigate({ to: "/vendors" }); openModal("vendor-panel", v); setQuery(""); },
+            {searchVendors.length > 0 && (
+              <SearchSection title="Vendors" items={searchVendors.map((v) => ({
+                key: v.id, label: v.name, sub: v.category || "—",
+                onClick: () => { navigate({ to: "/vendors" }); setQuery(""); },
               }))} />
             )}
           </div>
