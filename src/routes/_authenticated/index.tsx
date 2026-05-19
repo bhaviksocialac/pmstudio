@@ -127,6 +127,8 @@ function Dashboard() {
           <StatCard icon={AlertTriangle} label="Need Attention" value={`${attention}`} accent="#c4685a" />
         </section>
 
+        <PendingApprovals />
+
         {fireAlerts.length > 0 && (
           <FireAlertsCard alerts={fireAlerts} />
         )}
