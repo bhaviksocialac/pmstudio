@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { SharePortalButton } from "@/components/SharePortalButton";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { AddTaskPanel } from "@/components/AddTaskPanel";
+import { PhaseSubcategoriesPanel } from "@/components/PhaseSubcategoriesPanel";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
@@ -254,14 +255,20 @@ function OverviewTab({ project }: { project: Project }) {
                     <h3 className="font-display text-lg">{ph}</h3>
                     {mile && <span className="text-[11px] font-mono text-muted-foreground">{mile.date}</span>}
                   </div>
-                  <div className="space-y-1.5 mt-2">
-                    {["Site visit","Vendor confirmation","Material delivery"].map((t, k) => (
-                      <label key={k} className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <input type="checkbox" defaultChecked={done || (current && k === 0)} className="accent-[#c17f5a]" />
-                        <span>{t}</span>
-                      </label>
-                    ))}
-                  </div>
+                  {(ph === "Procurement" || ph === "Execution") ? (
+                    <div className="mt-3">
+                      <PhaseSubcategoriesPanel projectId={project.id} phase={ph} />
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 mt-2">
+                      {["Site visit","Vendor confirmation","Material delivery"].map((t, k) => (
+                        <label key={k} className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <input type="checkbox" defaultChecked={done || (current && k === 0)} className="accent-[#c17f5a]" />
+                          <span>{t}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
                   {current && (
                     <div className="flex gap-2 mt-3 pt-3 border-t border-[#e8d9c9]">
                       <button onClick={() => setConfirmPhase(ph)} className="h-8 px-3 rounded-[6px] bg-[#7a9e8a] text-white text-xs font-medium hover:brightness-110">Mark Phase Complete</button>
@@ -274,6 +281,30 @@ function OverviewTab({ project }: { project: Project }) {
           })}
         </div>
       </Card>
+
+      {addTaskFor && (
+        <AddTaskPanel
+          projectId={project.id}
+          projectName={project.name}
+          defaultPhase={addTaskFor as "Survey" | "Design" | "Procurement" | "Execution" | "Finishing" | "Handover"}
+          onClose={() => setAddTaskFor(null)}
+        />
+      )}
+      {confirmPhase && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setConfirmPhase(null)}>
+          <div className="bg-card rounded-[16px] p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-2xl mb-2">Complete {confirmPhase}?</h3>
+            <p className="text-sm text-muted-foreground mb-5">This will advance the project to the next phase and draft an invoice for {PHASE_INVOICE_PCT[confirmPhase] ?? 10}% of the budget.</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setConfirmPhase(null)} className="h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">Cancel</button>
+              <button onClick={() => markPhaseComplete.mutate()} disabled={markPhaseComplete.isPending} className="h-10 px-5 rounded-[6px] bg-[#7a9e8a] text-white text-sm font-medium hover:brightness-110 inline-flex items-center gap-2 disabled:opacity-60">
+                {markPhaseComplete.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6">
         <Card className="p-6">
@@ -305,8 +336,8 @@ function OverviewTab({ project }: { project: Project }) {
         <Card className="p-6">
           <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-3">Quick Actions</div>
           <div className="grid grid-cols-2 gap-2">
-            <QA icon={Upload} label="Upload Photos" onClick={() => openModal("upload-photos")} />
-            <QA icon={Plus} label="Add Task" onClick={() => toast("Task added")} />
+            <QA icon={Upload} label="Upload Photos" onClick={() => openModal("upload-photos", { projectId: project.id })} />
+            <QA icon={Plus} label="Add Task" onClick={() => setAddTaskFor(project.phase)} />
             <QA icon={FileText} label="Send Invoice" onClick={() => openModal("new-invoice")} />
             <QA icon={Plus} label="Add Vendor" onClick={() => openModal("add-vendor")} />
           </div>

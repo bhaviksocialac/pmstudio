@@ -16,6 +16,7 @@ import {
 } from "@/lib/studio-data";
 import { onModal, openModal, type ModalEvent } from "@/lib/app-bus";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
+import { AICopilot } from "@/components/AICopilot";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/" as const },
@@ -47,6 +48,7 @@ export function AppShell({ children, pageTitle }: { children: React.ReactNode; p
       </div>
 
       <GlobalModals />
+      <AICopilot />
     </div>
   );
 }
@@ -208,7 +210,7 @@ function TopBar() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search projects, clients, vendors…"
+          placeholder="Ask AI or search anything…"
           className="w-full h-10 pl-10 pr-4 rounded-[10px] bg-card border border-border text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring/30"
         />
         {enabled && (
@@ -325,7 +327,7 @@ function GlobalModals() {
     case "add-vendor": return <AddVendorModal onClose={close} />;
     case "vendor-panel": return <VendorPanel vendor={open.data as Vendor} onClose={close} />;
     case "new-invoice": return <NewInvoiceModal onClose={close} />;
-    case "upload-photos": return <UploadPhotosModal onClose={close} />;
+    case "upload-photos": return <UploadPhotosModal onClose={close} presetProjectId={(open.data as { projectId?: string } | undefined)?.projectId} />;
     case "lightbox": return <Lightbox data={open.data as { src: string; caption: string }} onClose={close} />;
     default: return null;
   }
@@ -576,26 +578,124 @@ function AddClientModal({ onClose }: { onClose: () => void }) {
 }
 
 function AddVendorModal({ onClose }: { onClose: () => void }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const DEFAULT_CATS = ["Civil","Carpentry","Electrical","Plumbing","Flooring","Painting","Furniture","Lighting","Hardware","Tiles","Sanitary","HVAC","Other"];
+  const DEFAULT_TERMS = ["100% Advance","50% Advance 50% on Delivery","30 Days Credit","On Completion"];
+
+  const { data: customCats = [] } = useQuery({
+    queryKey: ["user_options", "vendor_category"],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase.from("user_options").select("value").eq("kind", "vendor_category");
+      return (data ?? []).map((r) => r.value);
+    },
+  });
+  const { data: customTerms = [] } = useQuery({
+    queryKey: ["user_options", "payment_terms"],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase.from("user_options").select("value").eq("kind", "payment_terms");
+      return (data ?? []).map((r) => r.value);
+    },
+  });
+  const allCats = [...DEFAULT_CATS, ...customCats.filter((c) => !DEFAULT_CATS.includes(c))];
+  const allTerms = [...DEFAULT_TERMS, ...customTerms.filter((c) => !DEFAULT_TERMS.includes(c))];
+
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState(allCats[0] ?? "Civil");
+  const [customCatMode, setCustomCatMode] = useState(false);
+  const [customCat, setCustomCat] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [terms, setTerms] = useState(DEFAULT_TERMS[0]);
+  const [customTermsMode, setCustomTermsMode] = useState(false);
+  const [customTermsValue, setCustomTermsValue] = useState("");
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    if (!user) { toast.error("Sign in first"); return; }
+    const finalCategory = customCatMode ? customCat.trim() : category;
+    const finalTerms = customTermsMode ? customTermsValue.trim() : terms;
+    if (!name.trim()) { toast.error("Vendor name is required"); return; }
+    if (!finalCategory) { toast.error("Category is required"); return; }
+    setBusy(true);
+    // Persist custom values if new
+    if (customCatMode && customCat.trim() && !customCats.includes(customCat.trim())) {
+      await supabase.from("user_options").insert({ user_id: user.id, kind: "vendor_category", value: customCat.trim() });
+    }
+    if (customTermsMode && customTermsValue.trim() && !customTerms.includes(customTermsValue.trim())) {
+      await supabase.from("user_options").insert({ user_id: user.id, kind: "payment_terms", value: customTermsValue.trim() });
+    }
+    const { error } = await supabase.from("vendors").insert({
+      user_id: user.id,
+      name: name.trim(),
+      category: finalCategory,
+      phone: phone.trim() || null,
+      email: email.trim() || null,
+      payment_terms: finalTerms || null,
+      notes: notes.trim() || null,
+      rating: 0,
+    });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["vendors"] });
+    qc.invalidateQueries({ queryKey: ["vendors-light"] });
+    qc.invalidateQueries({ queryKey: ["user_options"] });
+    onClose();
+    toast.success("Vendor saved");
+  };
+
   return (
     <Overlay onClose={onClose}>
       <div className="w-full max-w-md bg-card rounded-[16px] shadow-2xl">
         <ModalHeader title="Add Vendor" onClose={onClose} />
-        <div className="p-6 space-y-4">
-          <Field label="Vendor Name" required><input className={inputCls} /></Field>
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+          <Field label="Vendor Name" required>
+            <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
+          </Field>
           <Field label="Category" required>
-            <select className={inputCls}>
-              {["Tiles","Flooring","Electrical","Plumbing","Painting","Furniture","Lighting","Hardware","Carpentry","Other"].map((c) => <option key={c}>{c}</option>)}
-            </select>
+            {customCatMode ? (
+              <div className="flex gap-2">
+                <input autoFocus className={inputCls} value={customCat} onChange={(e) => setCustomCat(e.target.value)} placeholder="Type custom category…" />
+                <button onClick={() => { setCustomCatMode(false); setCustomCat(""); }} className="h-10 px-3 rounded-[10px] border border-border text-xs">Cancel</button>
+              </div>
+            ) : (
+              <select className={inputCls} value={category} onChange={(e) => {
+                if (e.target.value === "__custom__") { setCustomCatMode(true); }
+                else setCategory(e.target.value);
+              }}>
+                {allCats.map((c) => <option key={c}>{c}</option>)}
+                <option value="__custom__">+ Add Custom Category…</option>
+              </select>
+            )}
           </Field>
-          <Field label="Phone" required>
-            <div className="flex gap-2"><span className="h-10 px-3 rounded-[10px] bg-muted border border-border text-sm flex items-center font-mono">+91</span><input className={inputCls} /></div>
+          <Field label="Phone">
+            <div className="flex gap-2"><span className="h-10 px-3 rounded-[10px] bg-muted border border-border text-sm flex items-center font-mono">+91</span>
+              <input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
           </Field>
-          <Field label="Email"><input type="email" className={inputCls} /></Field>
-          <Field label="GST Number (optional)"><input className={inputCls} /></Field>
-          <Field label="Payment Terms"><select className={inputCls}><option>Advance 50%</option><option>On delivery</option><option>30 days</option></select></Field>
-          <Field label="Notes"><textarea rows={2} className={`${inputCls} h-auto py-2`} /></Field>
+          <Field label="Email"><input type="email" className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+          <Field label="Payment Terms">
+            {customTermsMode ? (
+              <div className="flex gap-2">
+                <input autoFocus className={inputCls} value={customTermsValue} onChange={(e) => setCustomTermsValue(e.target.value)} placeholder="Type custom terms…" />
+                <button onClick={() => { setCustomTermsMode(false); setCustomTermsValue(""); }} className="h-10 px-3 rounded-[10px] border border-border text-xs">Cancel</button>
+              </div>
+            ) : (
+              <select className={inputCls} value={terms} onChange={(e) => {
+                if (e.target.value === "__custom__") setCustomTermsMode(true);
+                else setTerms(e.target.value);
+              }}>
+                {allTerms.map((t) => <option key={t}>{t}</option>)}
+                <option value="__custom__">Custom…</option>
+              </select>
+            )}
+          </Field>
+          <Field label="Notes"><textarea rows={2} className={`${inputCls} h-auto py-2`} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
         </div>
-        <ModalFooter onPrimary={() => { onClose(); toast.success("Vendor added"); }} primaryLabel="Save Vendor" />
+        <ModalFooter onPrimary={save} primaryLabel={busy ? "Saving…" : "Save Vendor"} />
       </div>
     </Overlay>
   );
@@ -628,34 +728,58 @@ function NewInvoiceModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function UploadPhotosModal({ onClose }: { onClose: () => void }) {
+function UploadPhotosModal({ onClose, presetProjectId }: { onClose: () => void; presetProjectId?: string }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const { data: projects = [] } = useProjectsList();
-  const [projectId, setProjectId] = useState<string>("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [projectId, setProjectId] = useState<string>(presetProjectId ?? "");
   const [room, setRoom] = useState("Living Room");
   const [caption, setCaption] = useState("");
   const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-open native picker when modal first opens
+  useEffect(() => {
+    inputRef.current?.click();
+  }, []);
 
   const upload = async () => {
     if (!user) return;
-    if (!projectId && projects.length) {
-      toast.error("Pick a project");
-      return;
-    }
+    const pid = projectId || presetProjectId || projects[0]?.id;
+    if (!pid) { toast.error("No project to attach photos to"); return; }
+    if (files.length === 0) { toast.error("Pick at least one photo"); return; }
     setBusy(true);
-    const { error } = await supabase.from("photos").insert({
-      user_id: user.id,
-      project_id: projectId || projects[0]?.id || null,
-      room,
-      caption: caption.trim() || null,
-      status: "pending",
-    });
-    setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    qc.invalidateQueries({ queryKey: ["photos"] });
-    onClose();
-    toast.success("Photo staged — approve from the dashboard before it reaches the client");
+    try {
+      for (const file of files) {
+        const ext = file.name.split(".").pop() || "jpg";
+        const path = `${user.id}/${pid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("project-photos").upload(path, file, {
+          contentType: file.type,
+          upsert: false,
+        });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from("project-photos").getPublicUrl(path);
+        const { error: insErr } = await supabase.from("photos").insert({
+          user_id: user.id,
+          project_id: pid,
+          room,
+          caption: caption.trim() || null,
+          storage_path: path,
+          image_url: pub.publicUrl,
+          status: "approved",
+        });
+        if (insErr) throw insErr;
+      }
+      qc.invalidateQueries({ queryKey: ["photos"] });
+      qc.invalidateQueries({ queryKey: ["project-photos"] });
+      onClose();
+      toast.success(`${files.length} photo${files.length > 1 ? "s" : ""} uploaded`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -663,7 +787,21 @@ function UploadPhotosModal({ onClose }: { onClose: () => void }) {
       <div className="w-full max-w-md bg-card rounded-[16px] shadow-2xl">
         <ModalHeader title="Upload Photos" onClose={onClose} />
         <div className="p-6 space-y-4">
-          {projects.length > 0 && (
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+          />
+          <button onClick={() => inputRef.current?.click()}
+            className="w-full rounded-[10px] border-2 border-dashed border-border hover:border-[#c17f5a] hover:bg-[#fff7eb] p-6 text-center transition-colors">
+            <div className="text-sm font-medium">{files.length > 0 ? `${files.length} file${files.length > 1 ? "s" : ""} selected` : "Click to choose photos"}</div>
+            <div className="text-[11px] text-muted-foreground mt-1">JPG / PNG · multiple allowed</div>
+          </button>
+
+          {!presetProjectId && projects.length > 0 && (
             <Field label="Project" required>
               <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
                 <option value="">Select a project…</option>
@@ -671,15 +809,16 @@ function UploadPhotosModal({ onClose }: { onClose: () => void }) {
               </select>
             </Field>
           )}
-          <Field label="Room"><select value={room} onChange={(e) => setRoom(e.target.value)} className={inputCls}>{["Living Room","Master Bedroom","Kitchen","Bathroom","Dining","Balcony","Others"].map((r) => <option key={r}>{r}</option>)}</select></Field>
-          <Field label="Caption"><input value={caption} maxLength={200} onChange={(e) => setCaption(e.target.value)} className={inputCls} placeholder="Coral arch finish, day 3" /></Field>
-          <div className="rounded-[10px] border-2 border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-            <div className="text-[11px] uppercase tracking-wider font-mono mb-1">Photo will be staged</div>
-            Approve on dashboard before it shows on the client portal.
-            <div className="text-[10px] mt-2 text-muted-foreground/80">Auto-tagging available when Google Vision API is connected.</div>
-          </div>
+          <Field label="Room" required>
+            <select value={room} onChange={(e) => setRoom(e.target.value)} className={inputCls}>
+              {["Living Room","Master Bedroom","Bedroom 2","Bedroom 3","Kitchen","Bathroom","Dining","Balcony","Study","Other"].map((r) => <option key={r}>{r}</option>)}
+            </select>
+          </Field>
+          <Field label="Caption (optional)">
+            <input value={caption} maxLength={200} onChange={(e) => setCaption(e.target.value)} className={inputCls} placeholder="Coral arch finish, day 3" />
+          </Field>
         </div>
-        <ModalFooter onPrimary={upload} primaryLabel={busy ? "Uploading…" : "Stage Photo"} />
+        <ModalFooter onPrimary={upload} primaryLabel={busy ? "Uploading…" : `Upload ${files.length || ""} photo${files.length === 1 ? "" : "s"}`} />
       </div>
     </Overlay>
   );
