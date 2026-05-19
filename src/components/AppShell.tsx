@@ -578,26 +578,124 @@ function AddClientModal({ onClose }: { onClose: () => void }) {
 }
 
 function AddVendorModal({ onClose }: { onClose: () => void }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const DEFAULT_CATS = ["Civil","Carpentry","Electrical","Plumbing","Flooring","Painting","Furniture","Lighting","Hardware","Tiles","Sanitary","HVAC","Other"];
+  const DEFAULT_TERMS = ["100% Advance","50% Advance 50% on Delivery","30 Days Credit","On Completion"];
+
+  const { data: customCats = [] } = useQuery({
+    queryKey: ["user_options", "vendor_category"],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase.from("user_options").select("value").eq("kind", "vendor_category");
+      return (data ?? []).map((r) => r.value);
+    },
+  });
+  const { data: customTerms = [] } = useQuery({
+    queryKey: ["user_options", "payment_terms"],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase.from("user_options").select("value").eq("kind", "payment_terms");
+      return (data ?? []).map((r) => r.value);
+    },
+  });
+  const allCats = [...DEFAULT_CATS, ...customCats.filter((c) => !DEFAULT_CATS.includes(c))];
+  const allTerms = [...DEFAULT_TERMS, ...customTerms.filter((c) => !DEFAULT_TERMS.includes(c))];
+
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState(allCats[0] ?? "Civil");
+  const [customCatMode, setCustomCatMode] = useState(false);
+  const [customCat, setCustomCat] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [terms, setTerms] = useState(DEFAULT_TERMS[0]);
+  const [customTermsMode, setCustomTermsMode] = useState(false);
+  const [customTermsValue, setCustomTermsValue] = useState("");
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    if (!user) { toast.error("Sign in first"); return; }
+    const finalCategory = customCatMode ? customCat.trim() : category;
+    const finalTerms = customTermsMode ? customTermsValue.trim() : terms;
+    if (!name.trim()) { toast.error("Vendor name is required"); return; }
+    if (!finalCategory) { toast.error("Category is required"); return; }
+    setBusy(true);
+    // Persist custom values if new
+    if (customCatMode && customCat.trim() && !customCats.includes(customCat.trim())) {
+      await supabase.from("user_options").insert({ user_id: user.id, kind: "vendor_category", value: customCat.trim() });
+    }
+    if (customTermsMode && customTermsValue.trim() && !customTerms.includes(customTermsValue.trim())) {
+      await supabase.from("user_options").insert({ user_id: user.id, kind: "payment_terms", value: customTermsValue.trim() });
+    }
+    const { error } = await supabase.from("vendors").insert({
+      user_id: user.id,
+      name: name.trim(),
+      category: finalCategory,
+      phone: phone.trim() || null,
+      email: email.trim() || null,
+      payment_terms: finalTerms || null,
+      notes: notes.trim() || null,
+      rating: 0,
+    });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["vendors"] });
+    qc.invalidateQueries({ queryKey: ["vendors-light"] });
+    qc.invalidateQueries({ queryKey: ["user_options"] });
+    onClose();
+    toast.success("Vendor saved");
+  };
+
   return (
     <Overlay onClose={onClose}>
       <div className="w-full max-w-md bg-card rounded-[16px] shadow-2xl">
         <ModalHeader title="Add Vendor" onClose={onClose} />
-        <div className="p-6 space-y-4">
-          <Field label="Vendor Name" required><input className={inputCls} /></Field>
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+          <Field label="Vendor Name" required>
+            <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
+          </Field>
           <Field label="Category" required>
-            <select className={inputCls}>
-              {["Tiles","Flooring","Electrical","Plumbing","Painting","Furniture","Lighting","Hardware","Carpentry","Other"].map((c) => <option key={c}>{c}</option>)}
-            </select>
+            {customCatMode ? (
+              <div className="flex gap-2">
+                <input autoFocus className={inputCls} value={customCat} onChange={(e) => setCustomCat(e.target.value)} placeholder="Type custom category…" />
+                <button onClick={() => { setCustomCatMode(false); setCustomCat(""); }} className="h-10 px-3 rounded-[10px] border border-border text-xs">Cancel</button>
+              </div>
+            ) : (
+              <select className={inputCls} value={category} onChange={(e) => {
+                if (e.target.value === "__custom__") { setCustomCatMode(true); }
+                else setCategory(e.target.value);
+              }}>
+                {allCats.map((c) => <option key={c}>{c}</option>)}
+                <option value="__custom__">+ Add Custom Category…</option>
+              </select>
+            )}
           </Field>
-          <Field label="Phone" required>
-            <div className="flex gap-2"><span className="h-10 px-3 rounded-[10px] bg-muted border border-border text-sm flex items-center font-mono">+91</span><input className={inputCls} /></div>
+          <Field label="Phone">
+            <div className="flex gap-2"><span className="h-10 px-3 rounded-[10px] bg-muted border border-border text-sm flex items-center font-mono">+91</span>
+              <input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
           </Field>
-          <Field label="Email"><input type="email" className={inputCls} /></Field>
-          <Field label="GST Number (optional)"><input className={inputCls} /></Field>
-          <Field label="Payment Terms"><select className={inputCls}><option>Advance 50%</option><option>On delivery</option><option>30 days</option></select></Field>
-          <Field label="Notes"><textarea rows={2} className={`${inputCls} h-auto py-2`} /></Field>
+          <Field label="Email"><input type="email" className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+          <Field label="Payment Terms">
+            {customTermsMode ? (
+              <div className="flex gap-2">
+                <input autoFocus className={inputCls} value={customTermsValue} onChange={(e) => setCustomTermsValue(e.target.value)} placeholder="Type custom terms…" />
+                <button onClick={() => { setCustomTermsMode(false); setCustomTermsValue(""); }} className="h-10 px-3 rounded-[10px] border border-border text-xs">Cancel</button>
+              </div>
+            ) : (
+              <select className={inputCls} value={terms} onChange={(e) => {
+                if (e.target.value === "__custom__") setCustomTermsMode(true);
+                else setTerms(e.target.value);
+              }}>
+                {allTerms.map((t) => <option key={t}>{t}</option>)}
+                <option value="__custom__">Custom…</option>
+              </select>
+            )}
+          </Field>
+          <Field label="Notes"><textarea rows={2} className={`${inputCls} h-auto py-2`} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
         </div>
-        <ModalFooter onPrimary={() => { onClose(); toast.success("Vendor added"); }} primaryLabel="Save Vendor" />
+        <ModalFooter onPrimary={save} primaryLabel={busy ? "Saving…" : "Save Vendor"} />
       </div>
     </Overlay>
   );
