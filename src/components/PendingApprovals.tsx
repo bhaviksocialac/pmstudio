@@ -70,6 +70,14 @@ export function PendingApprovals() {
             AI-drafted messages waiting for your review. Nothing sends without your approval.
           </p>
         </div>
+        <button
+          onClick={() => genWeekly.mutate()}
+          disabled={genWeekly.isPending || projects.length === 0}
+          className="h-8 px-3 rounded-[6px] border border-border text-[11px] font-medium inline-flex items-center gap-1.5 hover:bg-muted disabled:opacity-50"
+        >
+          {genWeekly.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />}
+          Generate Weekly Reports
+        </button>
         <span className="text-[10px] uppercase tracking-[0.18em] font-mono px-2 py-1 rounded-[6px] bg-muted">
           {drafts.length} pending
         </span>
