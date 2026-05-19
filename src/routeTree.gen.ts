@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VendorsRouteImport } from './routes/vendors'
+import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as FinanceRouteImport } from './routes/finance'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as IndexRouteImport } from './routes/index'
@@ -19,6 +20,11 @@ import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projec
 const VendorsRoute = VendorsRouteImport.update({
   id: '/vendors',
   path: '/vendors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MessagesRoute = MessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FinanceRoute = FinanceRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/clients': typeof ClientsRoute
   '/finance': typeof FinanceRoute
+  '/messages': typeof MessagesRoute
   '/vendors': typeof VendorsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/projects/': typeof ProjectsIndexRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/clients': typeof ClientsRoute
   '/finance': typeof FinanceRoute
+  '/messages': typeof MessagesRoute
   '/vendors': typeof VendorsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/projects': typeof ProjectsIndexRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/clients': typeof ClientsRoute
   '/finance': typeof FinanceRoute
+  '/messages': typeof MessagesRoute
   '/vendors': typeof VendorsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/projects/': typeof ProjectsIndexRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/clients'
     | '/finance'
+    | '/messages'
     | '/vendors'
     | '/projects/$projectId'
     | '/projects/'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/clients'
     | '/finance'
+    | '/messages'
     | '/vendors'
     | '/projects/$projectId'
     | '/projects'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/clients'
     | '/finance'
+    | '/messages'
     | '/vendors'
     | '/projects/$projectId'
     | '/projects/'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ClientsRoute: typeof ClientsRoute
   FinanceRoute: typeof FinanceRoute
+  MessagesRoute: typeof MessagesRoute
   VendorsRoute: typeof VendorsRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
 }
@@ -114,6 +127,13 @@ declare module '@tanstack/react-router' {
       path: '/vendors'
       fullPath: '/vendors'
       preLoaderRoute: typeof VendorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/messages': {
+      id: '/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof MessagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/finance': {
@@ -158,6 +178,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ClientsRoute: ClientsRoute,
   FinanceRoute: FinanceRoute,
+  MessagesRoute: MessagesRoute,
   VendorsRoute: VendorsRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
 }
