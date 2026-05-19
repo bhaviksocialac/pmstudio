@@ -45,7 +45,7 @@ export function AuthScreen({ mode }: { mode: Mode }) {
           },
         });
         if (error) throw error;
-        toast.success("Welcome to StudioOS");
+        toast.success("Welcome to PMStudio");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: parsedEmail,
@@ -105,7 +105,7 @@ export function AuthScreen({ mode }: { mode: Mode }) {
           </p>
         </div>
         <div className="relative text-[11px] uppercase tracking-[0.22em] text-white/35 font-mono">
-          © StudioOS 2026
+          © PMStudio 2026
         </div>
       </aside>
 

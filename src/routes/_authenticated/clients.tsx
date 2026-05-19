@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 import type { DbClient } from "@/lib/db-types";
 
 export const Route = createFileRoute("/_authenticated/clients")({
-  head: () => ({ meta: [{ title: "Clients — StudioOS" }, { name: "description", content: "Track every client and their project status." }] }),
+  head: () => ({ meta: [{ title: "Clients — PMStudio" }, { name: "description", content: "Track every client and their project status." }] }),
   component: ClientsPage,
 });
 

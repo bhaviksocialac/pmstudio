@@ -8,7 +8,7 @@ import { openModal } from "@/lib/app-bus";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/finance")({
-  head: () => ({ meta: [{ title: "Finance — StudioOS" }, { name: "description", content: "Invoices, payments, receivables and cashflow for your studio." }] }),
+  head: () => ({ meta: [{ title: "Finance — PMStudio" }, { name: "description", content: "Invoices, payments, receivables and cashflow for your studio." }] }),
   component: FinancePage,
 });
 

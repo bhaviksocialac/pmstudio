@@ -12,7 +12,7 @@ import { healthMap, PHASES, type DbProject, type Phase } from "@/lib/db-types";
 export const Route = createFileRoute("/_authenticated/projects/")({
   head: () => ({
     meta: [
-      { title: "Projects — StudioOS" },
+      { title: "Projects — PMStudio" },
       { name: "description", content: "Every project in your studio, with health, completion and budget at a glance." },
     ],
   }),

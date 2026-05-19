@@ -16,7 +16,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
-    const title = "Project — StudioOS";
+    const title = "Project — PMStudio";
     return { meta: [{ title }, { name: "description", content: `Project ${params.projectId}` }] };
   },
   component: ProjectDetail,
