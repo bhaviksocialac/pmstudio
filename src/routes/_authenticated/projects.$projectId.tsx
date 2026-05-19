@@ -164,29 +164,6 @@ function ProjectDetailView({ project }: { project: Project }) {
   );
 }
 
-        {/* Tabs */}
-        <div className="border-b border-border mb-8 overflow-x-auto">
-          <div className="flex gap-1 min-w-max">
-            {tabs.map((t) => (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                      className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === t.id ? "border-[#c17f5a] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {tab === "overview" && <OverviewTab project={project} />}
-        {tab === "timeline" && <TimelineTab project={project} />}
-        {tab === "photos" && <PhotosTab project={project} />}
-        {tab === "vendors" && <VendorsTab project={project} />}
-        {tab === "finance" && <FinanceTab project={project} />}
-        {tab === "documents" && <DocumentsTab project={project} />}
-      </main>
-    </AppShell>
-  );
-}
-
 const Pill = ({ children }: { children: React.ReactNode }) => (
   <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-[6px] bg-muted text-muted-foreground">{children}</span>
 );
