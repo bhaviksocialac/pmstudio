@@ -64,6 +64,7 @@ export const Route = createFileRoute("/api/public/hooks/ai-drafts-cron")({
           const existing = await admin.from("ai_drafts").select("id")
             .eq("kind", "delay_notice").contains("meta", { taskId: t.id }).maybeSingle();
           if (existing.data) continue;
+          if (!t.due_date) continue;
           const daysLate = Math.max(1, Math.round((Date.now() - new Date(t.due_date).getTime()) / 86400000));
           const newDate = new Date(now.getTime() + 3 * 86400000).toISOString().slice(0, 10);
           await admin.from("ai_drafts").insert({
