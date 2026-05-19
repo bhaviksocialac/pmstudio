@@ -12,6 +12,7 @@ import {
   healthMap, computeHealth, type DbProject, type DbTask, type HealthKey,
 } from "@/lib/db-types";
 import { useAuth } from "@/lib/auth";
+import { PendingApprovals } from "@/components/PendingApprovals";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -125,6 +126,8 @@ function Dashboard() {
           <StatCard icon={Clock} label="Total Spent" value={`₹${totalSpent.toFixed(1)}L`} accent="#d4882a" />
           <StatCard icon={AlertTriangle} label="Need Attention" value={`${attention}`} accent="#c4685a" />
         </section>
+
+        <PendingApprovals />
 
         {fireAlerts.length > 0 && (
           <FireAlertsCard alerts={fireAlerts} />
