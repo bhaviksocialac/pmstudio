@@ -605,7 +605,7 @@ function NewInvoiceModal({ onClose }: { onClose: () => void }) {
       <div className="w-full max-w-lg bg-card rounded-[16px] shadow-2xl">
         <ModalHeader title="New Invoice" subtitle="Auto-numbered INV-006" onClose={onClose} />
         <div className="p-6 space-y-4">
-          <Field label="Project"><select className={inputCls}>{projects.map((p) => <option key={p.id}>{p.name}</option>)}</select></Field>
+          <Field label="Project"><select className={inputCls}><ProjectOptions /></select></Field>
           <Field label="Milestone"><input className={inputCls} placeholder="Procurement Start" /></Field>
           <Field label="Description"><textarea rows={3} className={`${inputCls} h-auto py-2`} /></Field>
           <div className="grid grid-cols-3 gap-3">
