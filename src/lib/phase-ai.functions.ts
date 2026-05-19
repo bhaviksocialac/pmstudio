@@ -84,7 +84,7 @@ CONTEXT: ${JSON.stringify(ctx).slice(0, 6000)}`;
     for (const u of parsed.updates ?? []) {
       try {
         if (u.kind === "phase" && u.phase) {
-          const patch: Record<string, any> = {};
+          const patch: any = {};
           if (u.status) patch.status = u.status;
           if (typeof u.completion === "number") patch.completion = Math.max(0, Math.min(100, u.completion));
           if (u.status === "active" && !patch.start_date) patch.start_date = today;
@@ -102,7 +102,7 @@ CONTEXT: ${JSON.stringify(ctx).slice(0, 6000)}`;
             .eq("phase", u.parent_phase)
             .ilike("name", u.name)
             .maybeSingle();
-          const patch: Record<string, any> = {};
+          const patch: any = {};
           if (u.status) patch.status = u.status;
           if (u.contractor_name) patch.contractor_name = u.contractor_name;
           if (u.start_date) patch.start_date = u.start_date;
