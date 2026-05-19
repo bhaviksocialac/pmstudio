@@ -562,7 +562,8 @@ function AddClientModal({ onClose }: { onClose: () => void }) {
           <Field label="Assign to Project">
             <select className={inputCls}>
               <option>+ Create new project</option>
-              {projects.map((p) => <option key={p.id}>{p.name}</option>)}
+              <ProjectOptions />
+
             </select>
           </Field>
         </div>
