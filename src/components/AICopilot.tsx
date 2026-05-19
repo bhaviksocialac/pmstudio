@@ -82,11 +82,12 @@ export function AICopilot() {
       } else if (pendingAction.kind === "draft_message") {
         const { error } = await supabase.from("ai_drafts").insert({
           user_id: user.id,
-          kind: pendingAction.channel === "email" ? "client_email" : "client_whatsapp",
+          kind: "event_notification",
           recipient_kind: "client",
           recipient_name: pendingAction.recipient,
           body: pendingAction.body,
           status: "pending",
+          meta: { channel: pendingAction.channel },
         });
         if (error) throw error;
         toast.success("Draft saved to Pending Approvals");
