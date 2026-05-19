@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, Send, Check, Phone, Mail, Plus, Upload, Image as ImageIcon,
   FileText, MessageCircle, Download, FileDown, Pencil, Folder, FilePlus,
-  Share2, Loader2,
+  Loader2,
 } from "lucide-react";
 import { phases, healthMap, type Project } from "@/lib/projects";
 import { supabase } from "@/integrations/supabase/client";
