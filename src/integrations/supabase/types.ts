@@ -145,6 +145,51 @@ export type Database = {
         }
         Relationships: []
       }
+      change_orders: {
+        Row: {
+          additional_cost: number
+          client_note: string | null
+          created_at: string
+          decided_at: string | null
+          description: string
+          id: string
+          project_id: string
+          reason: string | null
+          requested_at: string | null
+          status: Database["public"]["Enums"]["change_order_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          additional_cost?: number
+          client_note?: string | null
+          created_at?: string
+          decided_at?: string | null
+          description: string
+          id?: string
+          project_id: string
+          reason?: string | null
+          requested_at?: string | null
+          status?: Database["public"]["Enums"]["change_order_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          additional_cost?: number
+          client_note?: string | null
+          created_at?: string
+          decided_at?: string | null
+          description?: string
+          id?: string
+          project_id?: string
+          reason?: string | null
+          requested_at?: string | null
+          status?: Database["public"]["Enums"]["change_order_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           address: string | null
@@ -333,6 +378,7 @@ export type Database = {
       }
       phase_subcategories: {
         Row: {
+          checklist: Json
           contractor_name: string | null
           created_at: string
           end_date: string | null
@@ -342,6 +388,7 @@ export type Database = {
           order_index: number
           phase: string
           project_id: string
+          signed_off_at: string | null
           start_date: string | null
           status: string
           updated_at: string
@@ -349,6 +396,7 @@ export type Database = {
           vendor_id: string | null
         }
         Insert: {
+          checklist?: Json
           contractor_name?: string | null
           created_at?: string
           end_date?: string | null
@@ -358,6 +406,7 @@ export type Database = {
           order_index?: number
           phase: string
           project_id: string
+          signed_off_at?: string | null
           start_date?: string | null
           status?: string
           updated_at?: string
@@ -365,6 +414,7 @@ export type Database = {
           vendor_id?: string | null
         }
         Update: {
+          checklist?: Json
           contractor_name?: string | null
           created_at?: string
           end_date?: string | null
@@ -374,6 +424,7 @@ export type Database = {
           order_index?: number
           phase?: string
           project_id?: string
+          signed_off_at?: string | null
           start_date?: string | null
           status?: string
           updated_at?: string
@@ -638,6 +689,90 @@ export type Database = {
         }
         Relationships: []
       }
+      site_reports: {
+        Row: {
+          created_at: string
+          id: string
+          issues: string | null
+          location: string | null
+          photo_urls: Json
+          project_id: string
+          report_date: string
+          updated_at: string
+          user_id: string
+          work_done: string | null
+          workers_present: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issues?: string | null
+          location?: string | null
+          photo_urls?: Json
+          project_id: string
+          report_date?: string
+          updated_at?: string
+          user_id: string
+          work_done?: string | null
+          workers_present?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issues?: string | null
+          location?: string | null
+          photo_urls?: Json
+          project_id?: string
+          report_date?: string
+          updated_at?: string
+          user_id?: string
+          work_done?: string | null
+          workers_present?: number | null
+        }
+        Relationships: []
+      }
+      snags: {
+        Row: {
+          contractor_name: string | null
+          created_at: string
+          deadline: string | null
+          description: string
+          id: string
+          photo_url: string | null
+          project_id: string
+          resolved_at: string | null
+          status: Database["public"]["Enums"]["snag_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contractor_name?: string | null
+          created_at?: string
+          deadline?: string | null
+          description: string
+          id?: string
+          photo_url?: string | null
+          project_id: string
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["snag_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contractor_name?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string
+          id?: string
+          photo_url?: string | null
+          project_id?: string
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["snag_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           assignee: string | null
@@ -854,6 +989,12 @@ export type Database = {
         | "event_notification"
       ai_draft_status: "pending" | "sent" | "discarded"
       approval_status: "pending" | "approved" | "rejected"
+      change_order_status:
+        | "draft"
+        | "pending_client"
+        | "approved"
+        | "rejected"
+        | "active"
       invoice_status: "draft" | "sent" | "paid" | "overdue"
       message_kind: "client" | "vendor"
       payment_status: "pending" | "approved" | "paid" | "held"
@@ -867,6 +1008,7 @@ export type Database = {
         | "Finishing"
         | "Handover"
       project_type: "residential" | "commercial"
+      snag_status: "open" | "in_progress" | "resolved"
       vendor_delivery_status: "pending" | "delivered" | "delayed"
       whatsapp_group_kind: "client" | "design" | "execution" | "accounts"
     }
@@ -1005,6 +1147,13 @@ export const Constants = {
       ],
       ai_draft_status: ["pending", "sent", "discarded"],
       approval_status: ["pending", "approved", "rejected"],
+      change_order_status: [
+        "draft",
+        "pending_client",
+        "approved",
+        "rejected",
+        "active",
+      ],
       invoice_status: ["draft", "sent", "paid", "overdue"],
       message_kind: ["client", "vendor"],
       payment_status: ["pending", "approved", "paid", "held"],
@@ -1019,6 +1168,7 @@ export const Constants = {
         "Handover",
       ],
       project_type: ["residential", "commercial"],
+      snag_status: ["open", "in_progress", "resolved"],
       vendor_delivery_status: ["pending", "delivered", "delayed"],
       whatsapp_group_kind: ["client", "design", "execution", "accounts"],
     },
