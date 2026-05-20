@@ -114,6 +114,7 @@ const tabs: { id: Tab; label: string }[] = [
 function ProjectDetailView({ project }: { project: Project }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
+  const [dailyReport, setDailyReport] = useState(false);
   const h = healthMap[project.health as keyof typeof healthMap];
 
   return (
