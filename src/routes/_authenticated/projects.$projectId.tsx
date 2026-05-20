@@ -55,6 +55,9 @@ function adaptProject(row: DbProject): Project {
     gallery: [],
     budgetBreakdown: [],
     notes: [],
+    latitude: (row as unknown as { latitude: number | null }).latitude ?? null,
+    longitude: (row as unknown as { longitude: number | null }).longitude ?? null,
+    rawStartDate: row.start_date ?? null,
   };
 }
 
