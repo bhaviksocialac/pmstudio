@@ -131,8 +131,12 @@ function PortalPage() {
           />
         )}
 
+        {/* Change orders pending client decision */}
+        <ChangeOrdersSection projectId={projectId} lang={lang} />
+
         {/* Morning AI update */}
         <MorningCard tasks={tasks} clientName={clientName} lang={lang} />
+
 
         {/* Timeline */}
         <Timeline phases={phases} lang={lang} />
