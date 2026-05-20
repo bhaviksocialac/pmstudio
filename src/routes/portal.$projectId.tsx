@@ -161,7 +161,92 @@ function PortalPage() {
   );
 }
 
+/* ---------- Change Orders (client approve/reject) ---------- */
+type PortalCO = {
+  id: string;
+  description: string;
+  reason: string | null;
+  additional_cost: number;
+  status: "draft" | "pending_client" | "approved" | "rejected" | "active";
+};
+
+function ChangeOrdersSection({ projectId, lang }: { projectId: string; lang: Lang }) {
+  const qc = useQueryClient();
+  const { data: orders = [] } = useQuery({
+    queryKey: ["portal-cos", projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("change_orders")
+        .select("id, description, reason, additional_cost, status")
+        .eq("project_id", projectId)
+        .eq("status", "pending_client");
+      if (error) throw error;
+      return (data ?? []) as PortalCO[];
+    },
+  });
+
+  const decide = useMutation({
+    mutationFn: async ({ id, action, note }: { id: string; action: "approved" | "rejected"; note?: string }) => {
+      const { error } = await supabase
+        .from("change_orders")
+        .update({ status: action, decided_at: new Date().toISOString(), client_note: note ?? null })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      toast.success(v.action === "approved" ? "Approved" : "Rejected");
+      qc.invalidateQueries({ queryKey: ["portal-cos", projectId] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  if (orders.length === 0) return null;
+
+  return (
+    <section className="rounded-[16px] border-2 border-[#c17f5a] bg-[#fbf1ea] p-5 animate-fade-up">
+      <div className="flex items-center gap-2 mb-4">
+        <AlertCircle className="h-4 w-4 text-[#c17f5a]" />
+        <h2 className="font-display text-xl">{lang === "hi" ? "बदलाव अनुरोध" : "Change Requests"}</h2>
+        <span className="ml-auto text-[10px] uppercase tracking-wider font-mono bg-[#c17f5a] text-white rounded-full px-2 py-0.5">
+          {orders.length}
+        </span>
+      </div>
+      <div className="space-y-3">
+        {orders.map((o) => (
+          <div key={o.id} className="rounded-[10px] bg-card border border-border p-4">
+            <div className="font-medium text-sm">{o.description}</div>
+            {o.reason && <div className="text-xs text-muted-foreground mt-1">{o.reason}</div>}
+            <div className="font-mono text-sm mt-2">
+              {lang === "hi" ? "अतिरिक्त लागत" : "Additional cost"}: + ₹{(Number(o.additional_cost) / 100000).toFixed(2)}L
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <button
+                onClick={() => decide.mutate({ id: o.id, action: "approved" })}
+                disabled={decide.isPending}
+                className="h-10 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+              >
+                <Check className="h-3.5 w-3.5" /> {lang === "hi" ? "स्वीकार करें" : "Approve"}
+              </button>
+              <button
+                onClick={() => {
+                  const note = window.prompt(lang === "hi" ? "कारण (वैकल्पिक)" : "Reason (optional)") ?? undefined;
+                  decide.mutate({ id: o.id, action: "rejected", note });
+                }}
+                disabled={decide.isPending}
+                className="h-10 rounded-[6px] border border-border text-sm font-medium hover:bg-muted"
+              >
+                {lang === "hi" ? "अस्वीकार" : "Reject"}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /* ---------- Language toggle ---------- */
+
 function LangToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
   return (
     <div className="flex items-center rounded-[8px] border border-border overflow-hidden text-[11px] font-medium">
