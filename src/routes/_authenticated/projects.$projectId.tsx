@@ -98,10 +98,13 @@ function ProjectDetail() {
   return <ProjectDetailView project={project} />;
 }
 
-type Tab = "overview" | "timeline" | "photos" | "vendors" | "finance" | "documents";
+type Tab = "overview" | "timeline" | "phases" | "snags" | "change-orders" | "photos" | "vendors" | "finance" | "documents";
 const tabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "timeline", label: "Timeline" },
+  { id: "phases", label: "Phases" },
+  { id: "snags", label: "Snags" },
+  { id: "change-orders", label: "Change Orders" },
   { id: "photos", label: "Photos" },
   { id: "vendors", label: "Vendors" },
   { id: "finance", label: "Finance" },
