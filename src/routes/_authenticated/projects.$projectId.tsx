@@ -170,14 +170,26 @@ function ProjectDetailView({ project }: { project: Project }) {
           </div>
         </div>
 
-        {tab === "overview" && <OverviewTab project={project} />}
+        {tab === "overview" && (
+          <>
+            <OverviewTab project={project} />
+            <div className="mt-8">
+              <h2 className="font-display text-2xl mb-3">Recent Site Reports</h2>
+              <SiteReportsList projectId={project.id} />
+            </div>
+          </>
+        )}
         {tab === "timeline" && <TimelineTab project={project} />}
+        {tab === "phases" && <PhaseChecklistTab projectId={project.id} projectBudget={project.budget} />}
+        {tab === "snags" && <SnagsTab projectId={project.id} />}
+        {tab === "change-orders" && <ChangeOrdersTab projectId={project.id} />}
         {tab === "photos" && <PhotosTab project={project} />}
         {tab === "vendors" && <VendorsTab project={project} />}
         {tab === "finance" && <FinanceTab project={project} />}
         {tab === "documents" && <DocumentsTab project={project} />}
       </main>
       {editing && <NewProjectWizard onClose={() => setEditing(false)} editProjectId={project.id} />}
+      {dailyReport && <DailyReportModal projectId={project.id} defaultLocation={project.location} onClose={() => setDailyReport(false)} />}
     </AppShell>
   );
 }
