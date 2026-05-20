@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Send, Check, Phone, Mail, Plus, Upload, Image as ImageIcon,
-  FileText, MessageCircle, FilePlus, Loader2, Pencil,
+  FileText, MessageCircle, FilePlus, Loader2, Pencil, ClipboardList,
 } from "lucide-react";
 import { phases, healthMap, type Project } from "@/lib/projects";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,11 @@ import { AddTaskPanel } from "@/components/AddTaskPanel";
 import { PhaseSubcategoriesPanel } from "@/components/PhaseSubcategoriesPanel";
 import { AIPhaseBar } from "@/components/AIPhaseBar";
 import { EditPhaseModal } from "@/components/EditPhaseModal";
+import { DailyReportModal } from "@/components/DailyReportModal";
+import { SiteReportsList } from "@/components/SiteReportsList";
+import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
+import { SnagsTab } from "@/components/SnagsTab";
+import { ChangeOrdersTab } from "@/components/ChangeOrdersTab";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
