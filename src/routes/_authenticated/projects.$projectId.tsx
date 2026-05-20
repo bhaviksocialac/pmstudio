@@ -187,6 +187,16 @@ function ProjectDetailView({ project }: { project: Project }) {
         {tab === "timeline" && <TimelineTab project={project} />}
         {tab === "phases" && <PhaseChecklistTab projectId={project.id} projectBudget={project.budget} />}
         {tab === "snags" && <SnagsTab projectId={project.id} />}
+        {tab === "attendance" && (
+          <AttendanceTab
+            projectId={project.id}
+            projectName={project.name}
+            projectLocation={project.location}
+            projectLat={project.latitude ?? null}
+            projectLng={project.longitude ?? null}
+            projectStartDate={project.rawStartDate ?? null}
+          />
+        )}
         {tab === "change-orders" && <ChangeOrdersTab projectId={project.id} />}
         {tab === "photos" && <PhotosTab project={project} />}
         {tab === "vendors" && <VendorsTab project={project} />}
