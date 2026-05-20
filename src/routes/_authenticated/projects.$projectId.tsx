@@ -24,6 +24,7 @@ import { SiteReportsList } from "@/components/SiteReportsList";
 import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
 import { SnagsTab } from "@/components/SnagsTab";
 import { ChangeOrdersTab } from "@/components/ChangeOrdersTab";
+import { AttendanceTab } from "@/components/AttendanceTab";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
@@ -55,6 +56,9 @@ function adaptProject(row: DbProject): Project {
     gallery: [],
     budgetBreakdown: [],
     notes: [],
+    latitude: (row as unknown as { latitude: number | null }).latitude ?? null,
+    longitude: (row as unknown as { longitude: number | null }).longitude ?? null,
+    rawStartDate: row.start_date ?? null,
   };
 }
 
@@ -98,12 +102,13 @@ function ProjectDetail() {
   return <ProjectDetailView project={project} />;
 }
 
-type Tab = "overview" | "timeline" | "phases" | "snags" | "change-orders" | "photos" | "vendors" | "finance" | "documents";
+type Tab = "overview" | "timeline" | "phases" | "snags" | "attendance" | "change-orders" | "photos" | "vendors" | "finance" | "documents";
 const tabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "timeline", label: "Timeline" },
   { id: "phases", label: "Phases" },
   { id: "snags", label: "Snags" },
+  { id: "attendance", label: "Attendance" },
   { id: "change-orders", label: "Change Orders" },
   { id: "photos", label: "Photos" },
   { id: "vendors", label: "Vendors" },
@@ -182,6 +187,16 @@ function ProjectDetailView({ project }: { project: Project }) {
         {tab === "timeline" && <TimelineTab project={project} />}
         {tab === "phases" && <PhaseChecklistTab projectId={project.id} projectBudget={project.budget} />}
         {tab === "snags" && <SnagsTab projectId={project.id} />}
+        {tab === "attendance" && (
+          <AttendanceTab
+            projectId={project.id}
+            projectName={project.name}
+            projectLocation={project.location}
+            projectLat={project.latitude ?? null}
+            projectLng={project.longitude ?? null}
+            projectStartDate={project.rawStartDate ?? null}
+          />
+        )}
         {tab === "change-orders" && <ChangeOrdersTab projectId={project.id} />}
         {tab === "photos" && <PhotosTab project={project} />}
         {tab === "vendors" && <VendorsTab project={project} />}

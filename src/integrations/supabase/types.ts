@@ -513,6 +513,42 @@ export type Database = {
         }
         Relationships: []
       }
+      project_contractors: {
+        Row: {
+          category: string | null
+          created_at: string
+          expected_days: number
+          id: string
+          name: string
+          phone: string | null
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          expected_days?: number
+          id?: string
+          name: string
+          phone?: string | null
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          expected_days?: number
+          id?: string
+          name?: string
+          phone?: string | null
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       project_phases: {
         Row: {
           completion: number
@@ -598,7 +634,9 @@ export type Database = {
           expected_handover: string | null
           health: Database["public"]["Enums"]["project_health"]
           id: string
+          latitude: number | null
           location: string | null
+          longitude: number | null
           name: string
           phase: Database["public"]["Enums"]["project_phase"]
           spent: number
@@ -616,7 +654,9 @@ export type Database = {
           expected_handover?: string | null
           health?: Database["public"]["Enums"]["project_health"]
           id?: string
+          latitude?: number | null
           location?: string | null
+          longitude?: number | null
           name: string
           phase?: Database["public"]["Enums"]["project_phase"]
           spent?: number
@@ -634,7 +674,9 @@ export type Database = {
           expected_handover?: string | null
           health?: Database["public"]["Enums"]["project_health"]
           id?: string
+          latitude?: number | null
           location?: string | null
+          longitude?: number | null
           name?: string
           phase?: Database["public"]["Enums"]["project_phase"]
           spent?: number
@@ -686,6 +728,60 @@ export type Database = {
           room_id?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      site_attendance: {
+        Row: {
+          attendance_date: string
+          check_in_lat: number | null
+          check_in_lng: number | null
+          check_in_outside_geofence: boolean
+          checked_in_at: string | null
+          contractor_id: string
+          created_at: string
+          hours_on_site: number | null
+          id: string
+          present: boolean
+          project_id: string
+          updated_at: string
+          user_id: string
+          work_done: string | null
+          workers_count: number
+        }
+        Insert: {
+          attendance_date?: string
+          check_in_lat?: number | null
+          check_in_lng?: number | null
+          check_in_outside_geofence?: boolean
+          checked_in_at?: string | null
+          contractor_id: string
+          created_at?: string
+          hours_on_site?: number | null
+          id?: string
+          present?: boolean
+          project_id: string
+          updated_at?: string
+          user_id: string
+          work_done?: string | null
+          workers_count?: number
+        }
+        Update: {
+          attendance_date?: string
+          check_in_lat?: number | null
+          check_in_lng?: number | null
+          check_in_outside_geofence?: boolean
+          checked_in_at?: string | null
+          contractor_id?: string
+          created_at?: string
+          hours_on_site?: number | null
+          id?: string
+          present?: boolean
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+          work_done?: string | null
+          workers_count?: number
         }
         Relationships: []
       }
@@ -987,6 +1083,7 @@ export type Database = {
         | "delay_notice"
         | "holding"
         | "event_notification"
+        | "attendance_summary"
       ai_draft_status: "pending" | "sent" | "discarded"
       approval_status: "pending" | "approved" | "rejected"
       change_order_status:
@@ -1144,6 +1241,7 @@ export const Constants = {
         "delay_notice",
         "holding",
         "event_notification",
+        "attendance_summary",
       ],
       ai_draft_status: ["pending", "sent", "discarded"],
       approval_status: ["pending", "approved", "rejected"],

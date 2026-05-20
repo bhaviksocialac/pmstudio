@@ -24,6 +24,9 @@ export type Project = {
   gallery: { room: string; items: { caption: string; tone: string }[] }[];
   budgetBreakdown: { category: string; allocated: number; spent: number }[];
   notes: { author: string; date: string; text: string }[];
+  latitude?: number | null;
+  longitude?: number | null;
+  rawStartDate?: string | null;
 };
 
 export const projects: Project[] = [
