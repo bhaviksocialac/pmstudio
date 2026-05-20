@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Send, Check, Phone, Mail, Plus, Upload, Image as ImageIcon,
-  FileText, MessageCircle, FilePlus, Loader2, Pencil,
+  FileText, MessageCircle, FilePlus, Loader2, Pencil, ClipboardList,
 } from "lucide-react";
 import { phases, healthMap, type Project } from "@/lib/projects";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,11 @@ import { AddTaskPanel } from "@/components/AddTaskPanel";
 import { PhaseSubcategoriesPanel } from "@/components/PhaseSubcategoriesPanel";
 import { AIPhaseBar } from "@/components/AIPhaseBar";
 import { EditPhaseModal } from "@/components/EditPhaseModal";
+import { DailyReportModal } from "@/components/DailyReportModal";
+import { SiteReportsList } from "@/components/SiteReportsList";
+import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
+import { SnagsTab } from "@/components/SnagsTab";
+import { ChangeOrdersTab } from "@/components/ChangeOrdersTab";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
@@ -93,10 +98,13 @@ function ProjectDetail() {
   return <ProjectDetailView project={project} />;
 }
 
-type Tab = "overview" | "timeline" | "photos" | "vendors" | "finance" | "documents";
+type Tab = "overview" | "timeline" | "phases" | "snags" | "change-orders" | "photos" | "vendors" | "finance" | "documents";
 const tabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "timeline", label: "Timeline" },
+  { id: "phases", label: "Phases" },
+  { id: "snags", label: "Snags" },
+  { id: "change-orders", label: "Change Orders" },
   { id: "photos", label: "Photos" },
   { id: "vendors", label: "Vendors" },
   { id: "finance", label: "Finance" },
@@ -106,6 +114,7 @@ const tabs: { id: Tab; label: string }[] = [
 function ProjectDetailView({ project }: { project: Project }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
+  const [dailyReport, setDailyReport] = useState(false);
   const h = healthMap[project.health as keyof typeof healthMap];
 
   return (
@@ -136,6 +145,9 @@ function ProjectDetailView({ project }: { project: Project }) {
             <button onClick={() => setEditing(true)} className="h-10 px-3 inline-flex items-center gap-1.5 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">
               <Pencil className="h-3.5 w-3.5" /> Edit Project
             </button>
+            <button onClick={() => setDailyReport(true)} className="h-10 px-3 inline-flex items-center gap-1.5 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">
+              <ClipboardList className="h-3.5 w-3.5" /> Daily Report
+            </button>
             <button onClick={() => openModal("draft-update")} className="h-10 px-4 inline-flex items-center gap-1.5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
               <Send className="h-3.5 w-3.5" /> Send Update
             </button>
@@ -158,14 +170,26 @@ function ProjectDetailView({ project }: { project: Project }) {
           </div>
         </div>
 
-        {tab === "overview" && <OverviewTab project={project} />}
+        {tab === "overview" && (
+          <>
+            <OverviewTab project={project} />
+            <div className="mt-8">
+              <h2 className="font-display text-2xl mb-3">Recent Site Reports</h2>
+              <SiteReportsList projectId={project.id} />
+            </div>
+          </>
+        )}
         {tab === "timeline" && <TimelineTab project={project} />}
+        {tab === "phases" && <PhaseChecklistTab projectId={project.id} projectBudget={project.budget} />}
+        {tab === "snags" && <SnagsTab projectId={project.id} />}
+        {tab === "change-orders" && <ChangeOrdersTab projectId={project.id} />}
         {tab === "photos" && <PhotosTab project={project} />}
         {tab === "vendors" && <VendorsTab project={project} />}
         {tab === "finance" && <FinanceTab project={project} />}
         {tab === "documents" && <DocumentsTab project={project} />}
       </main>
       {editing && <NewProjectWizard onClose={() => setEditing(false)} editProjectId={project.id} />}
+      {dailyReport && <DailyReportModal projectId={project.id} defaultLocation={project.location} onClose={() => setDailyReport(false)} />}
     </AppShell>
   );
 }
