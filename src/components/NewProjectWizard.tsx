@@ -261,7 +261,7 @@ export function NewProjectWizard({
     const name = client.name.trim();
     if (!name) return null;
     const email = client.email.trim();
-    const payload: Record<string, unknown> = {
+    const payload = {
       name,
       email: email || null,
       phone: client.phone.trim() || null,
