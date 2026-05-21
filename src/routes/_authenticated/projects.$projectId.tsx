@@ -105,7 +105,7 @@ function ProjectDetail() {
   return <ProjectDetailView project={project} />;
 }
 
-type Tab = "overview" | "timeline" | "phases" | "snags" | "attendance" | "change-orders" | "photos" | "vendors" | "finance" | "documents";
+type Tab = "overview" | "timeline" | "phases" | "snags" | "attendance" | "change-orders" | "reports" | "photos" | "vendors" | "finance" | "documents";
 const tabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "timeline", label: "Timeline" },
@@ -113,6 +113,7 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "snags", label: "Snags" },
   { id: "attendance", label: "Attendance" },
   { id: "change-orders", label: "Change Orders" },
+  { id: "reports", label: "Reports" },
   { id: "photos", label: "Photos" },
   { id: "vendors", label: "Vendors" },
   { id: "finance", label: "Finance" },
@@ -178,15 +179,7 @@ function ProjectDetailView({ project }: { project: Project }) {
           </div>
         </div>
 
-        {tab === "overview" && (
-          <>
-            <OverviewTab project={project} />
-            <div className="mt-8">
-              <h2 className="font-display text-2xl mb-3">Recent Site Reports</h2>
-              <SiteReportsList projectId={project.id} />
-            </div>
-          </>
-        )}
+        {tab === "overview" && <OverviewTab project={project} />}
         {tab === "timeline" && <TimelineTab project={project} />}
         {tab === "phases" && <PhaseChecklistTab projectId={project.id} projectBudget={project.budget} />}
         {tab === "snags" && <SnagsTab projectId={project.id} />}
@@ -201,6 +194,20 @@ function ProjectDetailView({ project }: { project: Project }) {
           />
         )}
         {tab === "change-orders" && <ChangeOrdersTab projectId={project.id} />}
+        {tab === "reports" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display text-2xl">Daily Site Reports</h2>
+                <p className="text-sm text-muted-foreground mt-1">Photos, work done, attendance — logged each day.</p>
+              </div>
+              <button onClick={() => setDailyReport(true)} className="h-10 px-4 inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
+                <ClipboardList className="h-4 w-4" /> New Daily Report
+              </button>
+            </div>
+            <SiteReportsList projectId={project.id} />
+          </div>
+        )}
         {tab === "photos" && <PhotosTab project={project} />}
         {tab === "vendors" && <VendorsTab project={project} />}
         {tab === "finance" && <FinanceTab project={project} />}
@@ -230,6 +237,20 @@ function OverviewTab({ project }: { project: Project }) {
   const [addTaskFor, setAddTaskFor] = useState<string | null>(null);
   const [editPhase, setEditPhase] = useState<string | null>(null);
 
+  const { data: phaseRows = [] } = useQuery({
+    queryKey: ["project-phases", project.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("project_phases")
+        .select("phase,status,end_date,updated_at")
+        .eq("project_id", project.id);
+      return data ?? [];
+    },
+  });
+  const phaseMeta = new Map<string, { status: string; updated_at: string; end_date: string | null }>();
+  phaseRows.forEach((r: { phase: string; status: string; updated_at: string; end_date: string | null }) =>
+    phaseMeta.set(r.phase, { status: r.status, updated_at: r.updated_at, end_date: r.end_date })
+  );
 
   const PHASE_INVOICE_PCT: Record<string, number> = {
     Survey: 5, Design: 15, Procurement: 20, Execution: 35, Finishing: 15, Handover: 10,
@@ -239,46 +260,43 @@ function OverviewTab({ project }: { project: Project }) {
   const sendMilestoneEmailFn = useServerFn(sendMilestoneEmail);
 
   const markPhaseComplete = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (targetPhaseStr: string) => {
+      const targetPhase = targetPhaseStr as Project["phase"];
       const today = new Date().toISOString().slice(0, 10);
-      const currentPhase = project.phase;
-      const nextPhase = phases[phaseIdx + 1];
-      // Update current phase row
+      const targetIdx = phases.indexOf(targetPhase as Project["phase"]);
+      const nextPhase = phases[targetIdx + 1];
       await supabase.from("project_phases")
         .update({ status: "done", end_date: today })
         .eq("project_id", project.id)
-        .eq("phase", currentPhase);
-      // Update next phase
+        .eq("phase", targetPhase);
       if (nextPhase) {
         await supabase.from("project_phases")
           .update({ status: "active" })
           .eq("project_id", project.id)
           .eq("phase", nextPhase);
       }
-      // Update project
-      const newCompletion = Math.min(100, Math.round(((phaseIdx + 1) / phases.length) * 100));
+      const newCompletion = Math.min(100, Math.round(((targetIdx + 1) / phases.length) * 100));
       await supabase.from("projects")
-        .update({ phase: nextPhase ?? currentPhase, completion: newCompletion })
+        .update({ phase: nextPhase ?? targetPhase, completion: newCompletion })
         .eq("id", project.id);
-      // Draft invoice
-      const pct = PHASE_INVOICE_PCT[currentPhase] ?? 10;
+      const pct = PHASE_INVOICE_PCT[targetPhase] ?? 10;
       const amount = +(project.budget * 100000 * (pct / 100)).toFixed(0);
       await supabase.from("invoices").insert({
         user_id: user!.id,
         project_id: project.id,
         amount,
-        milestone: `${currentPhase} complete`,
+        milestone: `${targetPhase} complete`,
         status: "draft",
       });
-      return { currentPhase, amount };
+      return { currentPhase: targetPhase, amount };
     },
     onSuccess: ({ currentPhase, amount }) => {
       qc.invalidateQueries({ queryKey: ["project", project.id] });
       qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["project-phases", project.id] });
       qc.invalidateQueries({ queryKey: ["invoices"] });
-      toast.success("Phase marked complete. Draft invoice created.");
+      toast.success("Phase marked complete. Draft invoice created. You can undo within 24 h.");
       setConfirmPhase(null);
-      // Fire-and-forget emails (silent if no client email)
       const milestone = `${currentPhase} complete`;
       sendMilestoneEmailFn({ data: { projectId: project.id, milestone } }).catch((e: unknown) =>
         console.warn("milestone email failed", e),
@@ -290,17 +308,50 @@ function OverviewTab({ project }: { project: Project }) {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
+  const undoComplete = useMutation({
+    mutationFn: async (targetPhaseStr: string) => {
+      const targetPhase = targetPhaseStr as Project["phase"];
+      const targetIdx = phases.indexOf(targetPhase as Project["phase"]);
+      const nextPhase = phases[targetIdx + 1];
+      await supabase.from("project_phases")
+        .update({ status: "active", end_date: null })
+        .eq("project_id", project.id)
+        .eq("phase", targetPhase);
+      if (nextPhase) {
+        await supabase.from("project_phases")
+          .update({ status: "planned" })
+          .eq("project_id", project.id)
+          .eq("phase", nextPhase);
+      }
+      const newCompletion = Math.max(0, Math.round((targetIdx / phases.length) * 100));
+      await supabase.from("projects")
+        .update({ phase: targetPhase, completion: newCompletion })
+        .eq("id", project.id);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["project", project.id] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["project-phases", project.id] });
+      toast.success("Phase completion reverted");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
       <Card className="p-6 md:p-8">
         <h2 className="font-display text-2xl mb-1">Phase Progress</h2>
-        <p className="text-xs text-muted-foreground mb-6">6 stages from survey to handover</p>
+        <p className="text-xs text-muted-foreground mb-6">All 6 stages run in parallel. Mark each complete when ready.</p>
         <div className="relative pl-8">
           <div className="absolute left-3 top-2 bottom-2 w-px bg-border" />
           {phases.map((ph, i) => {
-            const done = i < phaseIdx;
+            const meta = phaseMeta.get(ph);
+            const done = meta ? meta.status === "done" : i < phaseIdx;
             const current = i === phaseIdx;
             const mile = project.milestones[i];
+            const undoable =
+              done && meta?.updated_at &&
+              Date.now() - new Date(meta.updated_at).getTime() < 24 * 60 * 60 * 1000;
             return (
               <div key={ph} className="relative pb-6 last:pb-0">
                 <span className="absolute -left-[22px] top-1 h-3.5 w-3.5 rounded-full flex items-center justify-center"
@@ -311,7 +362,7 @@ function OverviewTab({ project }: { project: Project }) {
                       }}>
                   {done && <Check className="h-2 w-2 text-white" />}
                 </span>
-                <div className={`rounded-[10px] border ${current ? "border-[#d4882a] bg-[#fff7eb]" : "border-border bg-card"} p-4`}>
+                <div className={`rounded-[10px] border ${current ? "border-[#d4882a] bg-[#fff7eb]" : done ? "border-[#cfe0d4] bg-[#f4f9f5]" : "border-border bg-card"} p-4`}>
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <h3 className="font-display text-lg">{ph}</h3>
                     <div className="flex items-center gap-2">
@@ -336,12 +387,21 @@ function OverviewTab({ project }: { project: Project }) {
                       ))}
                     </div>
                   )}
-                  {current && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t border-[#e8d9c9]">
+                  <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/60">
+                    {!done && (
                       <button onClick={() => setConfirmPhase(ph)} className="h-8 px-3 rounded-[6px] bg-[#7a9e8a] text-white text-xs font-medium hover:brightness-110">Mark Phase Complete</button>
-                      <button onClick={() => setAddTaskFor(ph)} className="h-8 px-3 rounded-[6px] border border-border text-xs font-medium hover:bg-white">+ Add Task</button>
-                    </div>
-                  )}
+                    )}
+                    {undoable && (
+                      <button
+                        onClick={() => undoComplete.mutate(ph)}
+                        disabled={undoComplete.isPending}
+                        className="h-8 px-3 rounded-[6px] border border-border text-xs font-medium hover:bg-white disabled:opacity-60"
+                      >
+                        Undo Complete
+                      </button>
+                    )}
+                    <button onClick={() => setAddTaskFor(ph)} className="h-8 px-3 rounded-[6px] border border-border text-xs font-medium hover:bg-white">+ Add Task</button>
+                  </div>
                 </div>
               </div>
             );
@@ -367,7 +427,7 @@ function OverviewTab({ project }: { project: Project }) {
             <p className="text-sm text-muted-foreground mb-5">This will advance the project to the next phase and draft an invoice for {PHASE_INVOICE_PCT[confirmPhase] ?? 10}% of the budget.</p>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setConfirmPhase(null)} className="h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">Cancel</button>
-              <button onClick={() => markPhaseComplete.mutate()} disabled={markPhaseComplete.isPending} className="h-10 px-5 rounded-[6px] bg-[#7a9e8a] text-white text-sm font-medium hover:brightness-110 inline-flex items-center gap-2 disabled:opacity-60">
+              <button onClick={() => markPhaseComplete.mutate(confirmPhase)} disabled={markPhaseComplete.isPending} className="h-10 px-5 rounded-[6px] bg-[#7a9e8a] text-white text-sm font-medium hover:brightness-110 inline-flex items-center gap-2 disabled:opacity-60">
                 {markPhaseComplete.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 Confirm
               </button>
