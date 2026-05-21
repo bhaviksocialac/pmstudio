@@ -90,11 +90,44 @@ function ProjectsPage() {
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState onCreate={() => openModal("new-project")} />
-        ) : (
+        ) : view === "grid" ? (
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {filtered.map((p) => (
-              <ProjectRow key={p.id} project={p} />
+              <ProjectCard key={p.id} project={p} />
             ))}
+          </section>
+        ) : (
+          <section className="rounded-[16px] bg-card border border-border overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                <tr>{["Project", "Type", "Phase", "Health", "Completion", ""].map((h) => <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>)}</tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filtered.map((p) => {
+                  const h = healthMap[p.health];
+                  return (
+                    <tr key={p.id} className="hover:bg-muted/40">
+                      <td className="px-4 py-3">
+                        <Link to="/projects/$projectId" params={{ projectId: p.id }} className="font-medium hover:underline">{p.name}</Link>
+                        <div className="text-xs text-muted-foreground">{p.location || "—"}</div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{labelForProjectType(p.type)}</td>
+                      <td className="px-4 py-3 text-xs">{p.phase}</td>
+                      <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider"><span className="h-1.5 w-1.5 rounded-full" style={{ background: h.color }} />{h.label}</span></td>
+                      <td className="px-4 py-3 w-48">
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden"><div className="h-full" style={{ width: `${p.completion}%`, background: "#c17f5a" }} /></div>
+                          <span className="font-mono text-xs">{p.completion}%</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <SharePortalButton projectId={p.id} variant="ghost" size="sm" label="Share" />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </section>
         )}
       </main>
@@ -102,9 +135,8 @@ function ProjectsPage() {
   );
 }
 
-function ProjectRow({ project: p }: { project: DbProject }) {
+function ProjectCard({ project: p }: { project: DbProject }) {
   const h = healthMap[p.health];
-  const budgetPct = p.budget > 0 ? Math.round((Number(p.spent) / Number(p.budget)) * 100) : 0;
   return (
     <div
       className="bg-card rounded-[16px] border border-border flex flex-col hover:-translate-y-[2px] transition-transform overflow-hidden"
@@ -123,6 +155,7 @@ function ProjectRow({ project: p }: { project: DbProject }) {
         <div>
           <h3 className="font-display text-xl">{p.name}</h3>
           <p className="text-xs text-muted-foreground mt-1">{p.location || "—"}</p>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mt-2">{labelForProjectType(p.type)}</p>
         </div>
         <div>
           <div className="flex justify-between text-[11px] mb-1.5">
@@ -132,9 +165,6 @@ function ProjectRow({ project: p }: { project: DbProject }) {
           <div className="h-1.5 rounded-full bg-muted overflow-hidden">
             <div className="h-full rounded-full" style={{ width: `${p.completion}%`, background: "#c17f5a" }} />
           </div>
-        </div>
-        <div className="text-xs font-mono text-muted-foreground">
-          ₹{Number(p.spent).toFixed(1)}L / ₹{Number(p.budget).toFixed(1)}L · {budgetPct}% spent
         </div>
       </Link>
       <div className="border-t border-border px-3 py-2">
