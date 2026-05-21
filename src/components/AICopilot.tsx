@@ -176,7 +176,7 @@ export function AICopilot() {
               {pendingAction && (
                 <div className="rounded-[12px] border-2 border-[#c17f5a] bg-[#fff7eb] p-3 space-y-2">
                   <div className="text-[10px] uppercase tracking-wider text-[#c17f5a] font-medium">Confirm action</div>
-                  <pre className="text-xs whitespace-pre-wrap font-mono text-foreground">{JSON.stringify(pendingAction, null, 2)}</pre>
+                  <p className="text-sm text-foreground leading-relaxed">{describeAction(pendingAction)}</p>
                   <div className="flex gap-2">
                     <button onClick={executeAction}
                       className="h-9 px-4 rounded-[6px] bg-[#7a9e8a] text-white text-xs font-medium inline-flex items-center gap-1.5 hover:brightness-110">
