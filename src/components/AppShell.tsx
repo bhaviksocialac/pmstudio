@@ -715,27 +715,95 @@ function AddVendorModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function NewInvoiceModal({ onClose }: { onClose: () => void }) {
+function NewInvoiceModal({ onClose, invoiceId }: { onClose: () => void; invoiceId?: string }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data: projects = [] } = useProjectsList();
+  const isEdit = !!invoiceId;
+
+  const { data: existing } = useQuery({
+    queryKey: ["invoice", invoiceId],
+    enabled: !!invoiceId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("invoices").select("*").eq("id", invoiceId!).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const [projectId, setProjectId] = useState("");
+  const [milestone, setMilestone] = useState("");
+  const [amount, setAmount] = useState("");
+  const [gst, setGst] = useState("18");
+  const [dueAt, setDueAt] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (existing) {
+      setProjectId(existing.project_id ?? "");
+      setMilestone(existing.milestone ?? "");
+      setAmount(String(existing.amount ?? ""));
+      setDueAt(existing.due_at ?? "");
+    }
+  }, [existing]);
+
+  const save = async (sendNow: boolean) => {
+    if (!user) return;
+    const amt = Number(String(amount).replace(/[,\s]/g, ""));
+    if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    const pid = projectId || projects[0]?.id;
+    if (!pid) { toast.error("Pick a project"); return; }
+    setBusy(true);
+    try {
+      const payload = {
+        user_id: user.id,
+        project_id: pid,
+        milestone: milestone.trim() || null,
+        amount: amt,
+        due_at: dueAt || null,
+        status: (sendNow ? "sent" : "draft") as "sent" | "draft",
+        sent_at: sendNow ? new Date().toISOString() : null,
+      };
+      if (isEdit) {
+        const { error } = await supabase.from("invoices").update(payload).eq("id", invoiceId!);
+        if (error) throw error;
+      } else {
+        const number = `INV-${String(Date.now()).slice(-6)}`;
+        const { error } = await supabase.from("invoices").insert({ ...payload, number });
+        if (error) throw error;
+      }
+      qc.invalidateQueries({ queryKey: ["finance", "invoices"] });
+      qc.invalidateQueries({ queryKey: ["invoice", invoiceId] });
+      onClose();
+      toast.success(isEdit ? "Invoice updated" : sendNow ? "Invoice sent to client" : "Invoice saved as draft");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally { setBusy(false); }
+  };
+
   return (
     <Overlay onClose={onClose}>
       <div className="w-full max-w-lg bg-card rounded-[16px] shadow-2xl">
-        <ModalHeader title="New Invoice" subtitle="Auto-numbered INV-006" onClose={onClose} />
+        <ModalHeader title={isEdit ? "Edit Invoice" : "New Invoice"} subtitle={isEdit ? existing?.number ?? "" : "Auto-numbered on save"} onClose={onClose} />
         <div className="p-6 space-y-4">
-          <Field label="Project"><select className={inputCls}><ProjectOptions /></select></Field>
-          <Field label="Milestone"><input className={inputCls} placeholder="Procurement Start" /></Field>
-          <Field label="Description"><textarea rows={3} className={`${inputCls} h-auto py-2`} /></Field>
+          <Field label="Project" required>
+            <select className={inputCls} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+              <option value="">Select a project…</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Milestone"><input className={inputCls} value={milestone} onChange={(e) => setMilestone(e.target.value)} placeholder="Procurement Start" /></Field>
           <div className="grid grid-cols-3 gap-3">
-            <Field label="Amount ₹"><input className={inputCls} placeholder="3,50,000" /></Field>
-            <Field label="GST %"><select className={inputCls}><option>0</option><option>5</option><option>12</option><option>18</option><option>28</option></select></Field>
-            <Field label="Due Date"><input type="date" className={inputCls} /></Field>
+            <Field label="Amount ₹" required><input className={inputCls} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="3,50,000" /></Field>
+            <Field label="GST %"><select className={inputCls} value={gst} onChange={(e) => setGst(e.target.value)}>{["0","5","12","18","28"].map((g) => <option key={g}>{g}</option>)}</select></Field>
+            <Field label="Due Date"><input type="date" className={inputCls} value={dueAt} onChange={(e) => setDueAt(e.target.value)} /></Field>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" defaultChecked className="accent-[#c17f5a]" /> Attach Razorpay payment link
-          </label>
         </div>
         <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
-          <button onClick={() => { onClose(); toast.success("Invoice saved as draft"); }} className="h-10 px-5 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">Save as Draft</button>
-          <button onClick={() => { onClose(); toast.success("Invoice sent to client"); }} className="h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">Send to Client</button>
+          <button disabled={busy} onClick={() => save(false)} className="h-10 px-5 rounded-[6px] border border-border text-sm font-medium hover:bg-muted disabled:opacity-60">{isEdit ? "Save Changes" : "Save as Draft"}</button>
+          {!isEdit && (
+            <button disabled={busy} onClick={() => save(true)} className="h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 disabled:opacity-60">Send to Client</button>
+          )}
         </div>
       </div>
     </Overlay>
