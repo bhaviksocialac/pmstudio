@@ -27,8 +27,8 @@ const statusTone: Record<string, { bg: string; color: string; label: string }> =
 function FinancePage() {
   const qc = useQueryClient();
   const maxRev = Math.max(...monthlyRevenue.map((m) => m.value));
-
-  const { data: invoices = [], isLoading: invLoading } = useQuery({
+  const createOrder = useServerFn(createInvoiceOrder);
+  const [payingId, setPayingId] = useState<string | null>(null);
     queryKey: ["finance", "invoices"],
     queryFn: async () => {
       const { data, error } = await supabase
