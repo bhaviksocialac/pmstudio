@@ -357,7 +357,7 @@ function TaskTable({
                       </td>
                     </tr>
                   )}
-                </>
+                </FragmentRow>
               );
             })}
           </tbody>
