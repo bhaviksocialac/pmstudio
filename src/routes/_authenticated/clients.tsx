@@ -5,6 +5,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { Search, Plus, X, Loader2, Pencil, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { AddressFields, addressToString, emptyAddress, type AddressValue } from "@/components/AddressFields";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import type { DbClient } from "@/lib/db-types";
