@@ -361,6 +361,45 @@ export type Database = {
           },
         ]
       }
+      meetings: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          id: string
+          location: string | null
+          notes: string | null
+          project_id: string | null
+          scheduled_at: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          project_id?: string | null
+          scheduled_at: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          project_id?: string | null
+          scheduled_at?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           body: string
