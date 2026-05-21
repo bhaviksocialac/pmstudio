@@ -546,11 +546,17 @@ function MarkAttendanceModal({ projectId, projectName, projectLocation, contract
   const today = new Date().toISOString().slice(0, 10);
   const existing = new Map(existingToday.map((a) => [a.contractor_id, a]));
 
-  type Row = { contractorId: string; present: boolean; workers: number; work: string };
+  type Row = { contractorId: string; present: boolean; workers: string; work: string; hours: string };
   const [rows, setRows] = useState<Row[]>(() =>
     contractors.map((c) => {
       const e = existing.get(c.id);
-      return { contractorId: c.id, present: e?.present ?? true, workers: e?.workers_count ?? 0, work: e?.work_done ?? "" };
+      return {
+        contractorId: c.id,
+        present: e?.present ?? true,
+        workers: e?.workers_count != null ? String(e.workers_count) : "",
+        work: e?.work_done ?? "",
+        hours: e?.hours_on_site != null ? String(e.hours_on_site) : "",
+      };
     }),
   );
   // Stage of newly added contractors so they appear in form immediately
@@ -559,15 +565,17 @@ function MarkAttendanceModal({ projectId, projectName, projectLocation, contract
 
   const addContractor = useMutation({
     mutationFn: async () => {
+      const trimmed = newName.trim();
+      if (!trimmed) throw new Error("Name required");
       const { data, error } = await supabase.from("project_contractors").insert({
-        user_id: user!.id, project_id: projectId, name: newName, category: newCat || null, expected_days: 20,
+        user_id: user!.id, project_id: projectId, name: trimmed, category: newCat.trim() || null, expected_days: 20,
       }).select("*").single();
       if (error) throw error;
       return data as Contractor;
     },
     onSuccess: (c) => {
       setExtra((x) => [...x, c]);
-      setRows((r) => [...r, { contractorId: c.id, present: true, workers: 0, work: "" }]);
+      setRows((r) => [...r, { contractorId: c.id, present: true, workers: "", work: "", hours: "" }]);
       setNewName(""); setNewCat("");
       qc.invalidateQueries({ queryKey: ["project_contractors", projectId] });
     },
@@ -578,9 +586,13 @@ function MarkAttendanceModal({ projectId, projectName, projectLocation, contract
     mutationFn: async () => {
       const payload = rows.map((r) => ({
         user_id: user!.id, project_id: projectId, contractor_id: r.contractorId,
-        attendance_date: today, present: r.present, workers_count: r.present ? r.workers : 0,
-        work_done: r.work || null,
+        attendance_date: today,
+        present: r.present,
+        workers_count: r.present ? (parseInt(r.workers, 10) || 0) : 0,
+        work_done: r.work.trim() || null,
+        hours_on_site: r.present && r.hours.trim() !== "" ? Number(r.hours) : null,
       }));
+      if (payload.length === 0) return;
       const { error } = await supabase.from("site_attendance").upsert(payload, { onConflict: "contractor_id,attendance_date" });
       if (error) throw error;
     },
@@ -592,7 +604,9 @@ function MarkAttendanceModal({ projectId, projectName, projectLocation, contract
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
-  const all = [...contractors, ...extra];
+  // Dedupe in case the refetched contractors list now includes the staged extras
+  const seenIds = new Set<string>();
+  const all = [...contractors, ...extra].filter((c) => (seenIds.has(c.id) ? false : (seenIds.add(c.id), true)));
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
@@ -623,10 +637,15 @@ function MarkAttendanceModal({ projectId, projectName, projectLocation, contract
                   </div>
                 </div>
                 {r.present && (
-                  <div className="grid grid-cols-3 gap-2">
-                    <input type="number" min={0} value={r.workers} onChange={(e) => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, workers: parseInt(e.target.value || "0", 10) } : x))}
+                  <div className="grid grid-cols-4 gap-2">
+                    <input type="number" min={0} inputMode="numeric" value={r.workers}
+                      onChange={(e) => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, workers: e.target.value } : x))}
                       placeholder="Workers" className={ic} />
-                    <input value={r.work} onChange={(e) => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, work: e.target.value } : x))}
+                    <input type="number" min={0} step="0.5" inputMode="decimal" value={r.hours}
+                      onChange={(e) => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, hours: e.target.value } : x))}
+                      placeholder="Hours" className={ic} />
+                    <input value={r.work}
+                      onChange={(e) => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, work: e.target.value } : x))}
                       placeholder="Work done today" className={`${ic} col-span-2`} />
                   </div>
                 )}
