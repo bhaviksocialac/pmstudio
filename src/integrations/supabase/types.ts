@@ -226,6 +226,72 @@ export type Database = {
         }
         Relationships: []
       }
+      email_log: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          error: string | null
+          id: string
+          kind: Database["public"]["Enums"]["email_kind"]
+          meta: Json
+          project_id: string | null
+          provider_id: string | null
+          recipient_email: string
+          recipient_name: string | null
+          status: Database["public"]["Enums"]["email_status"]
+          subject: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["email_kind"]
+          meta?: Json
+          project_id?: string | null
+          provider_id?: string | null
+          recipient_email: string
+          recipient_name?: string | null
+          status?: Database["public"]["Enums"]["email_status"]
+          subject?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["email_kind"]
+          meta?: Json
+          project_id?: string | null
+          provider_id?: string | null
+          recipient_email?: string
+          recipient_name?: string | null
+          status?: Database["public"]["Enums"]["email_status"]
+          subject?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount: number
@@ -1092,6 +1158,14 @@ export type Database = {
         | "approved"
         | "rejected"
         | "active"
+      email_kind: "welcome" | "invoice" | "milestone" | "weekly_summary"
+      email_status:
+        | "queued"
+        | "sent"
+        | "delivered"
+        | "bounced"
+        | "complained"
+        | "failed"
       invoice_status: "draft" | "sent" | "paid" | "overdue"
       message_kind: "client" | "vendor"
       payment_status: "pending" | "approved" | "paid" | "held"
@@ -1251,6 +1325,15 @@ export const Constants = {
         "approved",
         "rejected",
         "active",
+      ],
+      email_kind: ["welcome", "invoice", "milestone", "weekly_summary"],
+      email_status: [
+        "queued",
+        "sent",
+        "delivered",
+        "bounced",
+        "complained",
+        "failed",
       ],
       invoice_status: ["draft", "sent", "paid", "overdue"],
       message_kind: ["client", "vendor"],
