@@ -235,7 +235,7 @@ function FinancePage() {
                                 }} />
                                 <IconBtn icon={FileDown} onClick={() => toast.success("PDF downloaded")} />
                                 <IconBtn icon={Check} onClick={() => { setInvoiceStatus.mutate({ id: inv.id, status: "paid" }); toast.success("Marked paid"); }} />
-                                <IconBtn icon={Pencil} onClick={() => openModal("new-invoice")} />
+                                <IconBtn icon={Pencil} onClick={() => openModal("new-invoice", { invoiceId: inv.id })} />
                               </div>
                             </td>
                           </tr>
