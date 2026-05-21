@@ -6,6 +6,7 @@ import {
   FileText, MessageCircle, FilePlus, Loader2, Pencil, ClipboardList,
 } from "lucide-react";
 import { phases, healthMap, type Project } from "@/lib/projects";
+import { labelForProjectType } from "@/lib/project-types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import type { DbProject } from "@/lib/db-types";
@@ -141,7 +142,7 @@ function ProjectDetailView({ project }: { project: Project }) {
             <div className="flex flex-wrap gap-2 mt-3">
               <Pill>{project.client}</Pill>
               <Pill>{project.location}</Pill>
-              <Pill>{project.type === "residential" ? "Residential" : "Commercial"}</Pill>
+              <Pill>{labelForProjectType(project.type)}</Pill>
               <Pill>{project.phase}</Pill>
             </div>
           </div>

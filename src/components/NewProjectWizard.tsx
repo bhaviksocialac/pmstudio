@@ -19,23 +19,8 @@ import { parseBoq } from "@/lib/boq.functions";
 import { sendWelcomeEmail } from "@/lib/emails.functions";
 import { AddressFields, emptyAddress, addressToString, type AddressValue } from "@/components/AddressFields";
 
-const PROPERTY_TYPES = [
-  { value: "residential_apartment", label: "Residential Apartment" },
-  { value: "independent_villa", label: "Independent Villa" },
-  { value: "penthouse", label: "Penthouse" },
-  { value: "commercial_office", label: "Commercial Office" },
-  { value: "retail_shop", label: "Retail Shop" },
-  { value: "restaurant", label: "Restaurant" },
-  { value: "hotel_room", label: "Hotel Room" },
-  { value: "other", label: "Other" },
-] as const;
+import { PROPERTY_TYPES, PROPERTY_VALUES, labelForProjectType as labelForType } from "@/lib/project-types";
 
-const PROPERTY_VALUES = PROPERTY_TYPES.map((p) => p.value) as readonly string[];
-
-function labelForType(value: string) {
-  return PROPERTY_TYPES.find((p) => p.value === value)?.label
-    ?? (value === "residential" ? "Residential Apartment" : value === "commercial" ? "Commercial Office" : "Other");
-}
 
 const projectDetailsSchema = z.object({
   name: z.string().trim().min(1, "Project name is required").max(120),
