@@ -23,6 +23,8 @@ import { EditPhaseModal } from "@/components/EditPhaseModal";
 import { DailyReportModal } from "@/components/DailyReportModal";
 import { SiteReportsList } from "@/components/SiteReportsList";
 import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
+import { ProjectActivityFeed } from "@/components/ProjectActivityFeed";
+import { BoqUploadButton } from "@/components/BoqUploadButton";
 import { SnagsTab } from "@/components/SnagsTab";
 import { ChangeOrdersTab } from "@/components/ChangeOrdersTab";
 import { AttendanceTab } from "@/components/AttendanceTab";
@@ -482,6 +484,8 @@ function OverviewTab({ project }: { project: Project }) {
             <button onClick={() => toast("Email opened")} className="h-9 rounded-[6px] bg-[#c17f5a] hover:brightness-95 text-xs font-medium inline-flex items-center justify-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Email</button>
           </div>
         </Card>
+
+        <ProjectActivityFeed projectId={project.id} />
       </div>
     </div>
   );
@@ -932,9 +936,12 @@ function DocumentsTab({ project }: { project: Project }) {
             </button>
           ))}
         </div>
-        <button onClick={() => toast.success("Document uploaded")} className="h-9 px-3 rounded-[6px] bg-primary text-primary-foreground text-xs font-medium hover:brightness-95 inline-flex items-center gap-1.5">
-          <FilePlus className="h-3.5 w-3.5" /> Upload Document
-        </button>
+        <div className="flex items-center gap-2">
+          <BoqUploadButton projectId={project.id} />
+          <button onClick={() => toast.success("Document uploaded")} className="h-9 px-3 rounded-[6px] bg-primary text-primary-foreground text-xs font-medium hover:brightness-95 inline-flex items-center gap-1.5">
+            <FilePlus className="h-3.5 w-3.5" /> Upload Document
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {visible.map((d, i) => (

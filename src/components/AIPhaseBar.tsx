@@ -32,6 +32,7 @@ export function AIPhaseBar({ projectId }: { projectId: string }) {
       qc.invalidateQueries({ queryKey: ["payment_requests"] });
       qc.invalidateQueries({ queryKey: ["vendor_deliveries"] });
       qc.invalidateQueries({ queryKey: ["approvals"] });
+      qc.invalidateQueries({ queryKey: ["project-activity", projectId] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
