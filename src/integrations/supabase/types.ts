@@ -1262,19 +1262,27 @@ export type Database = {
         Row: {
           bank_account: string | null
           category: string | null
+          city: string | null
           company_name: string | null
           contact_person: string | null
+          country: string | null
           created_at: string
           email: string | null
+          flat_number: string | null
           gst: string | null
           id: string
           ifsc: string | null
+          latitude: number | null
+          longitude: number | null
           name: string
           notes: string | null
           pan: string | null
           payment_terms: string | null
           phone: string | null
+          pincode: string | null
           rating: number | null
+          state: string | null
+          street: string | null
           updated_at: string
           user_id: string
           whatsapp: string | null
@@ -1282,19 +1290,27 @@ export type Database = {
         Insert: {
           bank_account?: string | null
           category?: string | null
+          city?: string | null
           company_name?: string | null
           contact_person?: string | null
+          country?: string | null
           created_at?: string
           email?: string | null
+          flat_number?: string | null
           gst?: string | null
           id?: string
           ifsc?: string | null
+          latitude?: number | null
+          longitude?: number | null
           name: string
           notes?: string | null
           pan?: string | null
           payment_terms?: string | null
           phone?: string | null
+          pincode?: string | null
           rating?: number | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
           user_id: string
           whatsapp?: string | null
@@ -1302,19 +1318,27 @@ export type Database = {
         Update: {
           bank_account?: string | null
           category?: string | null
+          city?: string | null
           company_name?: string | null
           contact_person?: string | null
+          country?: string | null
           created_at?: string
           email?: string | null
+          flat_number?: string | null
           gst?: string | null
           id?: string
           ifsc?: string | null
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           notes?: string | null
           pan?: string | null
           payment_terms?: string | null
           phone?: string | null
+          pincode?: string | null
           rating?: number | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
           user_id?: string
           whatsapp?: string | null
