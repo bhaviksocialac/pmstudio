@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { generateSubcategoryChecklist } from "@/lib/checklist-ai.functions";
+import { VendorAutocomplete } from "@/components/VendorAutocomplete";
+import { VendorModal } from "@/routes/_authenticated/vendors";
+import type { DbVendor } from "@/lib/db-types";
 
 
 const PROCUREMENT_DEFAULTS = [
@@ -51,6 +54,7 @@ export function PhaseSubcategoriesPanel({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [creatingFor, setCreatingFor] = useState<{ subId: string; name: string } | null>(null);
 
   const { data: subs = [], isLoading } = useQuery({
     queryKey: ["phase-subs", projectId, phase],
@@ -69,8 +73,8 @@ export function PhaseSubcategoriesPanel({
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors-light"],
     queryFn: async () => {
-      const { data } = await supabase.from("vendors").select("id,name").order("name");
-      return data ?? [];
+      const { data } = await supabase.from("vendors").select("id,name,company_name,category,phone,gst,payment_terms").order("name");
+      return (data ?? []) as Array<{ id: string; name: string; company_name: string | null; category: string | null; phone: string | null; gst: string | null; payment_terms: string | null }>;
     },
   });
 
@@ -287,38 +291,43 @@ export function PhaseSubcategoriesPanel({
                     {subVendors.filter((sv) => sv.subcategory_id === s.id).map((sv) => {
                       const v = vendors.find((x) => x.id === sv.vendor_id);
                       return (
-                        <div key={sv.id} className="flex items-center gap-2 text-xs bg-card border border-border rounded-[8px] px-2 py-1.5">
-                          <span className="font-medium flex-1 truncate">{v?.name ?? "Unknown vendor"}</span>
-                          <input
-                            type="text"
-                            defaultValue={sv.scope ?? ""}
-                            placeholder="Scope"
-                            onBlur={(e) => e.target.value !== (sv.scope ?? "") && updateSubVendor.mutate({ id: sv.id, patch: { scope: e.target.value || null } })}
-                            className="h-7 px-2 rounded-[6px] bg-muted border border-border w-28"
-                          />
-                          <input
-                            type="number"
-                            defaultValue={sv.amount || ""}
-                            placeholder="Amount"
-                            onBlur={(e) => Number(e.target.value) !== sv.amount && updateSubVendor.mutate({ id: sv.id, patch: { amount: Number(e.target.value) || 0 } })}
-                            className="h-7 px-2 rounded-[6px] bg-muted border border-border w-24"
-                          />
-                          <button onClick={() => deleteSubVendor.mutate(sv.id)} className="h-7 w-7 rounded-[6px] hover:bg-muted text-[#c4685a] flex items-center justify-center">
-                            <XIcon className="h-3 w-3" />
-                          </button>
+                        <div key={sv.id} className="bg-card border border-border rounded-[8px] px-2.5 py-2 text-xs space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium flex-1 truncate">{v?.company_name || v?.name || "Unknown vendor"}</span>
+                            <input
+                              type="text"
+                              defaultValue={sv.scope ?? ""}
+                              placeholder="Scope"
+                              onBlur={(e) => e.target.value !== (sv.scope ?? "") && updateSubVendor.mutate({ id: sv.id, patch: { scope: e.target.value || null } })}
+                              className="h-7 px-2 rounded-[6px] bg-muted border border-border w-28"
+                            />
+                            <input
+                              type="number"
+                              defaultValue={sv.amount || ""}
+                              placeholder="Amount"
+                              onBlur={(e) => Number(e.target.value) !== sv.amount && updateSubVendor.mutate({ id: sv.id, patch: { amount: Number(e.target.value) || 0 } })}
+                              className="h-7 px-2 rounded-[6px] bg-muted border border-border w-24"
+                            />
+                            <button onClick={() => deleteSubVendor.mutate(sv.id)} className="h-7 w-7 rounded-[6px] hover:bg-muted text-[#c4685a] flex items-center justify-center">
+                              <XIcon className="h-3 w-3" />
+                            </button>
+                          </div>
+                          {v && (v.category || v.phone || v.gst || v.payment_terms) && (
+                            <div className="text-[10px] text-muted-foreground flex flex-wrap gap-x-2 pl-0.5">
+                              {v.category && <span>{v.category}</span>}
+                              {v.phone && <span className="font-mono">· {v.phone}</span>}
+                              {v.gst && <span className="font-mono">· GST {v.gst}</span>}
+                              {v.payment_terms && <span>· {v.payment_terms}</span>}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
-                    <select
-                      value=""
-                      onChange={(e) => e.target.value && addSubVendor.mutate({ subId: s.id, vendorId: e.target.value })}
-                      className={`${ic} text-xs`}
-                    >
-                      <option value="">+ Add vendor…</option>
-                      {vendors
-                        .filter((v) => !subVendors.some((sv) => sv.subcategory_id === s.id && sv.vendor_id === v.id))
-                        .map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-                    </select>
+                    <VendorAutocomplete
+                      excludeIds={subVendors.filter((sv) => sv.subcategory_id === s.id).map((sv) => sv.vendor_id)}
+                      onSelect={(v) => addSubVendor.mutate({ subId: s.id, vendorId: v.id })}
+                      onCreateNew={(name) => setCreatingFor({ subId: s.id, name })}
+                    />
                   </div>
                 </div>
 
@@ -408,6 +417,17 @@ export function PhaseSubcategoriesPanel({
           className="h-9 px-3 rounded-[6px] border border-dashed border-border text-xs font-medium hover:bg-muted inline-flex items-center gap-1.5">
           <Plus className="h-3.5 w-3.5" /> Add Subcategory
         </button>
+      )}
+
+      {creatingFor && (
+        <VendorModal
+          initialName={creatingFor.name}
+          onClose={() => setCreatingFor(null)}
+          onCreated={(v: DbVendor) => {
+            addSubVendor.mutate({ subId: creatingFor.subId, vendorId: v.id });
+            setCreatingFor(null);
+          }}
+        />
       )}
     </div>
   );

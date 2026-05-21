@@ -20,6 +20,12 @@ export type VendorExtract = {
   pan?: string;
   ifsc?: string;
   bank_account?: string;
+  flat_number?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
   items?: { description: string; qty?: string; rate?: string; amount?: string }[];
   notes?: string;
 };
@@ -41,6 +47,12 @@ Extract vendor and line-item details. Return ONE JSON object with these optional
   "pan": string,         // 10-char PAN
   "ifsc": string,
   "bank_account": string,
+  "flat_number": string, // unit / shop / building no.
+  "street": string,      // street + area
+  "city": string,
+  "state": string,
+  "country": string,
+  "pincode": string,     // 6-digit Indian PIN
   "items": [{ "description": string, "qty": string, "rate": string, "amount": string }],
   "notes": string
 }
