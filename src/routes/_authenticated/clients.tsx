@@ -137,9 +137,9 @@ function Empty({ onAdd }: { onAdd: () => void }) {
 
 const clientSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
+  email: z.string().trim().email("Valid email is required").max(255),
   phone: z.string().trim().max(40).optional(),
-  email: z.string().trim().email("Invalid email").max(255).optional().or(z.literal("")),
-  address: z.string().trim().max(500).optional(),
+  whatsapp: z.string().trim().max(40).optional(),
   notes: z.string().trim().max(2000).optional(),
 });
 
@@ -149,10 +149,21 @@ function ClientModal({ onClose, client }: { onClose: () => void; client?: DbClie
   const editing = !!client;
   const [form, setForm] = useState({
     name: client?.name ?? "",
-    phone: client?.phone ?? "",
     email: client?.email ?? "",
-    address: client?.address ?? "",
+    phone: client?.phone ?? "",
+    whatsapp: client?.whatsapp ?? "",
     notes: client?.notes ?? "",
+  });
+  const [addr, setAddr] = useState<AddressValue>({
+    flat_number: client?.flat_number ?? "",
+    street: client?.street ?? "",
+    city: client?.city ?? "",
+    state: client?.state ?? "",
+    country: client?.country ?? "",
+    pincode: client?.pincode ?? "",
+    latitude: client?.latitude ?? null,
+    longitude: client?.longitude ?? null,
+    ...(client ? {} : emptyAddress),
   });
 
   const save = useMutation({
@@ -160,21 +171,51 @@ function ClientModal({ onClose, client }: { onClose: () => void; client?: DbClie
       const parsed = clientSchema.parse(form);
       const payload = {
         name: parsed.name,
+        email: parsed.email,
         phone: parsed.phone || null,
-        email: parsed.email || null,
-        address: parsed.address || null,
+        whatsapp: parsed.whatsapp || null,
         notes: parsed.notes || null,
+        flat_number: addr.flat_number || null,
+        street: addr.street || null,
+        city: addr.city || null,
+        state: addr.state || null,
+        country: addr.country || null,
+        pincode: addr.pincode || null,
+        latitude: addr.latitude,
+        longitude: addr.longitude,
+        address: addressToString(addr) || null,
       };
       if (editing) {
+        // Sync linked projects if email/name/address changed
         const { error } = await supabase.from("clients").update(payload).eq("id", client!.id);
         if (error) throw error;
+        await supabase.from("projects").update({
+          flat_number: payload.flat_number,
+          street: payload.street,
+          city: payload.city,
+          state: payload.state,
+          country: payload.country,
+          pincode: payload.pincode,
+          latitude: payload.latitude,
+          longitude: payload.longitude,
+          location: payload.address,
+        }).eq("client_id", client!.id);
       } else {
-        const { error } = await supabase.from("clients").insert({ user_id: user!.id, ...payload });
-        if (error) throw error;
+        // Dedupe by email
+        const { data: existing } = await supabase.from("clients").select("id").eq("user_id", user!.id).eq("email", parsed.email).maybeSingle();
+        if (existing) {
+          const { error } = await supabase.from("clients").update(payload).eq("id", existing.id);
+          if (error) throw error;
+          toast.info("Existing client with this email updated");
+        } else {
+          const { error } = await supabase.from("clients").insert({ user_id: user!.id, ...payload });
+          if (error) throw error;
+        }
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
       toast.success(editing ? "Client updated" : "Client added");
       onClose();
     },
@@ -183,16 +224,24 @@ function ClientModal({ onClose, client }: { onClose: () => void; client?: DbClie
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <div className="w-full max-w-md bg-card rounded-[16px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-xl bg-card rounded-[16px] shadow-2xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-5 border-b border-border flex items-center justify-between">
           <h3 className="font-display text-2xl">{editing ? "Edit Client" : "Add Client"}</h3>
           <button onClick={onClose} className="h-9 w-9 rounded-[10px] hover:bg-muted flex items-center justify-center"><X className="h-4 w-4" /></button>
         </div>
-        <div className="p-6 space-y-4">
-          <F label="Full Name" required><input className={ic} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></F>
-          <F label="Phone"><input className={ic} value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91 98765 43210" /></F>
-          <F label="Email"><input type="email" className={ic} value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></F>
-          <F label="Address"><textarea rows={2} className={`${ic} h-auto py-2`} value={form.address ?? ""} onChange={(e) => setForm({ ...form, address: e.target.value })} /></F>
+        <div className="p-6 space-y-5 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-3">
+            <F label="Full Name" required><input className={ic} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></F>
+            <F label="Email" required><input type="email" className={ic} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@example.com" /></F>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <F label="Phone"><input className={ic} value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91 98765 43210" /></F>
+            <F label="WhatsApp"><input className={ic} value={form.whatsapp ?? ""} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} placeholder="+91 98765 43210" /></F>
+          </div>
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-3">Address</div>
+            <AddressFields value={addr} onChange={setAddr} />
+          </div>
           <F label="Notes"><textarea rows={2} className={`${ic} h-auto py-2`} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></F>
         </div>
         <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
