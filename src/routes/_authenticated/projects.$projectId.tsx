@@ -260,7 +260,8 @@ function OverviewTab({ project }: { project: Project }) {
   const sendMilestoneEmailFn = useServerFn(sendMilestoneEmail);
 
   const markPhaseComplete = useMutation({
-    mutationFn: async (targetPhase: string) => {
+    mutationFn: async (targetPhaseStr: string) => {
+      const targetPhase = targetPhaseStr as Project["phase"];
       const today = new Date().toISOString().slice(0, 10);
       const targetIdx = phases.indexOf(targetPhase as Project["phase"]);
       const nextPhase = phases[targetIdx + 1];
