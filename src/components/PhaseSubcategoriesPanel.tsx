@@ -54,6 +54,7 @@ export function PhaseSubcategoriesPanel({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [creatingFor, setCreatingFor] = useState<{ subId: string; name: string } | null>(null);
 
   const { data: subs = [], isLoading } = useQuery({
     queryKey: ["phase-subs", projectId, phase],
