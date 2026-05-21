@@ -616,6 +616,42 @@ export type Database = {
         }
         Relationships: []
       }
+      phase_subcategory_vendors: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          order_index: number
+          scope: string | null
+          subcategory_id: string
+          updated_at: string
+          user_id: string
+          vendor_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_index?: number
+          scope?: string | null
+          subcategory_id: string
+          updated_at?: string
+          user_id: string
+          vendor_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_index?: number
+          scope?: string | null
+          subcategory_id?: string
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string
+        }
+        Relationships: []
+      }
       photos: {
         Row: {
           caption: string | null

@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, ChevronDown, ChevronRight, Trash2, Loader2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Plus, ChevronDown, ChevronRight, Trash2, Loader2, Sparkles, X as XIcon, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { generateSubcategoryChecklist } from "@/lib/checklist-ai.functions";
+
 
 const PROCUREMENT_DEFAULTS = [
   "Civil Materials", "Carpentry Materials", "Electrical Materials", "Plumbing Materials",
@@ -22,6 +25,7 @@ const statusColor: Record<string, string> = {
   done: "#7a9e8a",
 };
 
+type ChecklistItem = { label: string; done: boolean };
 type Sub = {
   id: string;
   name: string;
@@ -30,7 +34,10 @@ type Sub = {
   start_date: string | null;
   end_date: string | null;
   status: string;
+  checklist: ChecklistItem[] | null;
 };
+type SubVendor = { id: string; subcategory_id: string; vendor_id: string; scope: string | null; amount: number };
+
 
 export function PhaseSubcategoriesPanel({
   projectId,
@@ -66,6 +73,70 @@ export function PhaseSubcategoriesPanel({
       return data ?? [];
     },
   });
+
+  const subIds = subs.map((s) => s.id);
+  const { data: subVendors = [] } = useQuery({
+    queryKey: ["sub-vendors", projectId, phase, subIds.join(",")],
+    enabled: subIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("phase_subcategory_vendors" as any)
+        .select("*")
+        .in("subcategory_id", subIds);
+      return ((data ?? []) as unknown) as SubVendor[];
+    },
+  });
+
+  const addSubVendor = useMutation({
+    mutationFn: async ({ subId, vendorId }: { subId: string; vendorId: string }) => {
+      const { error } = await supabase.from("phase_subcategory_vendors" as any).insert({
+        user_id: user!.id, subcategory_id: subId, vendor_id: vendorId, scope: null, amount: 0,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sub-vendors", projectId, phase] }),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const updateSubVendor = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<SubVendor> }) => {
+      const { error } = await supabase.from("phase_subcategory_vendors" as any).update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sub-vendors", projectId, phase] }),
+  });
+
+  const deleteSubVendor = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("phase_subcategory_vendors" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sub-vendors", projectId, phase] }),
+  });
+
+  const genChecklistFn = useServerFn(generateSubcategoryChecklist);
+  const [genLoadingId, setGenLoadingId] = useState<string | null>(null);
+  const generateChecklist = async (s: Sub) => {
+    setGenLoadingId(s.id);
+    try {
+      const res = await genChecklistFn({ data: { subcategoryName: s.name, phase } });
+      const existing = s.checklist ?? [];
+      const newItems: ChecklistItem[] = res.items.map((label) => ({ label, done: false }));
+      const merged = [...existing, ...newItems];
+      await supabase.from("phase_subcategories").update({ checklist: merged as any }).eq("id", s.id);
+      qc.invalidateQueries({ queryKey: ["phase-subs", projectId, phase] });
+      toast.success(`Added ${newItems.length} checklist items`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setGenLoadingId(null);
+    }
+  };
+
+  const updateChecklist = (s: Sub, next: ChecklistItem[]) => {
+    updateSub.mutate({ id: s.id, patch: { checklist: next as any } });
+  };
+
 
   const { data: tasksByName = {} } = useQuery({
     queryKey: ["tasks-by-sub", projectId, phase],
@@ -209,10 +280,97 @@ export function PhaseSubcategoriesPanel({
                   </label>
                 </div>
 
+                {/* Vendors */}
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Vendors</div>
+                  <div className="space-y-1.5">
+                    {subVendors.filter((sv) => sv.subcategory_id === s.id).map((sv) => {
+                      const v = vendors.find((x) => x.id === sv.vendor_id);
+                      return (
+                        <div key={sv.id} className="flex items-center gap-2 text-xs bg-card border border-border rounded-[8px] px-2 py-1.5">
+                          <span className="font-medium flex-1 truncate">{v?.name ?? "Unknown vendor"}</span>
+                          <input
+                            type="text"
+                            defaultValue={sv.scope ?? ""}
+                            placeholder="Scope"
+                            onBlur={(e) => e.target.value !== (sv.scope ?? "") && updateSubVendor.mutate({ id: sv.id, patch: { scope: e.target.value || null } })}
+                            className="h-7 px-2 rounded-[6px] bg-muted border border-border w-28"
+                          />
+                          <input
+                            type="number"
+                            defaultValue={sv.amount || ""}
+                            placeholder="Amount"
+                            onBlur={(e) => Number(e.target.value) !== sv.amount && updateSubVendor.mutate({ id: sv.id, patch: { amount: Number(e.target.value) || 0 } })}
+                            className="h-7 px-2 rounded-[6px] bg-muted border border-border w-24"
+                          />
+                          <button onClick={() => deleteSubVendor.mutate(sv.id)} className="h-7 w-7 rounded-[6px] hover:bg-muted text-[#c4685a] flex items-center justify-center">
+                            <XIcon className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <select
+                      value=""
+                      onChange={(e) => e.target.value && addSubVendor.mutate({ subId: s.id, vendorId: e.target.value })}
+                      className={`${ic} text-xs`}
+                    >
+                      <option value="">+ Add vendor…</option>
+                      {vendors
+                        .filter((v) => !subVendors.some((sv) => sv.subcategory_id === s.id && sv.vendor_id === v.id))
+                        .map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Checklist */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Checklist</div>
+                    <button
+                      onClick={() => generateChecklist(s)}
+                      disabled={genLoadingId === s.id}
+                      className="h-7 px-2 rounded-[6px] bg-[#1a1612] text-white text-[10px] inline-flex items-center gap-1 hover:brightness-110 disabled:opacity-60"
+                    >
+                      {genLoadingId === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 text-[#c17f5a]" />}
+                      AI Suggest
+                    </button>
+                  </div>
+                  <ul className="space-y-1">
+                    {(s.checklist ?? []).map((item, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-xs">
+                        <button
+                          onClick={() => {
+                            const next = [...(s.checklist ?? [])];
+                            next[idx] = { ...item, done: !item.done };
+                            updateChecklist(s, next);
+                          }}
+                          className={`h-4 w-4 rounded-[4px] border flex items-center justify-center ${item.done ? "bg-[#7a9e8a] border-[#7a9e8a]" : "border-border bg-card"}`}
+                        >
+                          {item.done && <Check className="h-3 w-3 text-white" />}
+                        </button>
+                        <span className={`flex-1 ${item.done ? "line-through text-muted-foreground" : ""}`}>{item.label}</span>
+                        <button
+                          onClick={() => {
+                            const next = (s.checklist ?? []).filter((_, i) => i !== idx);
+                            updateChecklist(s, next);
+                          }}
+                          className="text-[#c4685a] hover:underline text-[10px]"
+                        >
+                          remove
+                        </button>
+                      </li>
+                    ))}
+                    {(s.checklist ?? []).length === 0 && (
+                      <li className="text-xs text-muted-foreground italic">No checklist items. Click "AI Suggest" to generate.</li>
+                    )}
+                  </ul>
+                </div>
+
+                {/* Linked tasks */}
                 <div>
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Tasks</div>
                   {tasks.length === 0 ? (
-                    <div className="text-xs text-muted-foreground italic">No tasks yet. Add via "Add Task" with this subcategory as phase.</div>
+                    <div className="text-xs text-muted-foreground italic">No tasks yet.</div>
                   ) : (
                     <ul className="space-y-1">
                       {tasks.map((t) => (
@@ -229,6 +387,7 @@ export function PhaseSubcategoriesPanel({
                   className="text-xs text-[#c4685a] inline-flex items-center gap-1 hover:underline">
                   <Trash2 className="h-3 w-3" /> Remove subcategory
                 </button>
+
               </div>
             )}
           </div>
