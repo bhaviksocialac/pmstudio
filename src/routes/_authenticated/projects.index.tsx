@@ -57,6 +57,22 @@ function ProjectsPage() {
                 className="h-10 pl-10 pr-3 rounded-[10px] bg-card border border-border text-sm w-56 focus:outline-none focus:ring-2 focus:ring-ring/30"
               />
             </div>
+            <div className="inline-flex h-10 rounded-[10px] border border-border bg-card p-0.5">
+              <button
+                onClick={() => setView("grid")}
+                aria-label="Grid view"
+                className={`px-3 inline-flex items-center gap-1.5 rounded-[8px] text-xs ${view === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" /> Grid
+              </button>
+              <button
+                onClick={() => setView("list")}
+                aria-label="List view"
+                className={`px-3 inline-flex items-center gap-1.5 rounded-[8px] text-xs ${view === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <ListIcon className="h-3.5 w-3.5" /> List
+              </button>
+            </div>
             <button
               onClick={() => openModal("new-project")}
               className="h-10 px-4 inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95"
