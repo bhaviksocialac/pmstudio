@@ -26,6 +26,9 @@ export function AddTaskPanel({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assignee, setAssignee] = useState("");
+  const [contractor, setContractor] = useState("");
+  const [area, setArea] = useState("");
+  const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [priority, setPriority] = useState<Priority>("Medium");
   const [phase, setPhase] = useState<Phase>(defaultPhase);
@@ -40,20 +43,25 @@ export function AddTaskPanel({
   const create = useMutation({
     mutationFn: async () => {
       if (!title.trim()) throw new Error("Title is required");
-      // Encode priority + phase + description in title since columns don't exist
-      const encoded = `[${priority}] [${phase}] ${title.trim()}${description.trim() ? ` — ${description.trim()}` : ""}`;
       const { error } = await supabase.from("tasks").insert({
         user_id: user!.id,
         project_id: projectId,
-        title: encoded,
+        title: title.trim(),
+        description: description.trim() || null,
         assignee: assignee.trim() || null,
+        contractor: contractor.trim() || null,
+        area: area.trim() || null,
+        start_date: startDate || null,
         due_date: dueDate || null,
+        priority,
+        status: "todo",
         done: false,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["all-tasks"] });
       qc.invalidateQueries({ queryKey: ["project-tasks", projectId] });
       toast.success("Task added");
       onClose();
