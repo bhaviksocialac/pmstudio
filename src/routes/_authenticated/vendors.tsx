@@ -147,7 +147,7 @@ const vendorSchema = z.object({
   phone: z.string().trim().min(1, "Mobile required").max(40),
 });
 
-function VendorModal({ onClose, vendor }: { onClose: () => void; vendor?: DbVendor }) {
+export function VendorModal({ onClose, vendor, initialName, onCreated }: { onClose: () => void; vendor?: DbVendor; initialName?: string; onCreated?: (v: DbVendor) => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const editing = !!vendor;
@@ -164,7 +164,7 @@ function VendorModal({ onClose, vendor }: { onClose: () => void; vendor?: DbVend
   const allCats = [...DEFAULT_CATS, ...customCats.filter((c) => !DEFAULT_CATS.includes(c))];
 
   const [form, setForm] = useState({
-    name: vendor?.name ?? "",
+    name: vendor?.name ?? initialName ?? "",
     company_name: (vendor as any)?.company_name ?? "",
     phone: vendor?.phone ?? "",
     whatsapp: (vendor as any)?.whatsapp ?? "",
@@ -179,6 +179,16 @@ function VendorModal({ onClose, vendor }: { onClose: () => void; vendor?: DbVend
     payment_terms: vendor?.payment_terms ?? DEFAULT_TERMS[0],
     customTerms: "",
     notes: vendor?.notes ?? "",
+  });
+  const [address, setAddress] = useState<AddressValue>({
+    flat_number: (vendor as any)?.flat_number ?? "",
+    street: (vendor as any)?.street ?? "",
+    city: (vendor as any)?.city ?? "",
+    state: (vendor as any)?.state ?? "",
+    country: (vendor as any)?.country ?? "",
+    pincode: (vendor as any)?.pincode ?? "",
+    latitude: (vendor as any)?.latitude ?? null,
+    longitude: (vendor as any)?.longitude ?? null,
   });
   const setF = (k: keyof typeof form, v: any) => setForm((s) => ({ ...s, [k]: v }));
   const [extracting, setExtracting] = useState(false);
@@ -206,6 +216,15 @@ function VendorModal({ onClose, vendor }: { onClose: () => void; vendor?: DbVend
         ifsc: d.ifsc ?? s.ifsc,
         bank_account: d.bank_account ?? s.bank_account,
         notes: d.notes ?? (d.items?.length ? d.items.map((i) => `${i.description}${i.amount ? ` — ${i.amount}` : ""}`).join("\n") : s.notes),
+      }));
+      setAddress((a) => ({
+        ...a,
+        flat_number: d.flat_number ?? a.flat_number,
+        street: d.street ?? a.street,
+        city: d.city ?? a.city,
+        state: d.state ?? a.state,
+        country: d.country ?? a.country,
+        pincode: d.pincode ?? a.pincode,
       }));
       toast.success("AI auto-filled fields. Please review.");
     } catch (e) {
