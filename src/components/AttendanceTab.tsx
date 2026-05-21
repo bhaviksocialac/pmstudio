@@ -637,10 +637,15 @@ function MarkAttendanceModal({ projectId, projectName, projectLocation, contract
                   </div>
                 </div>
                 {r.present && (
-                  <div className="grid grid-cols-3 gap-2">
-                    <input type="number" min={0} value={r.workers} onChange={(e) => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, workers: parseInt(e.target.value || "0", 10) } : x))}
+                  <div className="grid grid-cols-4 gap-2">
+                    <input type="number" min={0} inputMode="numeric" value={r.workers}
+                      onChange={(e) => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, workers: e.target.value } : x))}
                       placeholder="Workers" className={ic} />
-                    <input value={r.work} onChange={(e) => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, work: e.target.value } : x))}
+                    <input type="number" min={0} step="0.5" inputMode="decimal" value={r.hours}
+                      onChange={(e) => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, hours: e.target.value } : x))}
+                      placeholder="Hours" className={ic} />
+                    <input value={r.work}
+                      onChange={(e) => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, work: e.target.value } : x))}
                       placeholder="Work done today" className={`${ic} col-span-2`} />
                   </div>
                 )}
