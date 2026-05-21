@@ -1,3 +1,4 @@
+/// <reference types="google.maps" />
 // Loads the Google Maps JS API with the Places library (New).
 // Uses the Lovable-managed browser key.
 
