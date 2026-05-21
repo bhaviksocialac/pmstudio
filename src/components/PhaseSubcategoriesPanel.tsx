@@ -328,6 +328,17 @@ export function PhaseSubcategoriesPanel({
                       onSelect={(v) => addSubVendor.mutate({ subId: s.id, vendorId: v.id })}
                       onCreateNew={(name) => setCreatingFor({ subId: s.id, name })}
                     />
+                    {(() => {
+                      const rows = subVendors.filter((sv) => sv.subcategory_id === s.id);
+                      if (rows.length === 0) return null;
+                      const total = rows.reduce((sum, sv) => sum + (Number(sv.amount) || 0), 0);
+                      return (
+                        <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-border text-xs">
+                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Total ({rows.length} vendor{rows.length === 1 ? "" : "s"})</span>
+                          <span className="font-mono font-medium tabular-nums">₹{total.toLocaleString("en-IN")}</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
