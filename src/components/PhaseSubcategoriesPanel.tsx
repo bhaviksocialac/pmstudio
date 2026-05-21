@@ -72,8 +72,8 @@ export function PhaseSubcategoriesPanel({
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors-light"],
     queryFn: async () => {
-      const { data } = await supabase.from("vendors").select("id,name").order("name");
-      return data ?? [];
+      const { data } = await supabase.from("vendors").select("id,name,company_name,category,phone,gst,payment_terms").order("name");
+      return (data ?? []) as Array<{ id: string; name: string; company_name: string | null; category: string | null; phone: string | null; gst: string | null; payment_terms: string | null }>;
     },
   });
 
