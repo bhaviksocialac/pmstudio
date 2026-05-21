@@ -607,9 +607,9 @@ function TimelineTab({ project }: { project: Project }) {
         </div>
       </div>
 
-      <div className="min-w-[720px] relative mt-6">
+      <div className="min-w-[720px] relative mt-8">
         {/* Month header */}
-        <div className="relative h-5 border-b border-border mb-3" style={{ marginLeft: 180 }}>
+        <div className="relative h-5 border-b border-border mb-5" style={{ marginLeft: 180 }}>
           {months.map((m, i) => (
             <div key={i} className="absolute top-0 text-[10px] uppercase tracking-wider text-muted-foreground font-mono" style={{ left: `${m.offsetPct}%` }}>
               {m.label}
@@ -621,36 +621,72 @@ function TimelineTab({ project }: { project: Project }) {
           <div className="py-12 text-center text-sm text-muted-foreground">No timeline items yet. Use the AI Site Update bar above to add some.</div>
         )}
 
-        {bars.map((b) => {
-          if (!b.start || !b.end) {
+        <div className="relative">
+          {bars.map((b) => {
+            if (!b.start || !b.end) {
+              return (
+                <div key={b.id} className="flex items-center mb-4 h-9">
+                  <div className="w-[180px] pr-3 truncate">
+                    <div className="text-xs font-medium truncate">{b.label}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">{b.kind === "phase" ? "Phase" : b.kind} {b.assignee ? `· ${b.assignee}` : ""}</div>
+                  </div>
+                  <div className="flex-1 text-[10px] text-muted-foreground italic">no dates set</div>
+                </div>
+              );
+            }
+            const left = Math.max(0, ((b.start.getTime() - startMs) / totalMs) * 100);
+            const width = Math.max(2, ((b.end.getTime() - b.start.getTime()) / totalMs) * 100);
+            const color = colorFor(b);
             return (
-              <div key={b.id} className="flex items-center mb-2.5">
+              <div key={b.id} className="flex items-center mb-4 h-9">
                 <div className="w-[180px] pr-3 truncate">
                   <div className="text-xs font-medium truncate">{b.label}</div>
-                  <div className="text-[10px] text-muted-foreground truncate">{b.kind === "phase" ? "Phase" : b.kind} {b.assignee ? `· ${b.assignee}` : ""}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">{b.kind === "phase" ? "Phase" : b.kind}{b.assignee ? ` · ${b.assignee}` : ""}</div>
                 </div>
-                <div className="flex-1 text-[10px] text-muted-foreground italic">no dates set</div>
+                <div className="flex-1 relative h-7">
+                  <div className="absolute h-7 rounded-[6px] flex items-center px-2 text-[10px] font-medium text-white overflow-hidden"
+                    style={{ left: `${left}%`, width: `${width}%`, background: color, opacity: b.status === "planned" ? 0.6 : 1 }}>
+                    <span className="truncate">{b.assignee ?? b.status}</span>
+                  </div>
+                </div>
               </div>
             );
-          }
-          const left = Math.max(0, ((b.start.getTime() - startMs) / totalMs) * 100);
-          const width = Math.max(2, ((b.end.getTime() - b.start.getTime()) / totalMs) * 100);
-          const color = colorFor(b);
-          return (
-            <div key={b.id} className="flex items-center mb-2.5">
-              <div className="w-[180px] pr-3 truncate">
-                <div className="text-xs font-medium truncate">{b.label}</div>
-                <div className="text-[10px] text-muted-foreground truncate">{b.kind === "phase" ? "Phase" : b.kind}{b.assignee ? ` · ${b.assignee}` : ""}</div>
-              </div>
-              <div className="flex-1 relative h-7">
-                <div className="absolute h-7 rounded-[6px] flex items-center px-2 text-[10px] font-medium text-white overflow-hidden"
-                  style={{ left: `${left}%`, width: `${width}%`, background: color, opacity: b.status === "planned" ? 0.6 : 1 }}>
-                  <span className="truncate">{b.assignee ?? b.status}</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+          })}
+
+          {/* Dependency arrows: connect consecutive bars in same category */}
+          {bars.length > 1 && (
+            <svg
+              className="absolute pointer-events-none"
+              style={{ left: 180, top: 0, right: 0, bottom: 0, width: `calc(100% - 180px)`, height: bars.length * 52 }}
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <marker id="arrow-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M0,0 L10,5 L0,10 z" fill="#c17f5a" />
+                </marker>
+              </defs>
+              {bars.map((b, i) => {
+                if (i === 0) return null;
+                const prev = bars[i - 1];
+                if (!prev.start || !prev.end || !b.start || !b.end) return null;
+                if (prev.kind !== b.kind) return null;
+                const x1Pct = ((prev.end.getTime() - startMs) / totalMs) * 100;
+                const x2Pct = ((b.start.getTime() - startMs) / totalMs) * 100;
+                const rowH = 52; // mb-4 (16) + h-9 (36)
+                const y1 = (i - 1) * rowH + 14 + rowH / 2 - 14; // bar vertical center within row
+                const y2 = i * rowH + 14 + rowH / 2 - 14;
+                const midX = `calc(${x1Pct}% + 6px)`;
+                return (
+                  <g key={`dep-${b.id}`} stroke="#c17f5a" strokeWidth="1.5" fill="none" opacity="0.85">
+                    <line x1={`${x1Pct}%`} y1={y1} x2={midX} y2={y1} />
+                    <line x1={midX} y1={y1} x2={midX} y2={y2} />
+                    <line x1={midX} y1={y2} x2={`${x2Pct}%`} y2={y2} markerEnd="url(#arrow-warm)" />
+                  </g>
+                );
+              })}
+            </svg>
+          )}
+        </div>
 
         {/* Today line */}
         {todayPct >= 0 && todayPct <= 100 && (

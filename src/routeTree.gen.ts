@@ -15,6 +15,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as PortalProjectIdRouteImport } from './routes/portal.$projectId'
 import { Route as AuthenticatedVendorsRouteImport } from './routes/_authenticated/vendors'
+import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedMessagesRouteImport } from './routes/_authenticated/messages'
 import { Route as AuthenticatedFinanceRouteImport } from './routes/_authenticated/finance'
@@ -52,6 +53,11 @@ const PortalProjectIdRoute = PortalProjectIdRouteImport.update({
 const AuthenticatedVendorsRoute = AuthenticatedVendorsRouteImport.update({
   id: '/vendors',
   path: '/vendors',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedTasksRoute = AuthenticatedTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/finance': typeof AuthenticatedFinanceRoute
   '/messages': typeof AuthenticatedMessagesRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/tasks': typeof AuthenticatedTasksRoute
   '/vendors': typeof AuthenticatedVendorsRoute
   '/portal/$projectId': typeof PortalProjectIdRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/finance': typeof AuthenticatedFinanceRoute
   '/messages': typeof AuthenticatedMessagesRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/tasks': typeof AuthenticatedTasksRoute
   '/vendors': typeof AuthenticatedVendorsRoute
   '/portal/$projectId': typeof PortalProjectIdRoute
   '/': typeof AuthenticatedIndexRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/_authenticated/finance': typeof AuthenticatedFinanceRoute
   '/_authenticated/messages': typeof AuthenticatedMessagesRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/tasks': typeof AuthenticatedTasksRoute
   '/_authenticated/vendors': typeof AuthenticatedVendorsRoute
   '/portal/$projectId': typeof PortalProjectIdRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/finance'
     | '/messages'
     | '/settings'
+    | '/tasks'
     | '/vendors'
     | '/portal/$projectId'
     | '/projects/$projectId'
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/finance'
     | '/messages'
     | '/settings'
+    | '/tasks'
     | '/vendors'
     | '/portal/$projectId'
     | '/'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/_authenticated/finance'
     | '/_authenticated/messages'
     | '/_authenticated/settings'
+    | '/_authenticated/tasks'
     | '/_authenticated/vendors'
     | '/portal/$projectId'
     | '/_authenticated/'
@@ -259,6 +271,13 @@ declare module '@tanstack/react-router' {
       path: '/vendors'
       fullPath: '/vendors'
       preLoaderRoute: typeof AuthenticatedVendorsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/tasks': {
+      id: '/_authenticated/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof AuthenticatedTasksRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/settings': {
@@ -332,6 +351,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedFinanceRoute: typeof AuthenticatedFinanceRoute
   AuthenticatedMessagesRoute: typeof AuthenticatedMessagesRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
   AuthenticatedVendorsRoute: typeof AuthenticatedVendorsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedProjectsProjectIdRoute: typeof AuthenticatedProjectsProjectIdRoute
@@ -343,6 +363,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedFinanceRoute: AuthenticatedFinanceRoute,
   AuthenticatedMessagesRoute: AuthenticatedMessagesRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedTasksRoute: AuthenticatedTasksRoute,
   AuthenticatedVendorsRoute: AuthenticatedVendorsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedProjectsProjectIdRoute: AuthenticatedProjectsProjectIdRoute,

@@ -6,7 +6,7 @@ import {
   Search, Plus, LayoutDashboard, FolderKanban, Users, Truck, Wallet,
   MessageSquare, Bell, X, ChevronRight, Check, Phone, Mail, Link2,
   Settings, LogOut, HelpCircle, CreditCard, UserCircle,
-  Sparkles, AlertTriangle,
+  Sparkles, AlertTriangle, ListChecks,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -21,6 +21,7 @@ import { AICopilot } from "@/components/AICopilot";
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/" as const },
   { label: "Projects", icon: FolderKanban, to: "/projects" as const },
+  { label: "Tasks", icon: ListChecks, to: "/tasks" as const },
   { label: "Clients", icon: Users, to: "/clients" as const },
   { label: "Vendors", icon: Truck, to: "/vendors" as const },
   { label: "Finance", icon: Wallet, to: "/finance" as const },
@@ -310,7 +311,7 @@ function SearchSection({ title, items }: { title: string; items: { key: string; 
 function MobileBottomNav({ pathname }: { pathname: string }) {
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-sidebar border-t border-sidebar-border px-2 py-2 flex justify-around">
-      {[navItems[0], navItems[1], navItems[2], navItems[4], navItems[5]].map((n) => {
+      {[navItems[0], navItems[1], navItems[2], navItems[5], navItems[6]].map((n) => {
         const active = n.to === "/" ? pathname === "/" : pathname.startsWith(n.to);
         return (
           <Link key={n.label} to={n.to}

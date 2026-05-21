@@ -26,6 +26,9 @@ export function AddTaskPanel({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assignee, setAssignee] = useState("");
+  const [contractor, setContractor] = useState("");
+  const [area, setArea] = useState("");
+  const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [priority, setPriority] = useState<Priority>("Medium");
   const [phase, setPhase] = useState<Phase>(defaultPhase);
@@ -40,20 +43,25 @@ export function AddTaskPanel({
   const create = useMutation({
     mutationFn: async () => {
       if (!title.trim()) throw new Error("Title is required");
-      // Encode priority + phase + description in title since columns don't exist
-      const encoded = `[${priority}] [${phase}] ${title.trim()}${description.trim() ? ` — ${description.trim()}` : ""}`;
       const { error } = await supabase.from("tasks").insert({
         user_id: user!.id,
         project_id: projectId,
-        title: encoded,
+        title: title.trim(),
+        description: description.trim() || null,
         assignee: assignee.trim() || null,
+        contractor: contractor.trim() || null,
+        area: area.trim() || null,
+        start_date: startDate || null,
         due_date: dueDate || null,
+        priority,
+        status: "todo",
         done: false,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["all-tasks"] });
       qc.invalidateQueries({ queryKey: ["project-tasks", projectId] });
       toast.success("Task added");
       onClose();
@@ -114,21 +122,33 @@ export function AddTaskPanel({
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Assigned to">
-              <input className={inputCls} value={assignee} onChange={(e) => setAssignee(e.target.value)} placeholder="e.g. Aditya" />
+            <Field label="Contractor">
+              <input className={inputCls} value={contractor} onChange={(e) => setContractor(e.target.value)} placeholder="e.g. Ramesh Civils" />
             </Field>
-            <Field label="Due date">
-              <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            <Field label="Area / Room">
+              <input className={inputCls} value={area} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Master Bedroom" />
             </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
+            <Field label="Assigned to">
+              <input className={inputCls} value={assignee} onChange={(e) => setAssignee(e.target.value)} placeholder="e.g. Aditya" />
+            </Field>
             <Field label="Priority">
               <select className={inputCls} value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
                 <option>High</option>
                 <option>Medium</option>
                 <option>Low</option>
               </select>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Start date">
+              <input type="date" className={inputCls} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </Field>
+            <Field label="Due date">
+              <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </Field>
             <Field label="Phase">
               <select className={inputCls} value={phase} onChange={(e) => setPhase(e.target.value as Phase)}>

@@ -1153,37 +1153,67 @@ export type Database = {
       }
       tasks: {
         Row: {
+          area: string | null
           assignee: string | null
+          attachments: Json
+          contractor: string | null
           created_at: string
           delayed: boolean
+          depends_on: Json
+          description: string | null
           done: boolean
           due_date: string | null
           id: string
+          notes: string | null
+          parent_task_id: string | null
+          priority: string
           project_id: string | null
+          start_date: string | null
+          status: string
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          area?: string | null
           assignee?: string | null
+          attachments?: Json
+          contractor?: string | null
           created_at?: string
           delayed?: boolean
+          depends_on?: Json
+          description?: string | null
           done?: boolean
           due_date?: string | null
           id?: string
+          notes?: string | null
+          parent_task_id?: string | null
+          priority?: string
           project_id?: string | null
+          start_date?: string | null
+          status?: string
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          area?: string | null
           assignee?: string | null
+          attachments?: Json
+          contractor?: string | null
           created_at?: string
           delayed?: boolean
+          depends_on?: Json
+          description?: string | null
           done?: boolean
           due_date?: string | null
           id?: string
+          notes?: string | null
+          parent_task_id?: string | null
+          priority?: string
           project_id?: string | null
+          start_date?: string | null
+          status?: string
           title?: string
           updated_at?: string
           user_id?: string
