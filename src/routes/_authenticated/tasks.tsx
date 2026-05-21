@@ -271,7 +271,7 @@ function TaskTable({
               const pc = PRIORITY_COLORS[t.priority] ?? PRIORITY_COLORS.Medium;
               const projName = t.project_id ? projectMap.get(t.project_id) : null;
               return (
-                <FragmentRow key={t.id}>
+                <Fragment key={t.id}>
                   <tr className="border-b border-border last:border-b-0 hover:bg-muted/20 transition-colors">
                     <Td>
                       {hasDetail ? (
@@ -357,7 +357,7 @@ function TaskTable({
                       </td>
                     </tr>
                   )}
-                </FragmentRow>
+                </Fragment>
               );
             })}
           </tbody>
