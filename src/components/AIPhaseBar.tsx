@@ -4,25 +4,38 @@ import { useServerFn } from "@tanstack/react-start";
 import { Sparkles, Send, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { parsePhaseUpdate } from "@/lib/phase-ai.functions";
+import { parseSiteEvent } from "@/lib/site-event.functions";
 
 export function AIPhaseBar({ projectId }: { projectId: string }) {
   const [text, setText] = useState("");
   const [lastReply, setLastReply] = useState<string | null>(null);
   const parseFn = useServerFn(parsePhaseUpdate);
+  const eventFn = useServerFn(parseSiteEvent);
   const qc = useQueryClient();
 
   const submit = useMutation({
-    mutationFn: async (message: string) => parseFn({ data: { projectId, message } }),
-    onSuccess: (r) => {
-      setLastReply(r.reply);
+    mutationFn: async (message: string) => {
+      const [phaseRes, eventRes] = await Promise.all([
+        parseFn({ data: { projectId, message } }),
+        eventFn({ data: { projectId, message } }),
+      ]);
+      return { phaseRes, eventRes };
+    },
+    onSuccess: ({ phaseRes, eventRes }) => {
+      const combined = [phaseRes.reply, eventRes.applied.length ? eventRes.reply : null].filter(Boolean).join(" ");
+      setLastReply(combined || phaseRes.reply);
       setText("");
-      toast.success(r.reply);
+      toast.success(combined || phaseRes.reply);
       qc.invalidateQueries({ queryKey: ["project", projectId] });
       qc.invalidateQueries({ queryKey: ["phase-subs", projectId] });
       qc.invalidateQueries({ queryKey: ["project-phases", projectId] });
+      qc.invalidateQueries({ queryKey: ["payment_requests"] });
+      qc.invalidateQueries({ queryKey: ["vendor_deliveries"] });
+      qc.invalidateQueries({ queryKey: ["approvals"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
+
 
   return (
     <div className="rounded-[16px] bg-[#fff7eb] border border-[#e8d9c9] p-4 mb-6" style={{ boxShadow: "var(--shadow-card)" }}>
