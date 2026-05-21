@@ -74,6 +74,70 @@ export function PhaseSubcategoriesPanel({
     },
   });
 
+  const subIds = subs.map((s) => s.id);
+  const { data: subVendors = [] } = useQuery({
+    queryKey: ["sub-vendors", projectId, phase, subIds.join(",")],
+    enabled: subIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("phase_subcategory_vendors" as any)
+        .select("*")
+        .in("subcategory_id", subIds);
+      return (data ?? []) as SubVendor[];
+    },
+  });
+
+  const addSubVendor = useMutation({
+    mutationFn: async ({ subId, vendorId }: { subId: string; vendorId: string }) => {
+      const { error } = await supabase.from("phase_subcategory_vendors" as any).insert({
+        user_id: user!.id, subcategory_id: subId, vendor_id: vendorId, scope: null, amount: 0,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sub-vendors", projectId, phase] }),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const updateSubVendor = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<SubVendor> }) => {
+      const { error } = await supabase.from("phase_subcategory_vendors" as any).update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sub-vendors", projectId, phase] }),
+  });
+
+  const deleteSubVendor = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("phase_subcategory_vendors" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sub-vendors", projectId, phase] }),
+  });
+
+  const genChecklistFn = useServerFn(generateSubcategoryChecklist);
+  const [genLoadingId, setGenLoadingId] = useState<string | null>(null);
+  const generateChecklist = async (s: Sub) => {
+    setGenLoadingId(s.id);
+    try {
+      const res = await genChecklistFn({ data: { subcategoryName: s.name, phase } });
+      const existing = s.checklist ?? [];
+      const newItems: ChecklistItem[] = res.items.map((label) => ({ label, done: false }));
+      const merged = [...existing, ...newItems];
+      await supabase.from("phase_subcategories").update({ checklist: merged as any }).eq("id", s.id);
+      qc.invalidateQueries({ queryKey: ["phase-subs", projectId, phase] });
+      toast.success(`Added ${newItems.length} checklist items`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setGenLoadingId(null);
+    }
+  };
+
+  const updateChecklist = (s: Sub, next: ChecklistItem[]) => {
+    updateSub.mutate({ id: s.id, patch: { checklist: next as any } });
+  };
+
+
   const { data: tasksByName = {} } = useQuery({
     queryKey: ["tasks-by-sub", projectId, phase],
     queryFn: async () => {
