@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, ChevronDown, ChevronRight, Trash2, Loader2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Plus, ChevronDown, ChevronRight, Trash2, Loader2, Sparkles, X as XIcon, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { generateSubcategoryChecklist } from "@/lib/checklist-ai.functions";
+
 
 const PROCUREMENT_DEFAULTS = [
   "Civil Materials", "Carpentry Materials", "Electrical Materials", "Plumbing Materials",
