@@ -309,7 +309,8 @@ function OverviewTab({ project }: { project: Project }) {
   });
 
   const undoComplete = useMutation({
-    mutationFn: async (targetPhase: string) => {
+    mutationFn: async (targetPhaseStr: string) => {
+      const targetPhase = targetPhaseStr as Project["phase"];
       const targetIdx = phases.indexOf(targetPhase as Project["phase"]);
       const nextPhase = phases[targetIdx + 1];
       await supabase.from("project_phases")
