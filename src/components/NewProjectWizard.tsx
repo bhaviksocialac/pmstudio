@@ -16,6 +16,7 @@ import {
   type Phase,
 } from "@/lib/db-types";
 import { parseBoq } from "@/lib/boq.functions";
+import { sendWelcomeEmail } from "@/lib/emails.functions";
 
 const PROPERTY_TYPES = [
   { value: "residential_apartment", label: "Residential Apartment" },
@@ -343,6 +344,11 @@ export function NewProjectWizard({
           .select()
           .single();
         msgId = msg?.id ?? null;
+      }
+
+      // Fire-and-forget welcome email (silent if no client email)
+      if (clientId && clientEmail) {
+        sendWelcomeEmailFn({ data: { projectId } }).catch((e) => console.warn("welcome email failed", e));
       }
 
       return { projectId, draft, msgId, edited: false };
