@@ -15,6 +15,24 @@ type Action =
   | { kind: "draft_message"; recipient: string; channel: "whatsapp" | "email"; body: string }
   | { kind: "update_status"; entity: string; target: string; status: string };
 
+function describeAction(a: Action): string {
+  if (a.kind === "create_task") {
+    const parts = [`Create task "${a.title}"`];
+    if (a.project_name) parts.push(`for ${a.project_name}`);
+    if (a.assignee) parts.push(`assigned to ${a.assignee}`);
+    if (a.due_date) parts.push(`due ${a.due_date}`);
+    if (a.priority) parts.push(`(${a.priority} priority)`);
+    return parts.join(" ") + ".";
+  }
+  if (a.kind === "draft_message") {
+    return `Draft a ${a.channel} message to ${a.recipient}: "${a.body}"`;
+  }
+  if (a.kind === "update_status") {
+    return `Update ${a.entity} "${a.target}" to status: ${a.status}.`;
+  }
+  return "";
+}
+
 function suggestedPrompts(): string[] {
   const hour = new Date().getHours();
   const base = [
