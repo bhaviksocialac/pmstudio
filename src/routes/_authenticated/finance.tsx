@@ -29,6 +29,8 @@ function FinancePage() {
   const maxRev = Math.max(...monthlyRevenue.map((m) => m.value));
   const createOrder = useServerFn(createInvoiceOrder);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "sent" | "paid" | "overdue">("all");
+  const [search, setSearch] = useState("");
 
   const { data: invoices = [], isLoading: invLoading } = useQuery({
     queryKey: ["finance", "invoices"],
@@ -58,6 +60,26 @@ function FinancePage() {
   const pending = invoices.filter((i) => i.status === "sent" || i.status === "overdue").reduce((s, i) => s + Number(i.amount), 0);
   const overdueCount = invoices.filter((i) => i.status === "overdue").length;
 
+  const filteredInvoices = invoices.filter((inv) => {
+    if (statusFilter !== "all" && inv.status !== statusFilter) return false;
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    const projectName = ((inv as { projects?: { name?: string } | null }).projects?.name ?? "").toLowerCase();
+    const clientName = ((inv as { clients?: { name?: string } | null }).clients?.name ?? "").toLowerCase();
+    return (inv.number ?? "").toLowerCase().includes(q)
+      || (inv.milestone ?? "").toLowerCase().includes(q)
+      || projectName.includes(q)
+      || clientName.includes(q);
+  });
+
+  const statusCounts = {
+    all: invoices.length,
+    draft: invoices.filter((i) => i.status === "draft").length,
+    sent: invoices.filter((i) => i.status === "sent").length,
+    paid: invoices.filter((i) => i.status === "paid").length,
+    overdue: invoices.filter((i) => i.status === "overdue").length,
+  } as const;
+
   const setInvoiceStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: "draft" | "sent" | "paid" | "overdue" }) => {
       const { error } = await supabase.from("invoices").update({ status }).eq("id", id);
@@ -74,6 +96,32 @@ function FinancePage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["finance", "payment_requests"] }),
   });
 
+  const downloadCsv = () => {
+    if (invoices.length === 0) { toast.error("No invoices to export"); return; }
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = [
+      ["Number", "Project", "Client", "Milestone", "Amount", "Status", "Due", "Created"].join(","),
+      ...invoices.map((i) => [
+        i.number ?? i.id.slice(0, 8),
+        (i as { projects?: { name?: string } | null }).projects?.name ?? "",
+        (i as { clients?: { name?: string } | null }).clients?.name ?? "",
+        i.milestone ?? "",
+        i.amount,
+        i.status,
+        i.due_at ?? "",
+        new Date(i.created_at).toLocaleDateString(),
+      ].map(esc).join(",")),
+    ].join("\n");
+    const blob = new Blob([rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `invoices-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast.success("CSV exported");
+  };
+
   return (
     <AppShell>
       <main className="px-4 md:px-8 py-8 md:py-10 max-w-[1400px] w-full pb-24 md:pb-10">
@@ -84,11 +132,12 @@ function FinancePage() {
             <p className="text-muted-foreground mt-2">Every rupee in motion this month</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => toast.success("Report downloaded")} className="h-10 px-4 inline-flex items-center gap-2 rounded-[6px] border border-border bg-card text-sm font-medium hover:bg-muted">
-              <Download className="h-4 w-4" /> Download Report
+            <button onClick={downloadCsv} className="h-10 px-4 inline-flex items-center gap-2 rounded-[6px] border border-border bg-card text-sm font-medium hover:bg-muted">
+              <Download className="h-4 w-4" /> Export CSV
             </button>
           </div>
         </div>
+
 
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <SummaryCard label="Collected" value={formatINR(collected)} tone="#7a9e8a" />
