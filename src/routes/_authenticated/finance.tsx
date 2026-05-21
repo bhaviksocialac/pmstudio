@@ -130,7 +130,36 @@ function FinancePage() {
                             <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{inv.due_at ?? "—"}</td>
                             <td className="px-4 py-3"><span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px] mr-1" style={{ background: t.bg, color: t.color }}>{t.label}</span><FreshnessTag updatedAt={inv.updated_at} showLabel={false} /></td>
                             <td className="px-4 py-3">
-                              <div className="flex gap-1">
+                              <div className="flex gap-1 items-center">
+                                {inv.status !== "paid" && (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        setPayingId(inv.id);
+                                        const o = await createOrder({ data: { invoiceId: inv.id } });
+                                        await payInvoice({
+                                          keyId: o.keyId,
+                                          orderId: o.orderId,
+                                          amount: o.amount,
+                                          invoiceNumber: o.invoiceNumber,
+                                          onSuccess: () => {
+                                            toast.success("Payment received");
+                                            qc.invalidateQueries({ queryKey: ["finance", "invoices"] });
+                                          },
+                                        });
+                                      } catch (e) {
+                                        toast.error(e instanceof Error ? e.message : "Pay failed");
+                                      } finally {
+                                        setPayingId(null);
+                                      }
+                                    }}
+                                    disabled={payingId === inv.id}
+                                    className="h-8 px-2.5 rounded-[6px] bg-[#c17f5a] text-white text-xs font-medium hover:brightness-110 inline-flex items-center gap-1 disabled:opacity-60"
+                                  >
+                                    {payingId === inv.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CreditCard className="h-3 w-3" />}
+                                    Pay Now
+                                  </button>
+                                )}
                                 <IconBtn icon={Send} onClick={() => {
                                   if (freshnessLevel(inv.updated_at) === "red") {
                                     toast.error("Data is stale. Refresh before sharing with client.");
