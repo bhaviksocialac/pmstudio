@@ -301,7 +301,10 @@ export type Database = {
           id: string
           milestone: string | null
           number: string | null
+          paid_at: string | null
           project_id: string | null
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           updated_at: string
@@ -315,7 +318,10 @@ export type Database = {
           id?: string
           milestone?: string | null
           number?: string | null
+          paid_at?: string | null
           project_id?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           updated_at?: string
@@ -329,7 +335,10 @@ export type Database = {
           id?: string
           milestone?: string | null
           number?: string | null
+          paid_at?: string | null
           project_id?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           updated_at?: string
@@ -383,6 +392,48 @@ export type Database = {
           kind?: Database["public"]["Enums"]["message_kind"]
           sent_at?: string
           thread_with?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      one_time_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          item_key: string
+          label: string
+          paid_at: string | null
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          item_key: string
+          label: string
+          paid_at?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          item_key?: string
+          label?: string
+          paid_at?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -930,6 +981,48 @@ export type Database = {
           project_id?: string
           resolved_at?: string | null
           status?: Database["public"]["Enums"]["snag_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          plan: string
+          razorpay_plan_id: string | null
+          razorpay_subscription_id: string | null
+          short_url: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan: string
+          razorpay_plan_id?: string | null
+          razorpay_subscription_id?: string | null
+          short_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan?: string
+          razorpay_plan_id?: string | null
+          razorpay_subscription_id?: string | null
+          short_url?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
         }
