@@ -255,19 +255,31 @@ export function VendorModal({ onClose, vendor, initialName, onCreated }: { onClo
         ifsc: form.ifsc || null,
         payment_terms: finalTerms || null,
         notes: form.notes || null,
+        flat_number: address.flat_number || null,
+        street: address.street || null,
+        city: address.city || null,
+        state: address.state || null,
+        country: address.country || null,
+        pincode: address.pincode || null,
+        latitude: address.latitude,
+        longitude: address.longitude,
       };
       if (editing) {
         const { error } = await supabase.from("vendors").update(payload).eq("id", vendor!.id);
         if (error) throw error;
+        return vendor!;
       } else {
-        const { error } = await supabase.from("vendors").insert({ user_id: user!.id, rating: 0, ...payload });
+        const { data: inserted, error } = await supabase.from("vendors").insert({ user_id: user!.id, rating: 0, ...payload }).select("*").single();
         if (error) throw error;
+        return inserted as DbVendor;
       }
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ["vendors"] });
+      qc.invalidateQueries({ queryKey: ["vendors-light"] });
       qc.invalidateQueries({ queryKey: ["user_options"] });
       toast.success(editing ? "Vendor updated" : "Vendor added");
+      if (!editing && created) onCreated?.(created);
       onClose();
     },
     onError: (e) => toast.error(e instanceof z.ZodError ? e.issues[0].message : e instanceof Error ? e.message : "Failed"),
