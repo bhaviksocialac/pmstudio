@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { WhatsAppGroupsSettings } from "@/components/WhatsAppGroupsSettings";
+import { BillingPanel } from "@/components/BillingPanel";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
