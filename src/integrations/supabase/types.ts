@@ -193,36 +193,63 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          city: string | null
+          country: string | null
           created_at: string
           email: string | null
+          flat_number: string | null
           id: string
+          latitude: number | null
+          longitude: number | null
           name: string
           notes: string | null
           phone: string | null
+          pincode: string | null
+          state: string | null
+          street: string | null
           updated_at: string
           user_id: string
+          whatsapp: string | null
         }
         Insert: {
           address?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           email?: string | null
+          flat_number?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name: string
           notes?: string | null
           phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
           user_id: string
+          whatsapp?: string | null
         }
         Update: {
           address?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           email?: string | null
+          flat_number?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           notes?: string | null
           phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
           user_id?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
@@ -783,11 +810,15 @@ export type Database = {
       projects: {
         Row: {
           budget: number
+          city: string | null
           client_id: string | null
           completion: number
+          country: string | null
           created_at: string
           description: string | null
+          end_date: string | null
           expected_handover: string | null
+          flat_number: string | null
           health: Database["public"]["Enums"]["project_health"]
           id: string
           latitude: number | null
@@ -795,19 +826,26 @@ export type Database = {
           longitude: number | null
           name: string
           phase: Database["public"]["Enums"]["project_phase"]
+          pincode: string | null
           spent: number
           start_date: string | null
+          state: string | null
+          street: string | null
           type: string
           updated_at: string
           user_id: string
         }
         Insert: {
           budget?: number
+          city?: string | null
           client_id?: string | null
           completion?: number
+          country?: string | null
           created_at?: string
           description?: string | null
+          end_date?: string | null
           expected_handover?: string | null
+          flat_number?: string | null
           health?: Database["public"]["Enums"]["project_health"]
           id?: string
           latitude?: number | null
@@ -815,19 +853,26 @@ export type Database = {
           longitude?: number | null
           name: string
           phase?: Database["public"]["Enums"]["project_phase"]
+          pincode?: string | null
           spent?: number
           start_date?: string | null
+          state?: string | null
+          street?: string | null
           type?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           budget?: number
+          city?: string | null
           client_id?: string | null
           completion?: number
+          country?: string | null
           created_at?: string
           description?: string | null
+          end_date?: string | null
           expected_handover?: string | null
+          flat_number?: string | null
           health?: Database["public"]["Enums"]["project_health"]
           id?: string
           latitude?: number | null
@@ -835,8 +880,11 @@ export type Database = {
           longitude?: number | null
           name?: string
           phase?: Database["public"]["Enums"]["project_phase"]
+          pincode?: string | null
           spent?: number
           start_date?: string | null
+          state?: string | null
+          street?: string | null
           type?: string
           updated_at?: string
           user_id?: string
