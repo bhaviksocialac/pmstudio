@@ -29,6 +29,8 @@ function FinancePage() {
   const maxRev = Math.max(...monthlyRevenue.map((m) => m.value));
   const createOrder = useServerFn(createInvoiceOrder);
   const [payingId, setPayingId] = useState<string | null>(null);
+
+  const { data: invoices = [], isLoading: invLoading } = useQuery({
     queryKey: ["finance", "invoices"],
     queryFn: async () => {
       const { data, error } = await supabase
