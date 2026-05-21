@@ -5,24 +5,32 @@ import { Sparkles, Send, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { parsePhaseUpdate } from "@/lib/phase-ai.functions";
 import { parseSiteEvent } from "@/lib/site-event.functions";
+import { interpretTaskUpdate } from "@/lib/task-ai.functions";
 
 export function AIPhaseBar({ projectId }: { projectId: string }) {
   const [text, setText] = useState("");
   const [lastReply, setLastReply] = useState<string | null>(null);
   const parseFn = useServerFn(parsePhaseUpdate);
   const eventFn = useServerFn(parseSiteEvent);
+  const taskFn = useServerFn(interpretTaskUpdate);
   const qc = useQueryClient();
 
   const submit = useMutation({
     mutationFn: async (message: string) => {
-      const [phaseRes, eventRes] = await Promise.all([
+      const [phaseRes, eventRes, taskRes] = await Promise.all([
         parseFn({ data: { projectId, message } }),
         eventFn({ data: { projectId, message } }),
+        taskFn({ data: { projectId, text: message } }).catch(() => null),
       ]);
-      return { phaseRes, eventRes };
+      return { phaseRes, eventRes, taskRes };
     },
-    onSuccess: ({ phaseRes, eventRes }) => {
-      const combined = [phaseRes.reply, eventRes.applied.length ? eventRes.reply : null].filter(Boolean).join(" ");
+    onSuccess: ({ phaseRes, eventRes, taskRes }) => {
+      const parts = [
+        taskRes?.matched ? taskRes.reply : null,
+        phaseRes.reply,
+        eventRes.applied.length ? eventRes.reply : null,
+      ].filter(Boolean);
+      const combined = parts.join(" ");
       setLastReply(combined || phaseRes.reply);
       setText("");
       toast.success(combined || phaseRes.reply);
@@ -33,6 +41,9 @@ export function AIPhaseBar({ projectId }: { projectId: string }) {
       qc.invalidateQueries({ queryKey: ["vendor_deliveries"] });
       qc.invalidateQueries({ queryKey: ["approvals"] });
       qc.invalidateQueries({ queryKey: ["project-activity", projectId] });
+      qc.invalidateQueries({ queryKey: ["all-tasks"] });
+      qc.invalidateQueries({ queryKey: ["project-tasks", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-tasks-grid", projectId] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });

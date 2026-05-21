@@ -18,26 +18,36 @@ type LineItem = {
   title: string;
   room?: string | null;
   amount?: number | null;
+  work_type?: string | null;
+  initial_status?: string | null;
 };
 
-const SYSTEM = `You read interior design BOQ (Bill of Quantities) and split each line into an actionable task under a phase and subcategory. Always reply with JSON only.`;
+const SYSTEM = `You read interior design BOQ (Bill of Quantities) and split each line into an actionable task. Always reply with JSON only.`;
+
+const ALLOWED_WORK_TYPES = ["Flooring","Tiling","Civil","Electrical","Painting","False Ceiling","Carpentry","Plumbing","HVAC","Other"];
+const ALLOWED_STATUSES = ["not_started","selection_pending","approval_pending","quotation_pending","order_placed","payment_pending","material_ordered","material_delivered","wip","done"];
 
 function buildPrompt(text: string | null) {
   return `Extract every BOQ line. For each line, return:
 - phase: one of Procurement, Execution, Finishing, Design, Survey, Handover
-- subcategory: short title under that phase (e.g. "False Ceiling", "Civil Materials", "Flooring Work", "Electrical Work", "Painting", "Carpentry", "Tiling", "Plumbing")
-- title: the task description (e.g. "False ceiling — Living Room")
-- room: room name if mentioned, else null
+- subcategory: short title under that phase (e.g. "False Ceiling", "Flooring Work", "Electrical Work", "Painting", "Carpentry", "Tiling", "Plumbing")
+- title: the task description (e.g. "Vitrified tiles — Living Room")
+- room: specific room name if mentioned (Living Room, Master Bedroom, Bedroom 2, Kitchen, Bathroom, Dining, Balcony). If the line says "all rooms" or "complete flat", use "All". Otherwise null.
 - amount: amount in INR (number) if specified, else null
+- work_type: one of ${ALLOWED_WORK_TYPES.join(", ")}
+- initial_status: pick the most plausible starting status:
+  * "selection_pending" for material purchases needing client choice (tiles, paints, fittings, fixtures)
+  * "quotation_pending" for labour/service items (wiring, installation, plumbing work)
+  * "not_started" if unclear
 
 Rules:
 - Material purchases → Procurement.
 - On-site work (civil, plumbing, electrical, tiling, carpentry installation) → Execution.
 - Final finishing (paint, polish, false ceiling, wallpaper) → Finishing.
-- Keep titles concise (<80 chars). Include room if known.
+- Keep titles concise (<80 chars). Include room name if known.
 - Cap output at 60 items.
 
-Return ONLY: {"items":[{"phase":"...","subcategory":"...","title":"...","room":null,"amount":null}]}
+Return ONLY: {"items":[{"phase":"...","subcategory":"...","title":"...","room":null,"amount":null,"work_type":"...","initial_status":"..."}]}
 
 ${text ? `Document text:\n${text}` : "Document is attached."}`;
 }
@@ -58,14 +68,19 @@ async function callGateway(messages: unknown[]): Promise<LineItem[]> {
   const parsed = JSON.parse(raw);
   const items = Array.isArray(parsed.items) ? parsed.items : [];
   const allowed = new Set(["Procurement", "Execution", "Finishing", "Design", "Survey", "Handover"]);
+  const wtSet = new Set(ALLOWED_WORK_TYPES);
+  const stSet = new Set(ALLOWED_STATUSES);
   return items.slice(0, 60).map((i: any) => ({
     phase: allowed.has(i.phase) ? i.phase : "Execution",
     subcategory: String(i.subcategory ?? "Other").slice(0, 80),
     title: String(i.title ?? "Untitled").slice(0, 120),
     room: i.room ? String(i.room).slice(0, 60) : null,
     amount: typeof i.amount === "number" ? i.amount : null,
+    work_type: wtSet.has(i.work_type) ? i.work_type : "Other",
+    initial_status: stSet.has(i.initial_status) ? i.initial_status : "not_started",
   })) as LineItem[];
 }
+
 
 export const parseBoqChecklist = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -133,15 +148,16 @@ export const parseBoqChecklist = createServerFn({ method: "POST" })
       if (!error) subcategoriesAdded = toCreate.length;
     }
 
-    // Create tasks. Encode "[Priority] [Subcategory] title" so PhaseSubcategoriesPanel can group them.
+    // Create tasks with structured fields (work_type, initial_status, area).
     const taskRows = items.map((it) => ({
       user_id: userId,
       project_id: projectId,
-      title: `[Medium] [${it.subcategory}] ${it.title}`,
+      title: it.title,
       description: it.amount ? `BOQ amount: ₹${it.amount.toLocaleString("en-IN")}` : null,
-      status: "todo",
+      status: it.initial_status ?? "not_started",
       priority: "Medium",
       area: it.room ?? null,
+      work_type: it.work_type ?? "Other",
       done: false,
     }));
     let created = 0;

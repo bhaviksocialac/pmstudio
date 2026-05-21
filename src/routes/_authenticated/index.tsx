@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { PendingApprovals } from "@/components/PendingApprovals";
 import { PhotoStaging } from "@/components/PhotoStaging";
+import { TodayFocus } from "@/components/tasks/TodayFocus";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -174,6 +175,7 @@ function Dashboard() {
           <StatCard icon={AlertTriangle} label="Need Attention" value={`${attention}`} accent="#c4685a" />
         </section>
 
+        <TodayFocus />
         <PhotoStaging />
         <PendingApprovals />
 
