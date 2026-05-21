@@ -4,7 +4,7 @@ import { FileText, CheckCircle2, IndianRupee, Truck, ClipboardCheck, Flag, ListC
 
 type Event = {
   ts: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   label: string;
   tone: string;
 };
