@@ -105,7 +105,7 @@ function ProjectDetail() {
   return <ProjectDetailView project={project} />;
 }
 
-type Tab = "overview" | "timeline" | "phases" | "snags" | "attendance" | "change-orders" | "photos" | "vendors" | "finance" | "documents";
+type Tab = "overview" | "timeline" | "phases" | "snags" | "attendance" | "change-orders" | "reports" | "photos" | "vendors" | "finance" | "documents";
 const tabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "timeline", label: "Timeline" },
@@ -113,6 +113,7 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "snags", label: "Snags" },
   { id: "attendance", label: "Attendance" },
   { id: "change-orders", label: "Change Orders" },
+  { id: "reports", label: "Reports" },
   { id: "photos", label: "Photos" },
   { id: "vendors", label: "Vendors" },
   { id: "finance", label: "Finance" },
