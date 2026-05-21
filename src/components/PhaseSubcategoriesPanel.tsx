@@ -25,6 +25,7 @@ const statusColor: Record<string, string> = {
   done: "#7a9e8a",
 };
 
+type ChecklistItem = { label: string; done: boolean };
 type Sub = {
   id: string;
   name: string;
@@ -33,7 +34,10 @@ type Sub = {
   start_date: string | null;
   end_date: string | null;
   status: string;
+  checklist: ChecklistItem[] | null;
 };
+type SubVendor = { id: string; subcategory_id: string; vendor_id: string; scope: string | null; amount: number };
+
 
 export function PhaseSubcategoriesPanel({
   projectId,
