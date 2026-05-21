@@ -21,6 +21,7 @@ export const Route = createFileRoute("/_authenticated/projects/")({
 
 function ProjectsPage() {
   const [query, setQuery] = useState("");
+  const [view, setView] = useState<"grid" | "list">("grid");
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
