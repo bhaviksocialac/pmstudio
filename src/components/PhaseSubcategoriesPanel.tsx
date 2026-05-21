@@ -83,7 +83,7 @@ export function PhaseSubcategoriesPanel({
         .from("phase_subcategory_vendors" as any)
         .select("*")
         .in("subcategory_id", subIds);
-      return (data ?? []) as SubVendor[];
+      return ((data ?? []) as unknown) as SubVendor[];
     },
   });
 
