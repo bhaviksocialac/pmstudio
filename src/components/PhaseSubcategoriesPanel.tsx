@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { generateSubcategoryChecklist } from "@/lib/checklist-ai.functions";
+import { VendorAutocomplete } from "@/components/VendorAutocomplete";
+import { VendorModal } from "@/routes/_authenticated/vendors";
+import type { DbVendor } from "@/lib/db-types";
 
 
 const PROCUREMENT_DEFAULTS = [
