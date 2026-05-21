@@ -1153,6 +1153,8 @@ export type Database = {
       }
       tasks: {
         Row: {
+          action_label: string | null
+          action_required: boolean
           area: string | null
           assignee: string | null
           attachments: Json
@@ -1173,8 +1175,12 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          vendor_id: string | null
+          work_type: string | null
         }
         Insert: {
+          action_label?: string | null
+          action_required?: boolean
           area?: string | null
           assignee?: string | null
           attachments?: Json
@@ -1195,8 +1201,12 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          vendor_id?: string | null
+          work_type?: string | null
         }
         Update: {
+          action_label?: string | null
+          action_required?: boolean
           area?: string | null
           assignee?: string | null
           attachments?: Json
@@ -1217,6 +1227,8 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          vendor_id?: string | null
+          work_type?: string | null
         }
         Relationships: [
           {
