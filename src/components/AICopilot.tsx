@@ -15,6 +15,24 @@ type Action =
   | { kind: "draft_message"; recipient: string; channel: "whatsapp" | "email"; body: string }
   | { kind: "update_status"; entity: string; target: string; status: string };
 
+function describeAction(a: Action): string {
+  if (a.kind === "create_task") {
+    const parts = [`Create task "${a.title}"`];
+    if (a.project_name) parts.push(`for ${a.project_name}`);
+    if (a.assignee) parts.push(`assigned to ${a.assignee}`);
+    if (a.due_date) parts.push(`due ${a.due_date}`);
+    if (a.priority) parts.push(`(${a.priority} priority)`);
+    return parts.join(" ") + ".";
+  }
+  if (a.kind === "draft_message") {
+    return `Draft a ${a.channel} message to ${a.recipient}: "${a.body}"`;
+  }
+  if (a.kind === "update_status") {
+    return `Update ${a.entity} "${a.target}" to status: ${a.status}.`;
+  }
+  return "";
+}
+
 function suggestedPrompts(): string[] {
   const hour = new Date().getHours();
   const base = [
@@ -176,7 +194,7 @@ export function AICopilot() {
               {pendingAction && (
                 <div className="rounded-[12px] border-2 border-[#c17f5a] bg-[#fff7eb] p-3 space-y-2">
                   <div className="text-[10px] uppercase tracking-wider text-[#c17f5a] font-medium">Confirm action</div>
-                  <pre className="text-xs whitespace-pre-wrap font-mono text-foreground">{JSON.stringify(pendingAction, null, 2)}</pre>
+                  <p className="text-sm text-foreground leading-relaxed">{describeAction(pendingAction)}</p>
                   <div className="flex gap-2">
                     <button onClick={executeAction}
                       className="h-9 px-4 rounded-[6px] bg-[#7a9e8a] text-white text-xs font-medium inline-flex items-center gap-1.5 hover:brightness-110">
