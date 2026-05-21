@@ -4,6 +4,8 @@ import { Check, Lock, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useServerFn } from "@tanstack/react-start";
+import { sendInvoiceEmail, sendMilestoneEmail } from "@/lib/emails.functions";
 
 // Sequential execution phases reusing existing phase_subcategories (phase='Execution').
 const PHASE_DEFS: { name: string; tasks: string[]; budgetPct: number }[] = [
@@ -90,6 +92,9 @@ export function PhaseChecklistTab({ projectId, projectBudget }: { projectId: str
     onSuccess: () => qc.invalidateQueries({ queryKey: ["exec-checklists", projectId] }),
   });
 
+  const sendInvoiceEmailFn = useServerFn(sendInvoiceEmail);
+  const sendMilestoneEmailFn = useServerFn(sendMilestoneEmail);
+
   const signOff = useMutation({
     mutationFn: async ({ id, name, amount }: { id: string; name: string; amount: number }) => {
       const today = new Date().toISOString().slice(0, 10);
@@ -113,6 +118,13 @@ export function PhaseChecklistTab({ projectId, projectBudget }: { projectId: str
       qc.invalidateQueries({ queryKey: ["invoices", projectId] });
       toast.success(`${name} signed off. Invoice draft created for ₹${(amount / 100000).toFixed(2)}L.`);
       setConfirming(null);
+      const milestone = `${name} complete`;
+      sendMilestoneEmailFn({ data: { projectId, milestone } }).catch((e: unknown) =>
+        console.warn("milestone email failed", e),
+      );
+      sendInvoiceEmailFn({ data: { projectId, milestone, amount } }).catch((e: unknown) =>
+        console.warn("invoice email failed", e),
+      );
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });

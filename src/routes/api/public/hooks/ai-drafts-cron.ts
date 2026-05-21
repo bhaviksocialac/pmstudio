@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { sendWeeklySummaryAdmin } from "@/lib/emails.functions";
 
 export const Route = createFileRoute("/api/public/hooks/ai-drafts-cron")({
   server: {
@@ -31,6 +32,8 @@ export const Route = createFileRoute("/api/public/hooks/ai-drafts-cron")({
               subject: `Weekly update — ${p.name}`, body, meta: { auto: true },
             });
             stats.weekly++;
+            // Also send weekly summary email (silent if no client email)
+            sendWeeklySummaryAdmin(p.id).catch((e) => console.warn("weekly summary email failed", e));
           }
         }
 
