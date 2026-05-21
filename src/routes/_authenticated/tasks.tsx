@@ -271,8 +271,8 @@ function TaskTable({
               const pc = PRIORITY_COLORS[t.priority] ?? PRIORITY_COLORS.Medium;
               const projName = t.project_id ? projectMap.get(t.project_id) : null;
               return (
-                <>
-                  <tr key={t.id} className="border-b border-border last:border-b-0 hover:bg-muted/20 transition-colors">
+                <FragmentRow key={t.id}>
+                  <tr className="border-b border-border last:border-b-0 hover:bg-muted/20 transition-colors">
                     <Td>
                       {hasDetail ? (
                         <button onClick={() => toggle(t.id)} className="h-7 w-7 rounded-[6px] hover:bg-muted flex items-center justify-center">
