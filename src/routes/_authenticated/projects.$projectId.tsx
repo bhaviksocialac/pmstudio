@@ -425,7 +425,7 @@ function OverviewTab({ project }: { project: Project }) {
             <p className="text-sm text-muted-foreground mb-5">This will advance the project to the next phase and draft an invoice for {PHASE_INVOICE_PCT[confirmPhase] ?? 10}% of the budget.</p>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setConfirmPhase(null)} className="h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">Cancel</button>
-              <button onClick={() => markPhaseComplete.mutate()} disabled={markPhaseComplete.isPending} className="h-10 px-5 rounded-[6px] bg-[#7a9e8a] text-white text-sm font-medium hover:brightness-110 inline-flex items-center gap-2 disabled:opacity-60">
+              <button onClick={() => markPhaseComplete.mutate(confirmPhase)} disabled={markPhaseComplete.isPending} className="h-10 px-5 rounded-[6px] bg-[#7a9e8a] text-white text-sm font-medium hover:brightness-110 inline-flex items-center gap-2 disabled:opacity-60">
                 {markPhaseComplete.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 Confirm
               </button>
