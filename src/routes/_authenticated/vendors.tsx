@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import type { DbVendor } from "@/lib/db-types";
 import { extractVendorFromDocument } from "@/lib/vendor-doc.functions";
+import { AddressFields, emptyAddress, type AddressValue } from "@/components/AddressFields";
 
 export const Route = createFileRoute("/_authenticated/vendors")({
   head: () => ({ meta: [{ title: "Vendors — PMStudio" }, { name: "description", content: "All vendors with categories and contact details." }] }),
