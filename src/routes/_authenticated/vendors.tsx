@@ -346,6 +346,10 @@ export function VendorModal({ onClose, vendor, initialName, onCreated }: { onClo
               <input className={`${ic} mt-2`} value={form.customTerms} onChange={(e) => setF("customTerms", e.target.value)} placeholder="Type custom terms…" />
             )}
           </F>
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-2">Address</div>
+            <AddressFields value={address} onChange={setAddress} />
+          </div>
           <F label="Notes"><textarea rows={3} className={`${ic} h-auto py-2`} value={form.notes} onChange={(e) => setF("notes", e.target.value)} /></F>
         </div>
         <div className="px-6 py-4 border-t border-border flex justify-end gap-2 flex-shrink-0">
