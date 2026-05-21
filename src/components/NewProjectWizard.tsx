@@ -17,6 +17,7 @@ import {
 } from "@/lib/db-types";
 import { parseBoq } from "@/lib/boq.functions";
 import { sendWelcomeEmail } from "@/lib/emails.functions";
+import { AddressFields, emptyAddress, addressToString, type AddressValue } from "@/components/AddressFields";
 
 const PROPERTY_TYPES = [
   { value: "residential_apartment", label: "Residential Apartment" },
@@ -36,29 +37,44 @@ function labelForType(value: string) {
     ?? (value === "residential" ? "Residential Apartment" : value === "commercial" ? "Commercial Office" : "Other");
 }
 
-const getBasicsSchema = () =>
-  z.object({
-    name: z.string().trim().min(1, "Name is required").max(120),
-    location: z.string().trim().max(200).optional(),
-    phase: z.enum(PHASES),
-    budget: z.coerce.number().min(0).max(100000),
-    type: z.string().refine((v) => PROPERTY_VALUES.includes(v), "Invalid property type"),
-    start_date: z.string().min(1, "Start date is required"),
-    client_name: z.string().trim().max(120).optional(),
-    client_email: z.string().trim().email().optional().or(z.literal("")),
-  });
+const projectDetailsSchema = z.object({
+  name: z.string().trim().min(1, "Project name is required").max(120),
+  phase: z.enum(PHASES),
+  type: z.string().refine((v) => PROPERTY_VALUES.includes(v), "Invalid property type"),
+});
 
-type Step = 1 | 2 | 3 | 4;
+const clientDetailsSchema = z.object({
+  client_name: z.string().trim().max(120).optional(),
+  client_email: z.string().trim().email("Invalid email").optional().or(z.literal("")),
+  client_phone: z.string().trim().max(40).optional(),
+  client_whatsapp: z.string().trim().max(40).optional(),
+});
 
-interface Basics {
+const timelineSchema = z.object({
+  budget: z.coerce.number().min(0).max(100000),
+  start_date: z.string().min(1, "Start date is required"),
+  end_date: z.string().min(1, "End date is required"),
+});
+
+type Step = 1 | 2 | 3 | 4 | 5;
+
+interface ProjectDetails {
   name: string;
-  location: string;
   phase: Phase;
-  budget: string;
   type: string;
+  address: AddressValue;
+}
+interface ClientDetails {
+  name: string;
+  email: string;
+  phone: string;
+  whatsapp: string;
+  address: AddressValue;
+}
+interface Timeline {
+  budget: string;
   start_date: string;
-  client_name: string;
-  client_email: string;
+  end_date: string;
 }
 
 interface BudgetRow {
@@ -80,15 +96,25 @@ export function NewProjectWizard({
   const isEdit = Boolean(editProjectId);
   const [step, setStep] = useState<Step>(1);
 
-  const [basics, setBasics] = useState<Basics>({
+  const [project, setProject] = useState<ProjectDetails>({
     name: "",
-    location: "",
     phase: "Survey",
-    budget: "",
     type: "residential_apartment",
-    start_date: new Date().toISOString().slice(0, 10),
-    client_name: "",
-    client_email: "",
+    address: { ...emptyAddress },
+  });
+  const [client, setClient] = useState<ClientDetails>({
+    name: "",
+    email: "",
+    phone: "",
+    whatsapp: "",
+    address: { ...emptyAddress },
+  });
+  const today = new Date().toISOString().slice(0, 10);
+  const defaultEnd = (() => { const d = new Date(); d.setMonth(d.getMonth() + 4); return d.toISOString().slice(0, 10); })();
+  const [timeline, setTimeline] = useState<Timeline>({
+    budget: "",
+    start_date: today,
+    end_date: defaultEnd,
   });
 
   const [roomsText, setRoomsText] = useState("Living Room, Master Bedroom, Kitchen, Bathrooms");
@@ -112,7 +138,7 @@ export function NewProjectWizard({
     enabled: !!editProjectId,
     queryFn: async () => {
       const [p, b, r] = await Promise.all([
-        supabase.from("projects").select("*").eq("id", editProjectId!).maybeSingle(),
+        supabase.from("projects").select("*, clients(*)").eq("id", editProjectId!).maybeSingle(),
         supabase.from("budget_lines").select("*").eq("project_id", editProjectId!).order("order_index"),
         supabase.from("project_rooms").select("*").eq("project_id", editProjectId!).order("order_index"),
       ]);
@@ -125,17 +151,46 @@ export function NewProjectWizard({
 
   useEffect(() => {
     if (!editLoad.data?.project) return;
-    const p = editLoad.data.project;
-    setBasics({
-      name: p.name ?? "",
-      location: p.location ?? "",
-      phase: (p.phase as Phase) ?? "Survey",
-      budget: String(p.budget ?? ""),
-      type: PROPERTY_VALUES.includes(p.type) ? p.type : "residential_apartment",
-      start_date: p.start_date ?? new Date().toISOString().slice(0, 10),
-      client_name: "",
-      client_email: "",
+    const p = editLoad.data.project as Record<string, unknown> & { clients?: Record<string, unknown> | null };
+    setProject({
+      name: (p.name as string) ?? "",
+      phase: ((p.phase as Phase) ?? "Survey"),
+      type: PROPERTY_VALUES.includes(p.type as string) ? (p.type as string) : "residential_apartment",
+      address: {
+        flat_number: (p.flat_number as string) ?? "",
+        street: (p.street as string) ?? (p.location as string) ?? "",
+        city: (p.city as string) ?? "",
+        state: (p.state as string) ?? "",
+        country: (p.country as string) ?? "",
+        pincode: (p.pincode as string) ?? "",
+        latitude: (p.latitude as number) ?? null,
+        longitude: (p.longitude as number) ?? null,
+      },
     });
+    setTimeline({
+      budget: String(p.budget ?? ""),
+      start_date: (p.start_date as string) ?? today,
+      end_date: (p.end_date as string) ?? (p.expected_handover as string) ?? defaultEnd,
+    });
+    const c = p.clients;
+    if (c) {
+      setClient({
+        name: (c.name as string) ?? "",
+        email: (c.email as string) ?? "",
+        phone: (c.phone as string) ?? "",
+        whatsapp: (c.whatsapp as string) ?? "",
+        address: {
+          flat_number: (c.flat_number as string) ?? "",
+          street: (c.street as string) ?? (c.address as string) ?? "",
+          city: (c.city as string) ?? "",
+          state: (c.state as string) ?? "",
+          country: (c.country as string) ?? "",
+          pincode: (c.pincode as string) ?? "",
+          latitude: (c.latitude as number) ?? null,
+          longitude: (c.longitude as number) ?? null,
+        },
+      });
+    }
     if (editLoad.data.budget.length) {
       setBudgetRows(
         editLoad.data.budget.map((b) => ({
@@ -148,9 +203,10 @@ export function NewProjectWizard({
     if (editLoad.data.rooms.length) {
       setRoomsText(editLoad.data.rooms.map((r) => r.name).join(", "));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editLoad.data]);
 
-  const budgetTotal = Number(basics.budget) || 0;
+  const budgetTotal = Number(timeline.budget) || 0;
 
   const syncBudgetFromTotal = (total: number) => {
     setBudgetRows((rows) => rows.map((r) => ({ ...r, amount: +(total * r.percentage / 100).toFixed(2) })));
@@ -176,7 +232,7 @@ export function NewProjectWizard({
       });
 
       if (result.total_budget_lakhs > 0) {
-        setBasics((b) => ({ ...b, budget: String(result.total_budget_lakhs) }));
+        setTimeline((t) => ({ ...t, budget: String(result.total_budget_lakhs) }));
       }
       if (result.breakdown.length > 0) {
         const total = result.total_budget_lakhs || result.breakdown.reduce((s: number, r: BudgetRow) => s + r.amount, 0);
@@ -200,27 +256,94 @@ export function NewProjectWizard({
     }
   };
 
+  // Find an existing client by email (preferred) or by exact name to keep records in sync.
+  const upsertClient = async (): Promise<string | null> => {
+    const name = client.name.trim();
+    if (!name) return null;
+    const email = client.email.trim();
+    const payload: Record<string, unknown> = {
+      name,
+      email: email || null,
+      phone: client.phone.trim() || null,
+      whatsapp: client.whatsapp.trim() || null,
+      flat_number: client.address.flat_number || null,
+      street: client.address.street || null,
+      city: client.address.city || null,
+      state: client.address.state || null,
+      country: client.address.country || null,
+      pincode: client.address.pincode || null,
+      latitude: client.address.latitude,
+      longitude: client.address.longitude,
+      address: addressToString(client.address) || null,
+    };
+
+    // Try match by email first, then by name (scoped to current user via RLS).
+    let existing: { id: string } | null = null;
+    if (email) {
+      const { data } = await supabase.from("clients").select("id").eq("email", email).maybeSingle();
+      existing = data;
+    }
+    if (!existing) {
+      const { data } = await supabase.from("clients").select("id").eq("name", name).maybeSingle();
+      existing = data;
+    }
+
+    if (existing) {
+      const { error } = await supabase.from("clients").update(payload).eq("id", existing.id);
+      if (error) throw error;
+      return existing.id;
+    }
+    const { data: created, error: cErr } = await supabase
+      .from("clients")
+      .insert({ user_id: user!.id, ...payload })
+      .select("id")
+      .single();
+    if (cErr) throw cErr;
+    return created.id;
+  };
+
   const save = useMutation({
     mutationFn: async () => {
-      const parsed = getBasicsSchema().parse(basics);
+      const pd = projectDetailsSchema.parse(project);
+      const cd = clientDetailsSchema.parse({
+        client_name: client.name,
+        client_email: client.email,
+        client_phone: client.phone,
+        client_whatsapp: client.whatsapp,
+      });
+      const tl = timelineSchema.parse(timeline);
       const roomNames = roomsText.split(",").map((s) => s.trim()).filter(Boolean);
+      const projectLocation = addressToString(project.address);
+
+      const projectPayload = {
+        name: pd.name,
+        phase: pd.phase,
+        type: pd.type,
+        budget: tl.budget,
+        start_date: tl.start_date,
+        end_date: tl.end_date,
+        expected_handover: tl.end_date,
+        location: projectLocation || null,
+        flat_number: project.address.flat_number || null,
+        street: project.address.street || null,
+        city: project.address.city || null,
+        state: project.address.state || null,
+        country: project.address.country || null,
+        pincode: project.address.pincode || null,
+        latitude: project.address.latitude,
+        longitude: project.address.longitude,
+      };
+
+      // Upsert client first so we have the id for both create and edit paths.
+      const clientId = await upsertClient();
 
       if (isEdit && editProjectId) {
-        // Update path
         const { error: uErr } = await supabase
           .from("projects")
-          .update({
-            name: parsed.name,
-            location: parsed.location || null,
-            phase: parsed.phase,
-            budget: parsed.budget,
-            type: parsed.type,
-            start_date: parsed.start_date,
-          })
+          .update({ ...projectPayload, client_id: clientId })
           .eq("id", editProjectId);
         if (uErr) throw uErr;
 
-        // Replace budget lines
         await supabase.from("budget_lines").delete().eq("project_id", editProjectId);
         if (budgetRows.length) {
           const { error: bErr } = await supabase.from("budget_lines").insert(
@@ -236,7 +359,6 @@ export function NewProjectWizard({
           if (bErr) throw bErr;
         }
 
-        // Replace rooms (and their scope items)
         await supabase.from("room_scope_items").delete().eq("project_id", editProjectId);
         await supabase.from("project_rooms").delete().eq("project_id", editProjectId);
         if (roomNames.length) {
@@ -254,26 +376,20 @@ export function NewProjectWizard({
       }
 
       // Create path
-      const startDate = new Date(parsed.start_date);
+      const startDate = new Date(tl.start_date);
       const schedule = computePhaseSchedule(startDate);
-      const handover = schedule[schedule.length - 1].end;
 
-      const { data: project, error: pErr } = await supabase
+      const { data: createdProject, error: pErr } = await supabase
         .from("projects")
         .insert({
           user_id: user!.id,
-          name: parsed.name,
-          location: parsed.location || null,
-          phase: parsed.phase,
-          budget: parsed.budget,
-          type: parsed.type,
-          start_date: parsed.start_date,
-          expected_handover: handover.toISOString().slice(0, 10),
+          client_id: clientId,
+          ...projectPayload,
         })
         .select()
         .single();
       if (pErr) throw pErr;
-      const projectId = project.id;
+      const projectId = createdProject.id;
 
       const { error: phErr } = await supabase.from("project_phases").insert(
         schedule.map((s, i) => ({
@@ -314,22 +430,8 @@ export function NewProjectWizard({
         if (rErr) throw rErr;
       }
 
-      let clientId: string | null = null;
-      const clientName = parsed.client_name?.trim();
-      const clientEmail = parsed.client_email?.trim();
-      if (clientName) {
-        const { data: client, error: cErr } = await supabase
-          .from("clients")
-          .insert({ user_id: user!.id, name: clientName, email: clientEmail || null })
-          .select()
-          .single();
-        if (cErr) throw cErr;
-        clientId = client.id;
-        await supabase.from("projects").update({ client_id: clientId }).eq("id", projectId);
-      }
-
       const portal = `${window.location.origin}/portal/${projectId}`;
-      const draft = `Hi ${clientName || "there"}, your project ${parsed.name} is now set up on PMStudio. You can track progress, approve designs, and view updates anytime at ${portal}.`;
+      const draft = `Hi ${client.name || "there"}, your project ${pd.name} is now set up on PMStudio. You can track progress, approve designs, and view updates anytime at ${portal}.`;
       let msgId: string | null = null;
       if (clientId) {
         const { data: msg } = await supabase
@@ -347,8 +449,7 @@ export function NewProjectWizard({
         msgId = msg?.id ?? null;
       }
 
-      // Fire-and-forget welcome email (silent if no client email)
-      if (clientId && clientEmail) {
+      if (clientId && cd.client_email) {
         sendWelcomeEmailFn({ data: { projectId } }).catch((e: unknown) => console.warn("welcome email failed", e));
       }
 
@@ -356,6 +457,7 @@ export function NewProjectWizard({
     },
     onSuccess: ({ projectId, draft, msgId, edited }) => {
       qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["clients"] });
       qc.invalidateQueries({ queryKey: ["project", projectId] });
       if (edited) {
         toast.success("Project updated");
@@ -365,7 +467,7 @@ export function NewProjectWizard({
       setCreatedProjectId(projectId);
       setWelcomeMessage(draft);
       setWelcomeMessageId(msgId);
-      setStep(4);
+      setStep(5);
     },
     onError: (e) => {
       toast.error(e instanceof z.ZodError ? e.issues[0].message : e instanceof Error ? e.message : "Failed");
@@ -375,7 +477,6 @@ export function NewProjectWizard({
   const deleteProject = useMutation({
     mutationFn: async () => {
       if (!editProjectId) return;
-      // Cascade delete dependent tables
       const tables = [
         "tasks", "project_phases", "budget_lines", "room_scope_items",
         "project_rooms", "photos", "invoices", "vendor_deliveries",
@@ -396,6 +497,26 @@ export function NewProjectWizard({
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to delete"),
   });
 
+  const goNext = () => {
+    if (step === 1) {
+      const r = projectDetailsSchema.safeParse(project);
+      if (!r.success) { toast.error(r.error.issues[0].message); return; }
+    }
+    if (step === 2) {
+      const r = clientDetailsSchema.safeParse({
+        client_name: client.name, client_email: client.email,
+        client_phone: client.phone, client_whatsapp: client.whatsapp,
+      });
+      if (!r.success) { toast.error(r.error.issues[0].message); return; }
+    }
+    if (step === 3) {
+      const r = timelineSchema.safeParse(timeline);
+      if (!r.success) { toast.error(r.error.issues[0].message); return; }
+      if (!boqUsed) syncBudgetFromTotal(Number(timeline.budget) || 0);
+    }
+    setStep((s) => (s + 1) as Step);
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div
@@ -405,17 +526,22 @@ export function NewProjectWizard({
         <div className="px-6 py-5 border-b border-border flex items-center justify-between flex-shrink-0">
           <div>
             <h3 className="font-display text-2xl">
-              {step === 4 ? "Project Created" : isEdit ? "Edit Project" : "New Project"}
+              {step === 5 ? "Project Created" : isEdit ? "Edit Project" : "New Project"}
             </h3>
-            {step !== 4 && (
-              <div className="flex gap-1.5 mt-2">
-                {[1, 2, 3].map((n) => (
-                  <span
-                    key={n}
-                    className="h-1 w-10 rounded-full"
-                    style={{ background: step >= (n as Step) ? "#c17f5a" : "var(--muted, #eee)" }}
-                  />
-                ))}
+            {step !== 5 && (
+              <div className="flex items-center gap-3 mt-2">
+                <div className="flex gap-1.5">
+                  {[1, 2, 3, 4].map((n) => (
+                    <span
+                      key={n}
+                      className="h-1 w-8 rounded-full"
+                      style={{ background: step >= (n as Step) ? "#c17f5a" : "var(--muted, #eee)" }}
+                    />
+                  ))}
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  {step === 1 ? "Project details" : step === 2 ? "Client details" : step === 3 ? "Budget & timeline" : "Scope & BOQ"}
+                </span>
               </div>
             )}
           </div>
@@ -425,23 +551,24 @@ export function NewProjectWizard({
         </div>
 
         <div className="p-6 overflow-y-auto flex-1">
-          {step === 1 && <BasicsStep basics={basics} setBasics={setBasics} onTotalChange={syncBudgetFromTotal} />}
-          {step === 2 && (
-            <ScopeStep
+          {step === 1 && <ProjectStep project={project} setProject={setProject} />}
+          {step === 2 && <ClientStep client={client} setClient={setClient} />}
+          {step === 3 && <TimelineStep timeline={timeline} setTimeline={setTimeline} />}
+          {step === 4 && (
+            <BudgetScopeStep
               roomsText={roomsText}
               setRoomsText={setRoomsText}
               onUpload={handleBoqUpload}
               parsing={parsingBoq}
               boqFileName={boqFileName}
               boqUsed={boqUsed}
-              clearBoq={() => {
-                setBoqUsed(false);
-                setBoqFileName(null);
-              }}
+              clearBoq={() => { setBoqUsed(false); setBoqFileName(null); }}
+              total={budgetTotal}
+              rows={budgetRows}
+              setRows={setBudgetRows}
             />
           )}
-          {step === 3 && <BudgetStep total={budgetTotal} rows={budgetRows} setRows={setBudgetRows} boqUsed={boqUsed} />}
-          {step === 4 && createdProjectId && (
+          {step === 5 && createdProjectId && (
             <SuccessStep
               portalLink={portalLink}
               welcomeMessage={welcomeMessage}
@@ -455,7 +582,7 @@ export function NewProjectWizard({
           )}
         </div>
 
-        {step !== 4 && (
+        {step !== 5 && (
           <div className="px-6 py-4 border-t border-border flex flex-col gap-3 flex-shrink-0">
             <div className="flex justify-between gap-2">
               {step > 1 ? (
@@ -466,16 +593,9 @@ export function NewProjectWizard({
                   <ChevronLeft className="h-4 w-4" /> Back
                 </button>
               ) : <span />}
-              {step < 3 ? (
+              {step < 4 ? (
                 <button
-                  onClick={() => {
-                    if (step === 1) {
-                      const r = getBasicsSchema().safeParse(basics);
-                      if (!r.success) { toast.error(r.error.issues[0].message); return; }
-                      if (!boqUsed) syncBudgetFromTotal(Number(basics.budget) || 0);
-                    }
-                    setStep((s) => (s + 1) as Step);
-                  }}
+                  onClick={goNext}
                   className="h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 inline-flex items-center gap-1.5"
                 >
                   Next <ChevronRight className="h-4 w-4" />
@@ -531,70 +651,109 @@ export function NewProjectWizard({
   );
 }
 
-/* ---------------- Step 1: Basics ---------------- */
-function BasicsStep({
-  basics,
-  setBasics,
-  onTotalChange,
+/* ---------------- Step 1: Project Details ---------------- */
+function ProjectStep({
+  project,
+  setProject,
 }: {
-  basics: Basics;
-  setBasics: (b: Basics) => void;
-  onTotalChange: (t: number) => void;
+  project: ProjectDetails;
+  setProject: (p: ProjectDetails) => void;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <Field label="Project name" required>
-        <input className={inputCls} value={basics.name} onChange={(e) => setBasics({ ...basics, name: e.target.value })} placeholder="Banyan House" />
-      </Field>
-      <Field label="Location">
-        <input className={inputCls} value={basics.location} onChange={(e) => setBasics({ ...basics, location: e.target.value })} placeholder="Bandra, Mumbai" />
+        <input className={inputCls} value={project.name} onChange={(e) => setProject({ ...project, name: e.target.value })} placeholder="Banyan House" />
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Phase">
-          <select className={inputCls} value={basics.phase} onChange={(e) => setBasics({ ...basics, phase: e.target.value as Phase })}>
+          <select className={inputCls} value={project.phase} onChange={(e) => setProject({ ...project, phase: e.target.value as Phase })}>
             {PHASES.map((p) => <option key={p}>{p}</option>)}
           </select>
         </Field>
         <Field label="Property type">
-          <select className={inputCls} value={basics.type} onChange={(e) => setBasics({ ...basics, type: e.target.value })}>
+          <select className={inputCls} value={project.type} onChange={(e) => setProject({ ...project, type: e.target.value })}>
             {PROPERTY_TYPES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </Field>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Start date" required>
-          <input type="date" className={inputCls} value={basics.start_date} onChange={(e) => setBasics({ ...basics, start_date: e.target.value })} />
-        </Field>
-        <Field label="Budget (in lakhs)">
-          <input
-            type="number"
-            className={inputCls}
-            value={basics.budget}
-            onChange={(e) => {
-              setBasics({ ...basics, budget: e.target.value });
-              onTotalChange(Number(e.target.value) || 0);
-            }}
-            placeholder="50"
-          />
-        </Field>
-      </div>
       <div className="pt-2 border-t border-border">
-        <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-3">Client (optional)</div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Client name">
-            <input className={inputCls} value={basics.client_name} onChange={(e) => setBasics({ ...basics, client_name: e.target.value })} placeholder="Riya Mehta" />
-          </Field>
-          <Field label="Client email">
-            <input type="email" className={inputCls} value={basics.client_email} onChange={(e) => setBasics({ ...basics, client_email: e.target.value })} placeholder="riya@email.com" />
-          </Field>
-        </div>
+        <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-3">Site address</div>
+        <AddressFields value={project.address} onChange={(a) => setProject({ ...project, address: a })} />
       </div>
     </div>
   );
 }
 
-/* ---------------- Step 2: Scope & BOQ ---------------- */
-function ScopeStep({
+/* ---------------- Step 2: Client Details ---------------- */
+function ClientStep({
+  client,
+  setClient,
+}: {
+  client: ClientDetails;
+  setClient: (c: ClientDetails) => void;
+}) {
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Full name">
+          <input className={inputCls} value={client.name} onChange={(e) => setClient({ ...client, name: e.target.value })} placeholder="Riya Mehta" />
+        </Field>
+        <Field label="Email">
+          <input type="email" className={inputCls} value={client.email} onChange={(e) => setClient({ ...client, email: e.target.value })} placeholder="riya@email.com" />
+        </Field>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Phone">
+          <input className={inputCls} value={client.phone} onChange={(e) => setClient({ ...client, phone: e.target.value })} placeholder="+91 98765 43210" />
+        </Field>
+        <Field label="WhatsApp">
+          <input className={inputCls} value={client.whatsapp} onChange={(e) => setClient({ ...client, whatsapp: e.target.value })} placeholder="+91 98765 43210" />
+        </Field>
+      </div>
+      <div className="pt-2 border-t border-border">
+        <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-3">Client address</div>
+        <AddressFields value={client.address} onChange={(a) => setClient({ ...client, address: a })} />
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Client info is auto-synced with your Clients page — changes here update the matching client record.
+      </p>
+    </div>
+  );
+}
+
+/* ---------------- Step 3: Timeline & Budget total ---------------- */
+function TimelineStep({
+  timeline,
+  setTimeline,
+}: {
+  timeline: Timeline;
+  setTimeline: (t: Timeline) => void;
+}) {
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Start date" required>
+          <input type="date" className={inputCls} value={timeline.start_date} onChange={(e) => setTimeline({ ...timeline, start_date: e.target.value })} />
+        </Field>
+        <Field label="End date" required>
+          <input type="date" className={inputCls} value={timeline.end_date} onChange={(e) => setTimeline({ ...timeline, end_date: e.target.value })} />
+        </Field>
+      </div>
+      <Field label="Total budget (in lakhs)">
+        <input
+          type="number"
+          className={inputCls}
+          value={timeline.budget}
+          onChange={(e) => setTimeline({ ...timeline, budget: e.target.value })}
+          placeholder="50"
+        />
+      </Field>
+    </div>
+  );
+}
+
+/* ---------------- Step 4: Scope & Budget breakdown ---------------- */
+function BudgetScopeStep({
   roomsText,
   setRoomsText,
   onUpload,
@@ -602,6 +761,9 @@ function ScopeStep({
   boqFileName,
   boqUsed,
   clearBoq,
+  total,
+  rows,
+  setRows,
 }: {
   roomsText: string;
   setRoomsText: (s: string) => void;
@@ -610,9 +772,31 @@ function ScopeStep({
   boqFileName: string | null;
   boqUsed: boolean;
   clearBoq: () => void;
+  total: number;
+  rows: BudgetRow[];
+  setRows: React.Dispatch<React.SetStateAction<BudgetRow[]>>;
 }) {
+  const sumAmount = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
+  const sumPct = rows.reduce((s, r) => s + Number(r.percentage || 0), 0);
+
+  const updateRow = (i: number, field: "percentage" | "amount" | "category", value: number | string) => {
+    setRows((rs) =>
+      rs.map((r, idx) => {
+        if (idx !== i) return r;
+        if (field === "category") return { ...r, category: String(value) };
+        if (field === "percentage") {
+          const pct = Number(value);
+          return { ...r, percentage: pct, amount: total ? +(total * pct / 100).toFixed(2) : r.amount };
+        }
+        const amount = Number(value);
+        const pct = total ? +((amount / total) * 100).toFixed(2) : 0;
+        return { ...r, amount, percentage: pct };
+      }),
+    );
+  };
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <Field label="Rooms in scope" required>
         <input
           className={inputCls}
@@ -631,11 +815,9 @@ function ScopeStep({
         <p className="text-xs text-muted-foreground mb-3">
           AI reads Excel or PDF and auto-fills budget, breakdown, and rooms. Everything stays editable.
         </p>
-
         {parsing ? (
           <div className="flex items-center gap-2 text-sm text-[#c17f5a]">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            AI reading your BOQ...
+            <Loader2 className="h-4 w-4 animate-spin" /> AI reading your BOQ...
           </div>
         ) : boqUsed && boqFileName ? (
           <div className="flex items-center justify-between rounded-[8px] bg-[#7a9e8a]/10 px-3 py-2">
@@ -661,95 +843,43 @@ function ScopeStep({
           </label>
         )}
       </div>
-    </div>
-  );
-}
 
-/* ---------------- Step 3: Budget ---------------- */
-function BudgetStep({
-  total,
-  rows,
-  setRows,
-  boqUsed,
-}: {
-  total: number;
-  rows: BudgetRow[];
-  setRows: React.Dispatch<React.SetStateAction<BudgetRow[]>>;
-  boqUsed: boolean;
-}) {
-  const sumAmount = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
-  const sumPct = rows.reduce((s, r) => s + Number(r.percentage || 0), 0);
-
-  const updateRow = (i: number, field: "percentage" | "amount" | "category", value: number | string) => {
-    setRows((rs) =>
-      rs.map((r, idx) => {
-        if (idx !== i) return r;
-        if (field === "category") return { ...r, category: String(value) };
-        if (field === "percentage") {
-          const pct = Number(value);
-          return { ...r, percentage: pct, amount: total ? +(total * pct / 100).toFixed(2) : r.amount };
-        }
-        const amount = Number(value);
-        const pct = total ? +((amount / total) * 100).toFixed(2) : 0;
-        return { ...r, amount, percentage: pct };
-      }),
-    );
-  };
-
-  return (
-    <div className="space-y-4">
       <div>
         <h4 className="font-display text-lg mb-1">Budget breakdown</h4>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground mb-3">
           {boqUsed ? "Extracted from your BOQ. " : "Auto-filled from total. "}Adjust any line to fit the project.
         </p>
-      </div>
-
-      <div className="space-y-2">
-        <div className="grid grid-cols-[1fr_80px_110px] gap-2 text-[10px] uppercase tracking-wider text-muted-foreground px-3">
-          <span>Category</span>
-          <span className="text-right">%</span>
-          <span className="text-right">Amount (₹L)</span>
-        </div>
-        {rows.map((r, i) => (
-          <div key={i} className="grid grid-cols-[1fr_80px_110px] gap-2 items-center">
-            <input
-              className={`${inputCls} text-sm`}
-              value={r.category}
-              onChange={(e) => updateRow(i, "category", e.target.value)}
-            />
-            <input
-              type="number"
-              className={`${inputCls} text-right tabular-nums`}
-              value={r.percentage}
-              onChange={(e) => updateRow(i, "percentage", e.target.value)}
-            />
-            <input
-              type="number"
-              className={`${inputCls} text-right tabular-nums`}
-              value={r.amount}
-              onChange={(e) => updateRow(i, "amount", e.target.value)}
-            />
+        <div className="space-y-2">
+          <div className="grid grid-cols-[1fr_80px_110px] gap-2 text-[10px] uppercase tracking-wider text-muted-foreground px-3">
+            <span>Category</span>
+            <span className="text-right">%</span>
+            <span className="text-right">Amount (₹L)</span>
           </div>
-        ))}
+          {rows.map((r, i) => (
+            <div key={i} className="grid grid-cols-[1fr_80px_110px] gap-2 items-center">
+              <input className={`${inputCls} text-sm`} value={r.category} onChange={(e) => updateRow(i, "category", e.target.value)} />
+              <input type="number" className={`${inputCls} text-right tabular-nums`} value={r.percentage} onChange={(e) => updateRow(i, "percentage", e.target.value)} />
+              <input type="number" className={`${inputCls} text-right tabular-nums`} value={r.amount} onChange={(e) => updateRow(i, "amount", e.target.value)} />
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 rounded-[10px] bg-muted p-4 flex items-center justify-between text-sm">
+          <span className="font-medium">Total allocated</span>
+          <span className="font-mono tabular-nums">
+            ₹{sumAmount.toFixed(1)}L · {sumPct.toFixed(0)}%
+          </span>
+        </div>
+        {total > 0 && Math.abs(sumAmount - total) > 0.5 && (
+          <p className="text-xs text-[#c4685a] mt-2">
+            Allocation differs from total budget by ₹{(sumAmount - total).toFixed(1)}L
+          </p>
+        )}
       </div>
-
-      <div className="rounded-[10px] bg-muted p-4 flex items-center justify-between text-sm">
-        <span className="font-medium">Total allocated</span>
-        <span className="font-mono tabular-nums">
-          ₹{sumAmount.toFixed(1)}L · {sumPct.toFixed(0)}%
-        </span>
-      </div>
-      {total > 0 && Math.abs(sumAmount - total) > 0.5 && (
-        <p className="text-xs text-[#c4685a]">
-          Allocation differs from total budget by ₹{(sumAmount - total).toFixed(1)}L
-        </p>
-      )}
     </div>
   );
 }
 
-/* ---------------- Step 4: Success ---------------- */
+/* ---------------- Step 5: Success ---------------- */
 function SuccessStep({
   portalLink,
   welcomeMessage,
