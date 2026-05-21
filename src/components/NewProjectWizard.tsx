@@ -99,6 +99,7 @@ export function NewProjectWizard({
   const [parsingBoq, setParsingBoq] = useState(false);
   const [boqFileName, setBoqFileName] = useState<string | null>(null);
   const parseBoqFn = useServerFn(parseBoq);
+  const sendWelcomeEmailFn = useServerFn(sendWelcomeEmail);
 
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [welcomeMessage, setWelcomeMessage] = useState("");
@@ -348,7 +349,7 @@ export function NewProjectWizard({
 
       // Fire-and-forget welcome email (silent if no client email)
       if (clientId && clientEmail) {
-        sendWelcomeEmailFn({ data: { projectId } }).catch((e) => console.warn("welcome email failed", e));
+        sendWelcomeEmailFn({ data: { projectId } }).catch((e: unknown) => console.warn("welcome email failed", e));
       }
 
       return { projectId, draft, msgId, edited: false };
