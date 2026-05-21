@@ -22,7 +22,10 @@ function SettingsPage() {
           <h1 className="font-display text-4xl md:text-5xl">Settings</h1>
           <p className="text-muted-foreground mt-2">Connect channels and control routing</p>
         </div>
-        <WhatsAppGroupsSettings />
+        <div className="space-y-12">
+          <BillingPanel />
+          <WhatsAppGroupsSettings />
+        </div>
       </main>
     </AppShell>
   );
