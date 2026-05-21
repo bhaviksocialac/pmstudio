@@ -1,12 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, Plus, Send, FileDown, Check, Pencil, TrendingUp, Loader2 } from "lucide-react";
+import { Download, Plus, Send, FileDown, Check, Pencil, TrendingUp, Loader2, CreditCard } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR, monthlyRevenue } from "@/lib/studio-data";
 import { openModal } from "@/lib/app-bus";
 import { toast } from "sonner";
 import { FreshnessTag, freshnessLevel } from "@/components/FreshnessTag";
+import { createInvoiceOrder } from "@/lib/razorpay.functions";
+import { payInvoice } from "@/lib/razorpay-checkout";
 
 export const Route = createFileRoute("/_authenticated/finance")({
   head: () => ({ meta: [{ title: "Finance — PMStudio" }, { name: "description", content: "Invoices, payments, receivables and cashflow for your studio." }] }),
