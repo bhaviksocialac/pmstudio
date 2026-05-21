@@ -21,6 +21,7 @@ import { Route as AuthenticatedFinanceRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects.index'
 import { Route as AuthenticatedProjectsProjectIdRouteImport } from './routes/_authenticated/projects.$projectId'
+import { Route as ApiPublicHooksResendWebhookRouteImport } from './routes/api/public/hooks/resend-webhook'
 import { Route as ApiPublicHooksAiDraftsCronRouteImport } from './routes/api/public/hooks/ai-drafts-cron'
 
 const SignupRoute = SignupRouteImport.update({
@@ -84,6 +85,12 @@ const AuthenticatedProjectsProjectIdRoute =
     path: '/projects/$projectId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const ApiPublicHooksResendWebhookRoute =
+  ApiPublicHooksResendWebhookRouteImport.update({
+    id: '/api/public/hooks/resend-webhook',
+    path: '/api/public/hooks/resend-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksAiDraftsCronRoute =
   ApiPublicHooksAiDraftsCronRouteImport.update({
     id: '/api/public/hooks/ai-drafts-cron',
@@ -104,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
   '/api/public/hooks/ai-drafts-cron': typeof ApiPublicHooksAiDraftsCronRoute
+  '/api/public/hooks/resend-webhook': typeof ApiPublicHooksResendWebhookRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -118,6 +126,7 @@ export interface FileRoutesByTo {
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
   '/api/public/hooks/ai-drafts-cron': typeof ApiPublicHooksAiDraftsCronRoute
+  '/api/public/hooks/resend-webhook': typeof ApiPublicHooksResendWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,6 +143,7 @@ export interface FileRoutesById {
   '/_authenticated/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
   '/api/public/hooks/ai-drafts-cron': typeof ApiPublicHooksAiDraftsCronRoute
+  '/api/public/hooks/resend-webhook': typeof ApiPublicHooksResendWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId'
     | '/projects/'
     | '/api/public/hooks/ai-drafts-cron'
+    | '/api/public/hooks/resend-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId'
     | '/projects'
     | '/api/public/hooks/ai-drafts-cron'
+    | '/api/public/hooks/resend-webhook'
   id:
     | '__root__'
     | '/_authenticated'
@@ -179,6 +191,7 @@ export interface FileRouteTypes {
     | '/_authenticated/projects/$projectId'
     | '/_authenticated/projects/'
     | '/api/public/hooks/ai-drafts-cron'
+    | '/api/public/hooks/resend-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -187,6 +200,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   PortalProjectIdRoute: typeof PortalProjectIdRoute
   ApiPublicHooksAiDraftsCronRoute: typeof ApiPublicHooksAiDraftsCronRoute
+  ApiPublicHooksResendWebhookRoute: typeof ApiPublicHooksResendWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -275,6 +289,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjectsProjectIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/api/public/hooks/resend-webhook': {
+      id: '/api/public/hooks/resend-webhook'
+      path: '/api/public/hooks/resend-webhook'
+      fullPath: '/api/public/hooks/resend-webhook'
+      preLoaderRoute: typeof ApiPublicHooksResendWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/ai-drafts-cron': {
       id: '/api/public/hooks/ai-drafts-cron'
       path: '/api/public/hooks/ai-drafts-cron'
@@ -317,6 +338,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   PortalProjectIdRoute: PortalProjectIdRoute,
   ApiPublicHooksAiDraftsCronRoute: ApiPublicHooksAiDraftsCronRoute,
+  ApiPublicHooksResendWebhookRoute: ApiPublicHooksResendWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
