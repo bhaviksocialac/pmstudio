@@ -6,6 +6,7 @@ import {
   FileText, MessageCircle, FilePlus, Loader2, Pencil, ClipboardList,
 } from "lucide-react";
 import { phases, healthMap, type Project } from "@/lib/projects";
+import { labelForProjectType } from "@/lib/project-types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import type { DbProject } from "@/lib/db-types";
