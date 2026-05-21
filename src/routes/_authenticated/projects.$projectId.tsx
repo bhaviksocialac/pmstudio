@@ -141,7 +141,7 @@ function ProjectDetailView({ project }: { project: Project }) {
             <div className="flex flex-wrap gap-2 mt-3">
               <Pill>{project.client}</Pill>
               <Pill>{project.location}</Pill>
-              <Pill>{project.type === "residential" ? "Residential" : "Commercial"}</Pill>
+              <Pill>{labelForProjectType(project.type)}</Pill>
               <Pill>{project.phase}</Pill>
             </div>
           </div>
