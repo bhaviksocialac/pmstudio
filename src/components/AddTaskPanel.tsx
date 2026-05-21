@@ -122,21 +122,33 @@ export function AddTaskPanel({
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Assigned to">
-              <input className={inputCls} value={assignee} onChange={(e) => setAssignee(e.target.value)} placeholder="e.g. Aditya" />
+            <Field label="Contractor">
+              <input className={inputCls} value={contractor} onChange={(e) => setContractor(e.target.value)} placeholder="e.g. Ramesh Civils" />
             </Field>
-            <Field label="Due date">
-              <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            <Field label="Area / Room">
+              <input className={inputCls} value={area} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Master Bedroom" />
             </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
+            <Field label="Assigned to">
+              <input className={inputCls} value={assignee} onChange={(e) => setAssignee(e.target.value)} placeholder="e.g. Aditya" />
+            </Field>
             <Field label="Priority">
               <select className={inputCls} value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
                 <option>High</option>
                 <option>Medium</option>
                 <option>Low</option>
               </select>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Start date">
+              <input type="date" className={inputCls} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </Field>
+            <Field label="Due date">
+              <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </Field>
             <Field label="Phase">
               <select className={inputCls} value={phase} onChange={(e) => setPhase(e.target.value as Phase)}>
