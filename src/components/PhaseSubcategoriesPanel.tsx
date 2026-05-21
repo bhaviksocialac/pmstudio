@@ -418,6 +418,17 @@ export function PhaseSubcategoriesPanel({
           <Plus className="h-3.5 w-3.5" /> Add Subcategory
         </button>
       )}
+
+      {creatingFor && (
+        <VendorModal
+          initialName={creatingFor.name}
+          onClose={() => setCreatingFor(null)}
+          onCreated={(v: DbVendor) => {
+            addSubVendor.mutate({ subId: creatingFor.subId, vendorId: v.id });
+            setCreatingFor(null);
+          }}
+        />
+      )}
     </div>
   );
 }
