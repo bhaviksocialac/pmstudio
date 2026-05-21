@@ -173,7 +173,7 @@ async function logAndSend(opts: {
       recipient_name: opts.recipientName,
       subject: opts.subject,
       status: "queued",
-      meta: opts.meta ?? {},
+      meta: (opts.meta ?? {}) as any,
     })
     .select("id")
     .single();
