@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Plus, ArrowUpRight, IndianRupee, Clock, AlertTriangle, Clipboard, Sparkles,
-  Flame, ListChecks, ArrowRight,
+  Plus, ArrowUpRight, Clock, AlertTriangle, Clipboard, Sparkles,
+  Flame, ListChecks, ArrowRight, CalendarDays, TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -24,6 +24,13 @@ export const Route = createFileRoute("/_authenticated/")({
   }),
   component: Dashboard,
 });
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 function Dashboard() {
   const { user } = useAuth();
@@ -48,43 +55,65 @@ function Dashboard() {
   });
 
   const tasksQuery = useQuery({
-    queryKey: ["tasks", "open"],
+    queryKey: ["tasks", "all"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tasks")
         .select("*")
-        .eq("done", false)
         .order("due_date", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data ?? []) as DbTask[];
     },
   });
 
+  const meetingsQuery = useQuery({
+    queryKey: ["meetings", "upcoming"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("meetings")
+        .select("id,title,scheduled_at,location,project_id,client_id")
+        .gte("scheduled_at", new Date().toISOString())
+        .order("scheduled_at", { ascending: true })
+        .limit(3);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const clientsQuery = useQuery({
+    queryKey: ["clients"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("clients").select("id,name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const projects = projectsQuery.data ?? [];
   const tasks = tasksQuery.data ?? [];
+  const openTasks = useMemo(() => tasks.filter((t) => !t.done), [tasks]);
+  const meetings = meetingsQuery.data ?? [];
+  const clients = clientsQuery.data ?? [];
 
   const projectMap = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
+  const clientMap = useMemo(() => new Map(clients.map((c: any) => [c.id, c.name])), [clients]);
 
-  // Health derived from live tasks + budget
   const projectsWithHealth = useMemo(
     () =>
       projects.map((p) => {
-        const t = tasks.filter((tk) => tk.project_id === p.id);
+        const t = openTasks.filter((tk) => tk.project_id === p.id);
         return { ...p, health: computeHealth(p, t) as HealthKey };
       }),
-    [projects, tasks],
+    [projects, openTasks],
   );
 
-  const totalBudget = projects.reduce((s, p) => s + Number(p.budget || 0), 0);
-  const totalSpent = projects.reduce((s, p) => s + Number(p.spent || 0), 0);
   const attention = projectsWithHealth.filter((p) => p.health !== "on-track").length;
   const firstName = profileQuery.data?.full_name?.split(" ")[0] ?? "there";
 
-  // Fire alerts
   const todayStr = new Date().toISOString().slice(0, 10);
   const fireAlerts: { project: DbProject; reason: string }[] = [];
   projects.forEach((p) => {
-    const overdueCount = tasks.filter(
+    const overdueCount = openTasks.filter(
       (t) => t.project_id === p.id && t.due_date && t.due_date < todayStr,
     ).length;
     if (overdueCount > 0) {
@@ -100,7 +129,7 @@ function Dashboard() {
     }
   });
 
-  const todaysFocus = [...tasks]
+  const todaysFocus = [...openTasks]
     .sort((a, b) => {
       const aD = a.due_date || "9999";
       const bD = b.due_date || "9999";
@@ -108,12 +137,30 @@ function Dashboard() {
     })
     .slice(0, 3);
 
+  // Weekly site update per active project
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+  const weekAhead = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10);
+  const weeklyUpdates = projects
+    .filter((p) => p.phase !== "Handover")
+    .slice(0, 4)
+    .map((p) => {
+      const projectTasks = tasks.filter((t) => t.project_id === p.id);
+      const completedThisWeek = projectTasks.filter(
+        (t) => t.done && t.updated_at && t.updated_at.slice(0, 10) >= weekAgo,
+      );
+      const plannedNextWeek = projectTasks.filter(
+        (t) => !t.done && t.due_date && t.due_date >= todayStr && t.due_date <= weekAhead,
+      );
+      return { project: p, completed: completedThisWeek, planned: plannedNextWeek };
+    });
+
   return (
     <AppShell>
       <main className="px-4 md:px-8 py-8 md:py-10 max-w-[1400px] w-full pb-24 md:pb-10">
         <div className="mb-10">
           <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Dashboard</div>
-          <h1 className="text-4xl md:text-5xl font-display">Good morning, {firstName}.</h1>
+          <h1 className="text-4xl md:text-5xl font-display">{greeting()}, {firstName}.</h1>
           <p className="text-muted-foreground mt-2 max-w-xl">
             {projects.length === 0
               ? "Your studio is set up. Create your first project to get started."
@@ -121,22 +168,23 @@ function Dashboard() {
           </p>
         </div>
 
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mb-10">
+        <section className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 mb-10">
           <StatCard icon={Clipboard} label="Active Projects" value={`${projects.length}`} accent="#c17f5a" />
-          <StatCard icon={IndianRupee} label="Total Budget" value={`₹${totalBudget.toFixed(1)}L`} accent="#7a9e8a" />
-          <StatCard icon={Clock} label="Total Spent" value={`₹${totalSpent.toFixed(1)}L`} accent="#d4882a" />
+          <StatCard icon={ListChecks} label="Open Tasks" value={`${openTasks.length}`} accent="#7a9e8a" />
           <StatCard icon={AlertTriangle} label="Need Attention" value={`${attention}`} accent="#c4685a" />
         </section>
 
         <PhotoStaging />
-
         <PendingApprovals />
 
-        {fireAlerts.length > 0 && (
-          <FireAlertsCard alerts={fireAlerts} />
-        )}
+        {fireAlerts.length > 0 && <FireAlertsCard alerts={fireAlerts} />}
 
         <TodaysFocusCard tasks={todaysFocus} projectMap={projectMap} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+          <WeeklyUpdateCard updates={weeklyUpdates} />
+          <UpcomingMeetingsCard meetings={meetings} projectMap={projectMap} clientMap={clientMap} onAdded={() => meetingsQuery.refetch()} projects={projects} clients={clients as any} />
+        </div>
 
         <div className="flex items-baseline justify-between mb-5 mt-10">
           <h2 className="font-display text-2xl">Your Projects</h2>
@@ -162,6 +210,149 @@ function Dashboard() {
         )}
       </main>
     </AppShell>
+  );
+}
+
+function WeeklyUpdateCard({ updates }: { updates: { project: DbProject; completed: DbTask[]; planned: DbTask[] }[] }) {
+  return (
+    <section className="rounded-[16px] bg-card border border-border p-5 md:p-6" style={{ boxShadow: "var(--shadow-card)" }}>
+      <div className="flex items-center gap-2 mb-4">
+        <div className="h-9 w-9 rounded-[10px] bg-[#7a9e8a]/15 text-[#7a9e8a] flex items-center justify-center">
+          <TrendingUp className="h-4 w-4" />
+        </div>
+        <div>
+          <h2 className="font-display text-xl">Weekly Site Update</h2>
+          <p className="text-xs text-muted-foreground">Last 7 days · next 7 days, per active project</p>
+        </div>
+      </div>
+      {updates.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-4 text-center">No active projects yet.</p>
+      ) : (
+        <ul className="space-y-4">
+          {updates.map((u) => (
+            <li key={u.project.id} className="pb-3 border-b border-border last:border-b-0 last:pb-0">
+              <Link to="/projects/$projectId" params={{ projectId: u.project.id }} className="font-medium text-sm hover:text-[#c17f5a]">
+                {u.project.name}
+              </Link>
+              <div className="text-xs text-muted-foreground mt-1">Phase: {u.project.phase}</div>
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-[#7a9e8a] font-medium mb-1">Completed</div>
+                  {u.completed.length === 0
+                    ? <div className="text-muted-foreground">Nothing logged.</div>
+                    : <ul className="space-y-0.5">{u.completed.slice(0, 3).map((t) => <li key={t.id} className="truncate">· {t.title}</li>)}</ul>}
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-[#c17f5a] font-medium mb-1">Planned next</div>
+                  {u.planned.length === 0
+                    ? <div className="text-muted-foreground">Nothing scheduled.</div>
+                    : <ul className="space-y-0.5">{u.planned.slice(0, 3).map((t) => <li key={t.id} className="truncate">· {t.title}</li>)}</ul>}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function UpcomingMeetingsCard({
+  meetings, projectMap, clientMap, onAdded, projects, clients,
+}: {
+  meetings: any[];
+  projectMap: Map<string, DbProject>;
+  clientMap: Map<string, string>;
+  onAdded: () => void;
+  projects: DbProject[];
+  clients: { id: string; name: string }[];
+}) {
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ title: "", scheduled_at: "", project_id: "", client_id: "", location: "" });
+
+  const add = async () => {
+    if (!user || !form.title || !form.scheduled_at) {
+      toast.error("Title and date/time are required");
+      return;
+    }
+    const { error } = await (supabase as any).from("meetings").insert({
+      user_id: user.id,
+      title: form.title,
+      scheduled_at: new Date(form.scheduled_at).toISOString(),
+      project_id: form.project_id || null,
+      client_id: form.client_id || null,
+      location: form.location || null,
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Meeting added");
+    setOpen(false);
+    setForm({ title: "", scheduled_at: "", project_id: "", client_id: "", location: "" });
+    onAdded();
+  };
+
+  return (
+    <section className="rounded-[16px] bg-card border border-border p-5 md:p-6" style={{ boxShadow: "var(--shadow-card)" }}>
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <div className="h-9 w-9 rounded-[10px] bg-[#c17f5a]/15 text-[#c17f5a] flex items-center justify-center">
+            <CalendarDays className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="font-display text-xl">Upcoming Meetings</h2>
+            <p className="text-xs text-muted-foreground">Next 3 scheduled</p>
+          </div>
+        </div>
+        <button onClick={() => setOpen((v) => !v)} className="text-xs h-8 px-3 rounded-[6px] border border-border hover:bg-muted inline-flex items-center gap-1">
+          <Plus className="h-3 w-3" /> Add
+        </button>
+      </div>
+
+      {open && (
+        <div className="mb-4 p-3 rounded-[10px] bg-muted/40 border border-border space-y-2">
+          <input className="w-full h-9 px-2 rounded-[6px] border border-border bg-card text-sm" placeholder="Title (e.g. Site walkthrough)" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <input type="datetime-local" className="w-full h-9 px-2 rounded-[6px] border border-border bg-card text-sm" value={form.scheduled_at} onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })} />
+          <div className="grid grid-cols-2 gap-2">
+            <select className="h-9 px-2 rounded-[6px] border border-border bg-card text-sm" value={form.project_id} onChange={(e) => setForm({ ...form, project_id: e.target.value })}>
+              <option value="">No project</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <select className="h-9 px-2 rounded-[6px] border border-border bg-card text-sm" value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })}>
+              <option value="">No client</option>
+              {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <input className="w-full h-9 px-2 rounded-[6px] border border-border bg-card text-sm" placeholder="Location (optional)" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+          <div className="flex gap-2">
+            <button onClick={add} className="h-8 px-3 rounded-[6px] bg-[#c17f5a] text-white text-xs">Save</button>
+            <button onClick={() => setOpen(false)} className="h-8 px-3 rounded-[6px] border border-border text-xs">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {meetings.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-4 text-center">No meetings scheduled.</p>
+      ) : (
+        <ul className="space-y-2">
+          {meetings.map((m) => {
+            const dt = new Date(m.scheduled_at);
+            const dateStr = dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+            const timeStr = dt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+            const projectName = m.project_id ? projectMap.get(m.project_id)?.name : null;
+            const clientName = m.client_id ? clientMap.get(m.client_id) : null;
+            return (
+              <li key={m.id} className="py-2.5 border-b border-border last:border-b-0">
+                <div className="text-sm font-medium">{m.title}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  {dateStr} · {timeStr}{clientName ? ` · ${clientName}` : ""}{projectName ? ` · ${projectName}` : ""}
+                </div>
+                {m.location && <div className="text-[11px] text-muted-foreground">📍 {m.location}</div>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -215,7 +406,7 @@ function TodaysFocusCard({
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["tasks", "open"] });
+      qc.invalidateQueries({ queryKey: ["tasks", "all"] });
       toast.success("Task completed");
     },
   });
@@ -309,7 +500,6 @@ function StatCard({
 
 export function ProjectCard({ project: p }: { project: DbProject & { health: HealthKey } }) {
   const h = healthMap[p.health];
-  const budgetPct = p.budget > 0 ? Math.round((Number(p.spent) / Number(p.budget)) * 100) : 0;
   return (
     <Link
       to="/projects/$projectId"
@@ -333,20 +523,6 @@ export function ProjectCard({ project: p }: { project: DbProject & { health: Hea
         </div>
         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
           <div className="h-full rounded-full" style={{ width: `${p.completion}%`, background: "#c17f5a" }} />
-        </div>
-      </div>
-      <div>
-        <div className="flex items-baseline justify-between mb-2">
-          <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Budget</span>
-          <span className="text-xs font-mono">
-            ₹{Number(p.spent).toFixed(1)}L / ₹{Number(p.budget).toFixed(1)}L
-          </span>
-        </div>
-        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-          <div
-            className="h-full rounded-full"
-            style={{ width: `${Math.min(budgetPct, 100)}%`, background: budgetPct > 95 ? "#c4685a" : "#3d3530" }}
-          />
         </div>
       </div>
       <span className="inline-flex items-center gap-1 text-xs font-medium text-[#c17f5a] mt-auto">
