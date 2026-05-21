@@ -149,24 +149,41 @@ function FinancePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1.85fr_1fr] gap-6">
           <div className="space-y-6">
             <section className="rounded-[16px] bg-card border border-border overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
-              <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+              <div className="px-6 py-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
                 <h2 className="font-display text-xl">Invoices</h2>
                 <button onClick={() => openModal("new-invoice")} className="h-9 px-3 inline-flex items-center gap-1.5 rounded-[6px] bg-primary text-primary-foreground text-xs font-medium hover:brightness-95">
                   <Plus className="h-3.5 w-3.5" /> New Invoice
                 </button>
               </div>
+              <div className="px-6 py-3 border-b border-border flex flex-wrap items-center gap-2">
+                {(["all","draft","sent","paid","overdue"] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={`h-8 px-3 rounded-full text-[11px] uppercase tracking-wider border transition-colors ${statusFilter === s ? "bg-foreground text-background border-foreground" : "border-border bg-card text-muted-foreground hover:bg-muted"}`}
+                  >
+                    {s} <span className="ml-1 opacity-70">({statusCounts[s]})</span>
+                  </button>
+                ))}
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search project, client, milestone…"
+                  className="ml-auto h-8 px-3 rounded-[6px] bg-background border border-border text-xs w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-ring/30"
+                />
+              </div>
               <div className="overflow-x-auto">
                 {invLoading ? (
                   <div className="p-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-                ) : invoices.length === 0 ? (
-                  <div className="p-10 text-center text-sm text-muted-foreground">No invoices yet.</div>
+                ) : filteredInvoices.length === 0 ? (
+                  <div className="p-10 text-center text-sm text-muted-foreground">{invoices.length === 0 ? "No invoices yet." : "No invoices match this filter."}</div>
                 ) : (
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                       <tr>{["#","Project","Milestone","Amount","Due","Status","Actions"].map((h) => <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>)}</tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {invoices.map((inv) => {
+                      {filteredInvoices.map((inv) => {
                         const t = statusTone[inv.status] ?? statusTone.draft;
                         const projectName = (inv as { projects?: { name?: string } | null }).projects?.name ?? "—";
                         const clientName = (inv as { clients?: { name?: string } | null }).clients?.name ?? "";
