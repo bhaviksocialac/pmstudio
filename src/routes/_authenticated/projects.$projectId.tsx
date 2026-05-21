@@ -25,6 +25,8 @@ import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
 import { SnagsTab } from "@/components/SnagsTab";
 import { ChangeOrdersTab } from "@/components/ChangeOrdersTab";
 import { AttendanceTab } from "@/components/AttendanceTab";
+import { useServerFn } from "@tanstack/react-start";
+import { sendInvoiceEmail, sendMilestoneEmail } from "@/lib/emails.functions";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
@@ -232,6 +234,9 @@ function OverviewTab({ project }: { project: Project }) {
     Survey: 5, Design: 15, Procurement: 20, Execution: 35, Finishing: 15, Handover: 10,
   };
 
+  const sendInvoiceEmailFn = useServerFn(sendInvoiceEmail);
+  const sendMilestoneEmailFn = useServerFn(sendMilestoneEmail);
+
   const markPhaseComplete = useMutation({
     mutationFn: async () => {
       const today = new Date().toISOString().slice(0, 10);
@@ -264,13 +269,22 @@ function OverviewTab({ project }: { project: Project }) {
         milestone: `${currentPhase} complete`,
         status: "draft",
       });
+      return { currentPhase, amount };
     },
-    onSuccess: () => {
+    onSuccess: ({ currentPhase, amount }) => {
       qc.invalidateQueries({ queryKey: ["project", project.id] });
       qc.invalidateQueries({ queryKey: ["projects"] });
       qc.invalidateQueries({ queryKey: ["invoices"] });
       toast.success("Phase marked complete. Draft invoice created.");
       setConfirmPhase(null);
+      // Fire-and-forget emails (silent if no client email)
+      const milestone = `${currentPhase} complete`;
+      sendMilestoneEmailFn({ data: { projectId: project.id, milestone } }).catch((e: unknown) =>
+        console.warn("milestone email failed", e),
+      );
+      sendInvoiceEmailFn({ data: { projectId: project.id, milestone, amount } }).catch((e: unknown) =>
+        console.warn("invoice email failed", e),
+      );
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
