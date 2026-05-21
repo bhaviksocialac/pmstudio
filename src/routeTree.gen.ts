@@ -22,6 +22,7 @@ import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects.index'
 import { Route as AuthenticatedProjectsProjectIdRouteImport } from './routes/_authenticated/projects.$projectId'
 import { Route as ApiPublicHooksResendWebhookRouteImport } from './routes/api/public/hooks/resend-webhook'
+import { Route as ApiPublicHooksRazorpayWebhookRouteImport } from './routes/api/public/hooks/razorpay-webhook'
 import { Route as ApiPublicHooksAiDraftsCronRouteImport } from './routes/api/public/hooks/ai-drafts-cron'
 
 const SignupRoute = SignupRouteImport.update({
@@ -91,6 +92,12 @@ const ApiPublicHooksResendWebhookRoute =
     path: '/api/public/hooks/resend-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksRazorpayWebhookRoute =
+  ApiPublicHooksRazorpayWebhookRouteImport.update({
+    id: '/api/public/hooks/razorpay-webhook',
+    path: '/api/public/hooks/razorpay-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksAiDraftsCronRoute =
   ApiPublicHooksAiDraftsCronRouteImport.update({
     id: '/api/public/hooks/ai-drafts-cron',
@@ -111,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
   '/api/public/hooks/ai-drafts-cron': typeof ApiPublicHooksAiDraftsCronRoute
+  '/api/public/hooks/razorpay-webhook': typeof ApiPublicHooksRazorpayWebhookRoute
   '/api/public/hooks/resend-webhook': typeof ApiPublicHooksResendWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -126,6 +134,7 @@ export interface FileRoutesByTo {
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
   '/api/public/hooks/ai-drafts-cron': typeof ApiPublicHooksAiDraftsCronRoute
+  '/api/public/hooks/razorpay-webhook': typeof ApiPublicHooksRazorpayWebhookRoute
   '/api/public/hooks/resend-webhook': typeof ApiPublicHooksResendWebhookRoute
 }
 export interface FileRoutesById {
@@ -143,6 +152,7 @@ export interface FileRoutesById {
   '/_authenticated/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
   '/api/public/hooks/ai-drafts-cron': typeof ApiPublicHooksAiDraftsCronRoute
+  '/api/public/hooks/razorpay-webhook': typeof ApiPublicHooksRazorpayWebhookRoute
   '/api/public/hooks/resend-webhook': typeof ApiPublicHooksResendWebhookRoute
 }
 export interface FileRouteTypes {
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId'
     | '/projects/'
     | '/api/public/hooks/ai-drafts-cron'
+    | '/api/public/hooks/razorpay-webhook'
     | '/api/public/hooks/resend-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId'
     | '/projects'
     | '/api/public/hooks/ai-drafts-cron'
+    | '/api/public/hooks/razorpay-webhook'
     | '/api/public/hooks/resend-webhook'
   id:
     | '__root__'
@@ -191,6 +203,7 @@ export interface FileRouteTypes {
     | '/_authenticated/projects/$projectId'
     | '/_authenticated/projects/'
     | '/api/public/hooks/ai-drafts-cron'
+    | '/api/public/hooks/razorpay-webhook'
     | '/api/public/hooks/resend-webhook'
   fileRoutesById: FileRoutesById
 }
@@ -200,6 +213,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   PortalProjectIdRoute: typeof PortalProjectIdRoute
   ApiPublicHooksAiDraftsCronRoute: typeof ApiPublicHooksAiDraftsCronRoute
+  ApiPublicHooksRazorpayWebhookRoute: typeof ApiPublicHooksRazorpayWebhookRoute
   ApiPublicHooksResendWebhookRoute: typeof ApiPublicHooksResendWebhookRoute
 }
 
@@ -296,6 +310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksResendWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/razorpay-webhook': {
+      id: '/api/public/hooks/razorpay-webhook'
+      path: '/api/public/hooks/razorpay-webhook'
+      fullPath: '/api/public/hooks/razorpay-webhook'
+      preLoaderRoute: typeof ApiPublicHooksRazorpayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/ai-drafts-cron': {
       id: '/api/public/hooks/ai-drafts-cron'
       path: '/api/public/hooks/ai-drafts-cron'
@@ -338,6 +359,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   PortalProjectIdRoute: PortalProjectIdRoute,
   ApiPublicHooksAiDraftsCronRoute: ApiPublicHooksAiDraftsCronRoute,
+  ApiPublicHooksRazorpayWebhookRoute: ApiPublicHooksRazorpayWebhookRoute,
   ApiPublicHooksResendWebhookRoute: ApiPublicHooksResendWebhookRoute,
 }
 export const routeTree = rootRouteImport
