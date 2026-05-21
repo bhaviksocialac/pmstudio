@@ -340,7 +340,7 @@ function GlobalModals() {
     case "client-panel": return <ClientPanel client={open.data as Client} onClose={close} />;
     case "add-vendor": return <AddVendorModal onClose={close} />;
     case "vendor-panel": return <VendorPanel vendor={open.data as Vendor} onClose={close} />;
-    case "new-invoice": return <NewInvoiceModal onClose={close} />;
+    case "new-invoice": return <NewInvoiceModal onClose={close} invoiceId={(open.data as { invoiceId?: string } | undefined)?.invoiceId} />;
     case "upload-photos": return <UploadPhotosModal onClose={close} presetProjectId={(open.data as { projectId?: string } | undefined)?.projectId} />;
     case "lightbox": return <Lightbox data={open.data as { src: string; caption: string }} onClose={close} />;
     default: return null;
