@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, LayoutGrid, List as ListIcon } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { healthMap, type DbProject } from "@/lib/db-types";
+import { labelForProjectType } from "@/lib/project-types";
 import { openModal } from "@/lib/app-bus";
 import { SharePortalButton } from "@/components/SharePortalButton";
 
