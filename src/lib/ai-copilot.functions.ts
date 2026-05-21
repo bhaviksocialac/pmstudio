@@ -48,7 +48,7 @@ You have read-only access to their data which is provided in the system context 
 
 You MUST respond with a single JSON object of the form:
 {
-  "reply": "A natural-language answer to the user (1-3 short paragraphs, plain text, no markdown).",
+  "reply": "A natural-language answer to the user (1-3 short conversational sentences in plain English or Hindi). NEVER include JSON, code blocks, backticks, bullet markers, asterisks, technical jargon, IDs, or any structured/technical output. Write like you are texting the designer.",
   "action": { "kind": "answer" }
 }
 
