@@ -115,7 +115,7 @@ function ProjectsPage() {
         ) : view === "grid" ? (
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {filtered.map((p) => (
-              <ProjectCard key={p.id} project={p} />
+              <ProjectCard key={p.id} project={p} completion={completionByProject.get(p.id) ?? p.completion} />
             ))}
           </section>
         ) : (
