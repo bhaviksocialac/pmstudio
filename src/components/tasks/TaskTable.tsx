@@ -255,7 +255,6 @@ export function TaskTable({
                     <Td>
                       <div className="py-3 min-w-[220px]">
                         <div className={`font-medium ${t.done ? "line-through text-muted-foreground" : ""}`}>{t.title}</div>
-                        {t.work_type && <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">{t.work_type}</div>}
                         {projName && <div className="text-[11px] text-muted-foreground mt-1">{projName}</div>}
                       </div>
                     </Td>
@@ -266,6 +265,15 @@ export function TaskTable({
                           vendors={vendors}
                           teamMembers={teamMembers}
                           onChange={(v) => updateField(t, { agency: v, contractor: v })}
+                        />
+                      </div>
+                    </Td>
+                    <Td>
+                      <div className="min-w-[160px] max-w-[220px]">
+                        <WorkTypePicker
+                          value={asWorkTypes(t)}
+                          options={WORK_TYPES as unknown as readonly string[]}
+                          onChange={(v) => updateField(t, { work_types: v, work_type: v[0] ?? null })}
                         />
                       </div>
                     </Td>
