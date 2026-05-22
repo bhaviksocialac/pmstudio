@@ -157,7 +157,8 @@ function ProjectsPage() {
   );
 }
 
-function ProjectCard({ project: p }: { project: DbProject }) {
+function ProjectCard({ project: p, completion }: { project: DbProject; completion: number }) {
+  const pct = completion;
   const h = healthMap[p.health];
   return (
     <div
