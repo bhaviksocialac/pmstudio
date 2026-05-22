@@ -30,6 +30,9 @@ export function AINarrativeBar({ projectId, teamMembers = [] }: { projectId: str
       setText("");
       qc.invalidateQueries({ queryKey: ["project-tasks", projectId] });
       qc.invalidateQueries({ queryKey: ["project-tasks-progress", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-tasks-rollup", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-tasks-overview", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-tasks-autophase", projectId] });
       qc.invalidateQueries({ queryKey: ["projects-task-completion"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
