@@ -1,28 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Table as TableIcon, GanttChart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { TaskTable, type TaskRow } from "@/components/tasks/TaskTable";
 import { TaskFilters, emptyFilters, type FilterState } from "@/components/tasks/TaskFilters";
+import { AINarrativeBar } from "@/components/tasks/AINarrativeBar";
+import { GanttTimeline } from "@/components/tasks/GanttTimeline";
 import { STATUS_META, WORK_TYPES, deriveActionRequired } from "@/lib/task-flow";
 
 type GroupBy = "all" | "status" | "contractor" | "room" | "work_type";
+type View = "table" | "gantt";
 
 const PRIORITIES = ["None", "Urgent", "High", "Medium", "Low"];
 
 function titleCase(s: string) {
   return s.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).trim();
 }
-
 function formatStatus(s: string) {
   return STATUS_META[s]?.label ?? titleCase(s);
 }
 
 export function ProjectTasksTab({ projectId, projectName }: { projectId: string; projectName: string }) {
   const [groupBy, setGroupBy] = useState<GroupBy>("status");
+  const [view, setView] = useState<View>("table");
   const [filters, setFilters] = useState<FilterState>(emptyFilters());
 
-  // Designer-added custom values (local — augments detected values)
   const [extraRooms, setExtraRooms] = useState<string[]>([]);
   const [extraStatuses, setExtraStatuses] = useState<string[]>([]);
   const [extraWorkTypes, setExtraWorkTypes] = useState<string[]>([]);
@@ -33,7 +35,7 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
       const { data, error } = await supabase
         .from("tasks").select("*")
         .eq("project_id", projectId)
-        .order("due_date", { ascending: true, nullsFirst: false });
+        .order("planned_start", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data ?? []) as TaskRow[];
     },
@@ -58,11 +60,12 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
 
   const filterGroups = useMemo(() => {
     const rooms = new Set<string>(extraRooms);
-    const contractors = new Set<string>();
+    const contractors = new Set<string>(["Client"]);
     const workTypes = new Set<string>(extraWorkTypes);
     rows.forEach((t) => {
-      if (t.area) rooms.add(t.area);
-      const c = t.contractor || t.assignee;
+      const areas = Array.isArray(t.areas) && (t.areas as string[]).length ? (t.areas as string[]) : (t.area ? [t.area] : []);
+      areas.forEach((a) => rooms.add(a));
+      const c = t.agency || t.contractor || t.assignee;
       if (c) contractors.add(c);
       if (t.work_type) workTypes.add(t.work_type);
     });
@@ -78,24 +81,16 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
         addLabel: "Add Room",
         onAdd: (v: string) => setExtraRooms((p) => Array.from(new Set([...p, v]))),
       },
+      { key: "contractors" as const, label: "Agency", values: Array.from(contractors).sort() },
       {
-        key: "contractors" as const, label: "Contractor",
-        values: Array.from(contractors).sort(),
-      },
-      {
-        key: "statuses" as const, label: "Status",
-        values: statuses,
+        key: "statuses" as const, label: "Status", values: statuses,
         format: (v: string) => formatStatus(v),
         addLabel: "Add Status",
         onAdd: (v: string) => setExtraStatuses((p) => Array.from(new Set([...p, v]))),
       },
+      { key: "priorities" as const, label: "Priority", values: PRIORITIES },
       {
-        key: "priorities" as const, label: "Priority",
-        values: PRIORITIES,
-      },
-      {
-        key: "workTypes" as const, label: "Work Type",
-        values: Array.from(workTypes).sort(),
+        key: "workTypes" as const, label: "Work Type", values: Array.from(workTypes).sort(),
         format: (v: string) => titleCase(v),
         addLabel: "Add Work Type",
         onAdd: (v: string) => setExtraWorkTypes((p) => Array.from(new Set([...p, v]))),
@@ -104,8 +99,9 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
   }, [rows, extraRooms, extraStatuses, extraWorkTypes]);
 
   const filtered = useMemo(() => rows.filter((t) => {
-    if (filters.rooms.size && !(t.area && filters.rooms.has(t.area))) return false;
-    const c = t.contractor || t.assignee || "";
+    const areas = Array.isArray(t.areas) && (t.areas as string[]).length ? (t.areas as string[]) : (t.area ? [t.area] : []);
+    if (filters.rooms.size && !areas.some((a) => filters.rooms.has(a))) return false;
+    const c = t.agency || t.contractor || t.assignee || "";
     if (filters.contractors.size && !filters.contractors.has(c)) return false;
     if (filters.statuses.size && !filters.statuses.has(t.status ?? "not_started")) return false;
     if (filters.priorities.size) {
@@ -123,8 +119,11 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
     const m = new Map<string, TaskRow[]>();
     parents.forEach((t) => {
       let key = "Other";
-      if (groupBy === "contractor") key = t.contractor || t.assignee || "Unassigned";
-      else if (groupBy === "room") key = t.area ? titleCase(t.area) : "Unassigned";
+      if (groupBy === "contractor") key = t.agency || t.contractor || t.assignee || "Unassigned";
+      else if (groupBy === "room") {
+        const areas = Array.isArray(t.areas) && (t.areas as string[]).length ? (t.areas as string[]) : (t.area ? [t.area] : []);
+        key = areas[0] ? titleCase(areas[0]) : "Unassigned";
+      }
       else if (groupBy === "work_type") key = t.work_type ? titleCase(t.work_type) : "Other";
       else key = STATUS_META[t.status ?? "not_started"]?.label ?? "Not Started";
       const arr = m.get(key) ?? [];
@@ -135,21 +134,23 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
   }, [parents, groupBy]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h2 className="font-display text-2xl">Tasks</h2>
         <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
-          Every task in this project — filter, group, expand. Urgent rows tinted red, action-required amber, done green, planned grey.
-          Use the AI bar above to log site updates.
+          Smart Task Intelligence — every site update becomes structured tasks. AI extracts events from English, हिन्दी, or Hinglish,
+          detects duplicates, links dependencies, and tracks planned vs actual.
         </p>
       </div>
+
+      <AINarrativeBar projectId={projectId} />
 
       <div className="rounded-[16px] bg-card border border-border p-5 md:p-6" style={{ boxShadow: "var(--shadow-card)" }}>
         <TaskFilters groups={filterGroups} state={filters} setState={setFilters} />
         <div className="mt-5 pt-5 border-t border-border flex items-center gap-3 flex-wrap">
           <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-medium">Group by</span>
           {([
-            ["all", "All"], ["status", "Status"], ["contractor", "Contractor"], ["room", "Room"], ["work_type", "Work Type"],
+            ["all", "All"], ["status", "Status"], ["contractor", "Agency"], ["room", "Room"], ["work_type", "Work Type"],
           ] as const).map(([k, l]) => (
             <button key={k} onClick={() => setGroupBy(k)}
               className={`h-8 px-3 rounded-full text-xs font-medium border transition-all ${
@@ -160,12 +161,30 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
               {l}
             </button>
           ))}
-          <span className="ml-auto text-[11px] text-muted-foreground font-mono">{parents.length} task{parents.length === 1 ? "" : "s"}</span>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground font-mono mr-2">{parents.length} task{parents.length === 1 ? "" : "s"}</span>
+            <div className="flex rounded-[8px] border border-border overflow-hidden">
+              <button
+                onClick={() => setView("table")}
+                className={`h-8 px-3 text-xs inline-flex items-center gap-1.5 ${view === "table" ? "bg-[#c17f5a] text-white" : "bg-white text-muted-foreground"}`}
+              >
+                <TableIcon className="h-3.5 w-3.5" /> Table
+              </button>
+              <button
+                onClick={() => setView("gantt")}
+                className={`h-8 px-3 text-xs inline-flex items-center gap-1.5 ${view === "gantt" ? "bg-[#c17f5a] text-white" : "bg-white text-muted-foreground"}`}
+              >
+                <GanttChart className="h-3.5 w-3.5" /> Gantt
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       {tasksQ.isLoading ? (
         <div className="py-20 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : view === "gantt" ? (
+        <GanttTimeline rows={parents} />
       ) : groups.length === 0 || parents.length === 0 ? (
         <div className="py-20 text-center text-sm text-muted-foreground">No tasks match these filters.</div>
       ) : (
