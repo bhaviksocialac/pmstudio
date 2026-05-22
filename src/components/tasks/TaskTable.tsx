@@ -190,6 +190,7 @@ export function TaskTable({
               <Th className="w-10" />
               <Th>Description</Th>
               <Th>Agency</Th>
+              <Th>Work Type</Th>
               <Th>Status</Th>
               <Th>Start Date</Th>
               <Th>End Date</Th>
