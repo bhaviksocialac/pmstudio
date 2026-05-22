@@ -8,13 +8,12 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  STATUS_META, STATUS_ORDER, PRIORITY_META, rowTint, nextStatus,
+  STATUS_META, STATUS_ORDER, PRIORITY_META, rowTint, nextStatus, WORK_TYPES,
 } from "@/lib/task-flow";
 import { cascadeDependents, splitTaskPerRoom } from "@/lib/task-ai.functions";
 import {
   AgencyPicker, AreaPicker, DateField, DependencyPicker, PillPicker, WorkTypePicker,
 } from "./TaskInlineEditors";
-import { WORK_TYPES } from "@/lib/task-flow";
 import { TaskEditSheet } from "./TaskEditSheet";
 
 export type TaskRow = {
