@@ -105,76 +105,73 @@ export const processNarrative = createServerFn({ method: "POST" })
 
 DESIGNER (self) NAME: ${selfName || "(unknown)"}
 TEAM MEMBERS (designer's own team): ${teamNames.length ? teamNames.join(", ") : "(none)"}
+PROJECT ROOMS: ${projectRooms.length ? projectRooms.join(", ") : "(use rooms mentioned in narrative)"}
 
-AGENCY ASSIGNMENT RULES (CRITICAL):
-- First-person verbs ("I showed…", "I sent…", "I visited…", "we met…", "our team did…") → agency = "${selfName || "Designer"}" (the designer themselves).
-- A specific team member name from the TEAM MEMBERS list → agency = that team member's exact name.
-- "Client approved / Client said / client visited" → agency = "Client".
-- Any other named person/company (contractor, vendor) → agency = that name verbatim.
-- Never leave agency null when a human/agent is clearly responsible.
+AGENCY ASSIGNMENT RULES:
+- First-person ("I…", "we…", "our team…") → agency = "${selfName || "Designer"}".
+- Specific team member name → agency = that name.
+- "Client approved / Client said" → agency = "Client".
+- Other named person/company → agency = that name verbatim.
 
-LANGUAGE: The input may be English, Hindi (Devanagari), or Hinglish (romanised Hindi mixed with English). FIRST translate the entire narrative to clean English. Then extract tasks. All output (descriptions, agency names, areas) must be in English.
+LANGUAGE: input may be English / Hindi / Hinglish. Translate to English first. All output in English.
 
-EXTRACTION RULES:
-- Extract every distinct event as ONE task row. A single sentence may produce multiple tasks.
-- "Client approved X" → task with agency = "Client"
-- "X delivered tiles" → agency = "X", status = "material_delivered"
-- "X started work" → status = "wip", actual_start = the date
-- "X completed Y" → status = "done", actual_end = the date
-- "quotation pending/given" → status = "quotation_pending"
-- "selection pending" → status = "selection_pending"
-- "50% payment" / "balance payment" → status = "payment_pending" or "wip" depending on context
-- Date format input is DD.MM.YYYY or DD-MM-YYYY → output ISO YYYY-MM-DD
-- planned_end: only if narrative says "supposed to complete in N days/weeks" or "need to complete by DATE"
-- actual_end: only if narrative says completed/done on DATE
-- If task A "pending due to" task B → blocked_by includes B's description
-- Per-room partial completion → separate task per room (e.g. "flooring completed in Living Room" and "flooring completed in Kitchen" are TWO tasks)
-- areas: ["Living Room"], ["Master Bedroom"], ["Kitchen"], ["Mandir"], ["Bathroom"], etc. Use ["All"] only when narrative says "entire house" AND no per-room detail follows.
-- priority: default "Medium". Use "Urgent" only if narrative says urgent.
-- work_type: one of ${WORK_TYPES.join(", ")}
+CORE EXTRACTION RULES:
+- Every distinct event = ONE task row. ONE TASK PER ROOM.
+- "Plaster done in Living Room, Kitchen, Bedroom" → 3 tasks (one each), status=done, completion_pct=100.
+- "Plaster done except Mandir" or "tiling complete in all rooms except kitchen" → expand using PROJECT ROOMS:
+    * one done task (status=done, completion_pct=100) for EACH room in PROJECT ROOMS that is NOT excluded
+    * one wip/pending task (status=wip, completion_pct=0) for EACH excluded room
+- "Plaster pending in Mandir — 1 wall remaining" or "1 wall left" → status=wip, completion_pct=80, notes="1 wall pending"
+- "3 of 4 walls done" → completion_pct = round(3/4*100) = 75
+- "half done" → completion_pct=50; "almost done" → 90; "just started" → 10
+- room: the SINGLE room for this task (Living Room, Kitchen, Mandir, …). areas = [room] mirror.
+- "started" → status=wip, actual_start=date if given, completion_pct=10 unless stated otherwise
+- "completed/done" → status=done, completion_pct=100, actual_end=date if given
+- "quotation pending/given" → status=quotation_pending
+- "selection pending" → status=selection_pending
+- Date DD.MM.YYYY → ISO YYYY-MM-DD
+- A pending due to B → blocked_by includes B's description
+- priority default Medium; Urgent only if narrative says so
 - status: one of ${STATUSES.join(", ")}
+- work_type: one of ${WORK_TYPES.join(", ")}
 
-IFR / IFA / IFC DATE DETECTION (drawing/approval lifecycle):
-- IFR (Issue For Review) — keywords: "sent for review", "issued for review", "shared for feedback", "sent to check", "sent floor plan for review", "shared drawing"
-- IFA (Issue For Approval) — keywords: "sent for approval", "client approved", "issued for approval", "approval given", "approval pending", "sent layout to client", "sent to client"
-- IFC (Issue For Construction) — keywords: "issued for construction", "given to contractor", "construction started", "work issued", "IFC issued", "released to site"
-When the narrative contains one of these triggers WITH a date, set ifr_date / ifa_date / ifc_date on the matching task. A single task may have all three across multiple sentences.
+IFR/IFA/IFC DATE DETECTION:
+- IFR: "sent for review", "shared drawing"
+- IFA: "sent for approval", "client approved"
+- IFC: "issued for construction", "given to contractor", "construction started"
 
-WORK TYPE AUTO-DETECTION — a single task may involve MULTIPLE work types. Set "work_types" as an array. Use these keyword cues:
-- "tiles", "tiling", "grouting" → Tiling
-- "flooring", "wooden floor", "marble floor", "laminate" → Flooring (often paired with Tiling)
-- "electrical", "conduit", "wiring", "switchboard", "MCB" → Electrical
-- "plumbing", "pipes", "CPVC", "drainage", "sanitary" → Plumbing
-- "plaster", "masonry", "brickwork", "RCC", "demolition" → Civil
-- "carpentry", "wardrobe", "modular", "shutter", "veneer" → Carpentry
-- "painting", "primer", "putty", "POP finish" → Painting
-- "false ceiling", "gypsum", "POP ceiling" → False Ceiling
-- "AC", "HVAC", "duct", "VRV", "split unit" → HVAC
-If unclear, leave work_types as [] and work_type as null. "work_type" should always be the first entry of "work_types" (or null).
+WORK TYPE KEYWORDS (work_types may be multi):
+- tiles/grouting → Tiling
+- flooring/wooden/marble/laminate → Flooring
+- electrical/conduit/wiring/MCB → Electrical
+- plumbing/pipes/CPVC/drainage → Plumbing
+- plaster/masonry/brickwork/RCC/demolition → Civil
+- carpentry/wardrobe/modular → Carpentry
+- painting/primer/putty → Painting
+- false ceiling/gypsum/POP ceiling → False Ceiling
+- AC/HVAC/duct → HVAC
+"work_type" = first of "work_types".
 
-
-Return JSON of shape:
+Return JSON:
 {
-  "english_text": "translated narrative",
-  "original_language": "english" | "hindi" | "hinglish",
+  "english_text": "...",
+  "original_language": "english"|"hindi"|"hinglish",
   "tasks": [
     {
-      "description": "...",
-      "agency": "Ramesh" | "Client" | null,
-      "work_type": "Tiling",
-      "work_types": ["Tiling", "Flooring"],
-      "areas": ["Living Room"],
-      "status": "done",
+      "description": "Plaster pending in Mandir",
+      "agency": "Jangir" | "Client" | null,
+      "work_type": "Civil",
+      "work_types": ["Civil"],
+      "areas": ["Mandir"],
+      "room": "Mandir",
+      "completion_pct": 80,
+      "status": "wip",
       "priority": "Medium",
-      "planned_start": null,
-      "planned_end": null,
-      "actual_start": null,
-      "actual_end": "2026-01-25",
-      "ifr_date": null,
-      "ifa_date": null,
-      "ifc_date": null,
+      "planned_start": null, "planned_end": null,
+      "actual_start": null, "actual_end": null,
+      "ifr_date": null, "ifa_date": null, "ifc_date": null,
       "blocked_by": [],
-      "notes": null
+      "notes": "1 wall pending near entrance"
     }
   ]
 }
@@ -183,6 +180,7 @@ NARRATIVE:
 """
 ${data.text}
 """`;
+
 
     const res = await fetch(AI_URL, {
       method: "POST",
