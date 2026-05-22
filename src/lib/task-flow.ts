@@ -38,8 +38,10 @@ export const PRIORITY_META: Record<string, { label: string; bg: string; fg: stri
 };
 
 export const WORK_TYPES = [
+  "Survey", "Design", "Procurement",
   "Flooring", "Tiling", "Civil", "Electrical", "Painting",
-  "False Ceiling", "Carpentry", "Plumbing", "HVAC", "Other",
+  "False Ceiling", "Carpentry", "Plumbing", "HVAC",
+  "Finishing", "Snags", "Handover", "Other",
 ] as const;
 export type WorkType = typeof WORK_TYPES[number];
 
@@ -59,20 +61,27 @@ const PROCUREMENT_STATUSES = new Set([
 ]);
 
 export const WORK_TYPE_PHASE: Record<string, ProjectPhase> = {
+  Survey: "Survey",
+  Design: "Design",
+  Procurement: "Procurement",
   Flooring: "Execution", Tiling: "Execution", Civil: "Execution",
   Electrical: "Execution", Plumbing: "Execution", HVAC: "Execution",
   Carpentry: "Execution",
   "False Ceiling": "Finishing", Painting: "Finishing",
+  Finishing: "Finishing", Snags: "Finishing",
+  Handover: "Handover",
   Other: "Execution",
 };
 
 export function phaseOfTask(t: {
   status?: string | null; work_type?: string | null; done?: boolean | null;
+  phase?: string | null; ifr_date?: string | null; ifa_date?: string | null; ifc_date?: string | null;
 }): ProjectPhase {
+  const p = (t.phase ?? "").trim();
+  if ((PROJECT_PHASES as readonly string[]).includes(p)) return p as ProjectPhase;
   if (t.work_type && WORK_TYPE_PHASE[t.work_type]) return WORK_TYPE_PHASE[t.work_type];
+  if (t.ifc_date || t.ifa_date || t.ifr_date) return "Design";
   if (t.status && PROCUREMENT_STATUSES.has(t.status)) return "Procurement";
-  if (t.status === "wip" || t.status === "in_progress") return "Execution";
-  if (t.status === "done" || t.done) return "Execution";
   return "Execution";
 }
 
