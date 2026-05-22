@@ -257,6 +257,7 @@ export function TaskTable({
                         <AgencyPicker
                           value={t.agency || t.contractor || t.assignee}
                           vendors={vendors}
+                          teamMembers={teamMembers}
                           onChange={(v) => updateField(t, { agency: v, contractor: v })}
                         />
                       </div>
