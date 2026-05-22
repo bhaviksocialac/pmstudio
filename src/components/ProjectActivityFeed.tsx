@@ -92,7 +92,7 @@ export function ProjectActivityFeed({ projectId }: { projectId: string }) {
       });
 
       (drafts.data ?? []).forEach((d) => {
-        ev.push({ ts: d.created_at, icon: FileText, label: `${d.kind === "boq" ? "BOQ" : "PO"} ${d.subject ? `— ${d.subject}` : ""}${d.recipient_name ? ` (${d.recipient_name})` : ""}`, tone: "#c17f5a", phase: "Procurement", group: d.recipient_name || "Documents" });
+        ev.push({ ts: d.created_at, icon: FileText, label: `${(d.kind as string) === "boq" ? "BOQ" : "PO"} ${d.subject ? `— ${d.subject}` : ""}${d.recipient_name ? ` (${d.recipient_name})` : ""}`, tone: "#c17f5a", phase: "Procurement", group: d.recipient_name || "Documents" });
       });
 
       return ev.filter((e) => e.ts).sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
