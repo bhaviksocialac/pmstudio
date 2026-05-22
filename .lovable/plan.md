@@ -1,127 +1,83 @@
-## Smart Task Intelligence System
 
-A single coherent task engine across BOQ → tasks → status flow → dependencies → room progress → AI updates. Built on the existing `tasks` table (most fields already exist from prior work) plus targeted additions.
+## Goal
 
-### 1. Schema additions (one migration)
+Make tasks the single source of truth. Every AI-bar entry updates the Tasks table, Phases checklist (per room × work type), Timeline Gantt, and Overview progress in one shot. All phases run in parallel.
 
-Extend `public.tasks`:
-- `work_type` text — Flooring / Tiling / Civil / Electrical / Painting / False Ceiling / Carpentry / Plumbing / HVAC / Other
-- `action_required` boolean default false
-- `action_label` text — short reason ("Client approval pending")
-- `vendor_id` uuid — link to master vendor list (in addition to free-text `contractor`)
-- Reuse existing: `status`, `priority`, `area`, `start_date`, `due_date`, `parent_task_id`, `depends_on` (jsonb array of task ids), `notes`, `attachments`.
+## 1. Data model
 
-Expand allowed status values (string column, no enum): `not_started`, `selection_pending`, `approval_pending`, `quotation_pending`, `order_placed`, `payment_pending`, `material_ordered`, `material_delivered`, `wip`, `done`, `blocked`.
+New migration:
+- Add `room` (text, nullable) to `tasks` — per-room granularity for partial completion.
+- Add `completion_pct` (int, 0–100, default 0) to `tasks` — for "1 wall pending" style partials.
+- Add `phase` (text, nullable) to `tasks` — denormalised from work_type, auto-filled, so phase grouping is O(1).
+- Create `work_type_phase_map` constant in code (no table) mapping every WORK_TYPE → phase bucket: Civil Work, Electrical Work, Plumbing Work, Flooring Work, Painting Work, Furniture Installation.
+- Drop the sequential-lock behaviour in `PhaseChecklistTab` (no schema change — code only).
 
-Index: `(project_id, area)`, `(project_id, status)`.
+## 2. Phase sync layer (`src/lib/phase-sync.ts`, new)
 
-### 2. BOQ → tasks (extend existing `boq-checklist.functions.ts`)
+Pure helpers:
+- `phaseGroupOfWorkType(wt)` → one of the 6 execution phase groups.
+- `computePhaseRollup(tasks)` → per phase group: `{ total, done, partialPct, perWorkType: { perRoom: {status, pct, note} } }`.
+- `overallProjectPct(tasks)` → weighted by task count + completion_pct.
+- `canSignOff(phaseGroup, rollup)` → boolean + blocker message.
 
-Upgrade the AI extractor prompt to return per item:
-```
-{ title, work_type, room, amount, initial_status }
-```
-- If "all rooms" / "complete flat" → set `area="All"` and create a single task (Option A) — designer can split later via "Split per room" button.
-- If specific room → one task per room.
-- Default `initial_status`:
-  - Material-only line → `selection_pending`
-  - Labour/service line → `quotation_pending`
+Used by Tasks tab, Phases tab, Timeline, Overview, Dashboard — one function, four readers.
 
-Server fn returns the created task ids so UI can highlight them.
+## 3. AI narrative upgrade (`src/lib/task-narrative.functions.ts`)
 
-### 3. Status flow engine
+Extend the extracted-task schema with `room`, `completion_pct`, and explicit fan-out:
+- "Plaster done in Living Room, Kitchen, Bedroom" → 3 tasks (one per room), each work_type=Civil, status=done.
+- "Plaster done except Mandir" → N done tasks for known rooms + 1 wip task for Mandir.
+- "1 wall remaining" → completion_pct=80, notes="1 wall pending".
+- AI prompt receives the project's room list so it can fan out "all rooms except X".
 
-Helper `src/lib/task-flow.ts` (pure):
-- `STATUS_ORDER` array and `nextStatus(current)` / `prevStatus`
-- `STATUS_META` with label + color tag (reusing existing warm palette: terracotta/amber/sage)
-- `dependentsUnblocked(task, allTasks)` — when a task becomes `done` or `material_delivered`, returns dependents whose `depends_on` is now clear.
+Also auto-fill `phase` server-side from work_type before insert.
 
-### 4. Dependencies
+## 4. Phases tab rewrite (`PhaseChecklistTab.tsx`)
 
-- `depends_on: uuid[]` (jsonb) already exists.
-- Add small "Blocked by" picker in task detail (multi-select of other tasks in same project).
-- Derived "Blocking" computed client-side by scanning all tasks.
-- On status update to `done`, server fn `cascadeDependents` flips eligible dependents from `not_started` → `selection_pending` (or `material_ordered` → `wip` for laying tasks) and writes a notification row (reuse `app-bus` toast for now; persist via `ai_drafts` style if needed later).
+- Remove sequential lock — every phase header expandable from day one, no "Lock" icon, no dependency on previous sign-off.
+- Replace the static `checklist: [{text,done}]` model with a live render driven by tasks:
+  - For each phase group, list its work types (Plaster, Demolition, Wiring…) inferred from tasks.
+  - Under each work type, render a room-wise grid: Living Room ✅, Bedroom ✅, Mandir ⏳ 80% "1 wall pending".
+- Phase header shows progress bar = `computePhaseRollup` percentage.
+- Sign Off button enabled only when `canSignOff` returns true; otherwise shows blocker text.
 
-### 5. AI Site Update (extend existing AI bar)
+## 5. Timeline sync (`GanttTimeline.tsx`)
 
-Reuse `phase-ai.functions.ts` pattern. New server fn `interpretTaskUpdate({ projectId, text })`:
-- Loads all tasks for project.
-- Sends to Gemini with tool-call schema: `{ task_id, new_status, confidence, clarification_question? }`.
-- If confidence < 0.7 or multiple matches → returns `clarification_question` with candidate room/task names.
-- On confirm → updates task, runs cascade, returns human summary.
+- Bar colour driven by task status: not_started → grey, wip → amber, done → sage, delayed (`actual_end > planned_end` or overdue) → terracotta.
+- Group headers already exist by phase + work type; pipe in the new `phase` column for instant grouping.
 
-Wire into existing AI input in project view.
+## 6. Overview tab (`ProjectProgressPanels.tsx`)
 
-### 6. Task page (rewrite `src/routes/_authenticated/tasks.tsx` + project tab)
+- Phase Progress section now uses the 6 execution-phase groups (not the high-level Survey/Design/… phases). Each bar clickable → navigates to that phase in the Phases tab via a query param.
+- Reuses `computePhaseRollup`.
 
-Single shared component `<TaskTable>` used in both global and project views.
+## 7. Dashboard card
 
-**Columns:** Task, Room, Work Type, Contractor, Status, Priority, Start, End, Blocked By, Action
+- Project card completion % switches from `projects.completion` (manual) to `overallProjectPct(tasks)` fetched alongside the project list.
 
-**Row tint** (subtle bg, no color override of design tokens):
-- Red tint: `priority="Urgent"` OR overdue (`due_date < today` and not done)
-- Amber tint: `action_required=true`
-- Green tint: `status="done"`
-- Grey tint: `status="not_started"`
+## 8. Cross-tab notification
 
-**Filters (chip bar, multi-active):** Room • Contractor • Status • Priority • Work Type. State stored in URL search params.
+- After `confirmNarrative` saves tasks, emit a `sonner` toast: "Civil Work updated — 85%. Plaster complete in 4 of 5 rooms." Computed from before/after rollup diff returned by the server fn.
 
-**Grouping toggle:** Status / Contractor / Room / Work Type.
+## 9. Files touched
 
-**Expandable row:** sub-tasks, notes, attachments, dependencies editor.
+New
+- `supabase/migrations/<ts>_tasks_room_completion_phase.sql`
+- `src/lib/phase-sync.ts`
 
-### 7. Room-wise progress dashboard
+Edited
+- `src/lib/task-narrative.functions.ts` (room + completion + fan-out + phase auto-fill + diff in response)
+- `src/lib/task-flow.ts` (WORK_TYPE → phase-group map exported)
+- `src/components/PhaseChecklistTab.tsx` (parallel phases, room-wise grid, dynamic from tasks)
+- `src/components/tasks/AINarrativeBar.tsx` (show toast diff)
+- `src/components/tasks/GanttTimeline.tsx` (status-driven bar colours)
+- `src/components/tasks/ProjectProgressPanels.tsx` (new phase grouping)
+- `src/components/tasks/TaskTable.tsx` + `TaskEditSheet.tsx` (room column/field)
+- `src/routes/_authenticated/projects.index.tsx` (dashboard pct from tasks)
 
-New section on project overview: grid of rooms, each card lists work types with status dot (✅ done / ⏳ wip / ❌ pending). Click → opens task page filtered to that room.
+## 10. Out of scope (call out)
 
-Derived from existing `project_rooms` + tasks grouped by `area`.
+- No changes to auth, billing, vendors, messages.
+- Existing `phase_subcategories` rows kept for back-compat but no longer the source of truth for checklists.
 
-### 8. Timeline (upgrade existing Gantt)
-
-- Color by status (existing palette).
-- Dependency arrows already added in prior prompt — extend to use actual `depends_on` ids instead of sequential heuristic.
-- Add same chip filter bar above.
-
-### 9. Action Required surfacing
-
-- "Action Required" red badge in task row when `action_required=true`.
-- Today's Focus widget on dashboard: top 5 `action_required` tasks across all projects, ordered by priority then due date.
-- Auto-set `action_required=true` when:
-  - status = `approval_pending` for >24h
-  - status = `quotation_pending` and `created_at` > 3 days
-  - status = `payment_pending`
-  Computed client-side on read (no cron needed).
-
-### 10. Partial completion
-
-Native: one task per room is already the model. Add "Split per room" button on tasks where `area="All"` that clones the task per `project_rooms` entry and deletes the original.
-
-### Technical notes
-
-- All colors via existing tokens (`--terracotta`, `--amber`, `--sage`, `--muted`). No new palette.
-- Fonts: Cormorant headings, DM Sans body — unchanged.
-- RLS: existing `tasks_*_own` policies cover new columns.
-- Realtime: enable `tasks` on `supabase_realtime` publication so cascades reflect immediately.
-- AI calls use `google/gemini-2.5-flash-lite` via Lovable AI Gateway (already wired).
-
-### Files (planned)
-
-**New**
-- `src/lib/task-flow.ts` — status order, metadata, cascade pure logic
-- `src/lib/task-ai.functions.ts` — `interpretTaskUpdate`, `cascadeDependents`, `splitTaskPerRoom`
-- `src/components/tasks/TaskTable.tsx` — shared table + filter bar + expandable rows
-- `src/components/tasks/TaskFilters.tsx` — chip-based multi-filter
-- `src/components/tasks/RoomProgressGrid.tsx` — room-wise status dots
-- `src/components/tasks/TaskDetailDrawer.tsx` — full edit incl. dependencies + action required
-- `src/components/tasks/TodayFocus.tsx` — dashboard widget
-
-**Edited**
-- `supabase/migrations/<ts>_task_intelligence.sql` — columns + index + realtime
-- `src/lib/boq-checklist.functions.ts` — richer extraction (work_type, initial_status)
-- `src/routes/_authenticated/tasks.tsx` — use shared TaskTable + filters
-- `src/routes/_authenticated/projects.$projectId.tsx` — tab uses TaskTable; add RoomProgressGrid to overview; wire AI bar to `interpretTaskUpdate`
-- `src/routes/_authenticated/index.tsx` — Today's Focus widget
-- Gantt component — use real `depends_on`, color by status
-
-This is a large build (~10 files, 1 migration, 2 AI server fns). I'll work through it section by section in order: migration → flow lib → BOQ upgrade → TaskTable/filters → Room grid → AI updater → Today's Focus → Gantt deps.
+Once approved I'll ship the migration first, then code.
