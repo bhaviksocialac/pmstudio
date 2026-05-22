@@ -50,6 +50,33 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
     },
   });
 
+  const teamQ = useQuery({
+    queryKey: ["team-members"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("team_members").select("id,name,role").order("created_at");
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string; role: string }[];
+    },
+  });
+
+  const profileQ = useQuery({
+    queryKey: ["profile-self"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("full_name").maybeSingle();
+      if (error) throw error;
+      return data as { full_name: string | null } | null;
+    },
+  });
+
+  const teamMembers = useMemo(() => {
+    const self = profileQ.data?.full_name?.trim();
+    const list = [...(teamQ.data ?? [])];
+    if (self && !list.some((m) => m.name.toLowerCase() === self.toLowerCase())) {
+      list.unshift({ id: "self", name: self, role: "Me (Designer)" });
+    }
+    return list;
+  }, [teamQ.data, profileQ.data]);
+
 
   useEffect(() => {
     const ch = supabase.channel(`tasks-rt-${projectId}`)
@@ -153,7 +180,7 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
         </p>
       </div>
 
-      <AINarrativeBar projectId={projectId} />
+      <AINarrativeBar projectId={projectId} teamMembers={teamMembers} />
 
       <div className="rounded-[16px] bg-card border border-border p-5 md:p-6" style={{ boxShadow: "var(--shadow-card)" }}>
         <TaskFilters groups={filterGroups} state={filters} setState={setFilters} />
@@ -213,6 +240,7 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
                 rows={[...items, ...filtered.filter((s) => s.parent_task_id && items.some((p) => p.id === s.parent_task_id))]}
                 projectMap={projectMap}
                 vendors={vendorsQ.data ?? []}
+                teamMembers={teamMembers}
                 rooms={filterGroups[0].values}
                 onAddRoom={(r) => setExtraRooms((p) => Array.from(new Set([...p, r])))}
                 allProjectTasks={rows}

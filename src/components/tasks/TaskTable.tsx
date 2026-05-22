@@ -66,7 +66,7 @@ const PRIORITIES = ["Urgent", "High", "Medium", "Low"] as const;
 
 export function TaskTable({
   rows, projectMap, showProject = true, onChanged,
-  vendors = [], rooms = [], onAddRoom,
+  vendors = [], teamMembers = [], rooms = [], onAddRoom,
   allProjectTasks,
 }: {
   rows: TaskRow[];
@@ -74,6 +74,7 @@ export function TaskTable({
   showProject?: boolean;
   onChanged?: () => void;
   vendors?: { id: string; name: string }[];
+  teamMembers?: { name: string; role?: string }[];
   rooms?: string[];
   onAddRoom?: (r: string) => void;
   /** All tasks in the project — used for dependency pickers (across filter groups). */
@@ -256,6 +257,7 @@ export function TaskTable({
                         <AgencyPicker
                           value={t.agency || t.contractor || t.assignee}
                           vendors={vendors}
+                          teamMembers={teamMembers}
                           onChange={(v) => updateField(t, { agency: v, contractor: v })}
                         />
                       </div>
@@ -508,6 +510,7 @@ export function TaskTable({
         onChanged={refresh}
         allTasks={projectScopeTasks}
         vendors={vendors}
+        teamMembers={teamMembers}
         rooms={rooms}
         onAddRoom={onAddRoom ?? (() => {})}
       />

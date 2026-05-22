@@ -5,7 +5,7 @@ import { Sparkles, Send, Loader2, X, AlertTriangle, ArrowRight, Check } from "lu
 import { toast } from "sonner";
 import { processNarrative, confirmNarrative, type ProcessResult } from "@/lib/task-narrative.functions";
 
-export function AINarrativeBar({ projectId }: { projectId: string }) {
+export function AINarrativeBar({ projectId, teamMembers = [] }: { projectId: string; teamMembers?: { name: string; role?: string }[] }) {
   const [text, setText] = useState("");
   const [preview, setPreview] = useState<ProcessResult | null>(null);
   const processFn = useServerFn(processNarrative);
@@ -13,7 +13,7 @@ export function AINarrativeBar({ projectId }: { projectId: string }) {
   const qc = useQueryClient();
 
   const process = useMutation({
-    mutationFn: (msg: string) => processFn({ data: { projectId, text: msg } }),
+    mutationFn: (msg: string) => processFn({ data: { projectId, text: msg, teamMembers } }),
     onSuccess: (res) => setPreview(res),
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
