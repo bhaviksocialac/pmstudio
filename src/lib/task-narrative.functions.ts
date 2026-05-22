@@ -18,22 +18,24 @@ const WORK_TYPES = [
 
 export type ExtractedTask = {
   description: string;
-  agency: string | null;        // "Client", contractor name, vendor name
-  work_type: string | null;     // primary work type (first of work_types)
-  work_types: string[];         // one task may have multiple work types
-  areas: string[];              // [] = none, ["All"] = all rooms
+  agency: string | null;
+  work_type: string | null;
+  work_types: string[];
+  areas: string[];
+  room: string | null;          // primary single room for per-room rollup
+  completion_pct: number;       // 0-100 partial completion ("1 wall pending" → 80)
   status: string;
   priority: "Urgent" | "High" | "Medium" | "Low" | "None";
-  planned_start: string | null; // YYYY-MM-DD
+  planned_start: string | null;
   planned_end: string | null;
   actual_start: string | null;
   actual_end: string | null;
   ifr_date: string | null;
   ifa_date: string | null;
   ifc_date: string | null;
-  blocked_by: string[];         // descriptions of other tasks in this batch
+  blocked_by: string[];
   notes: string | null;
-  duplicate_of: string | null;  // existing task id (set by server, not AI)
+  duplicate_of: string | null;
 };
 
 export type ProcessResult = {
@@ -45,6 +47,7 @@ export type ProcessResult = {
     rooms: string[];
     delays: number;
     dependencies: number;
+    groupUpdates: { group: string; pct: number }[];
   };
   original_language: string;
   english_text: string;
