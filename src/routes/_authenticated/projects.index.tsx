@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Plus, LayoutGrid, List as ListIcon } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -8,6 +8,7 @@ import { healthMap, type DbProject } from "@/lib/db-types";
 import { labelForProjectType } from "@/lib/project-types";
 import { openModal } from "@/lib/app-bus";
 import { SharePortalButton } from "@/components/SharePortalButton";
+import { overallCompletion } from "@/lib/task-flow";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   head: () => ({
@@ -31,6 +32,27 @@ function ProjectsPage() {
       return (data ?? []) as DbProject[];
     },
   });
+
+  const { data: allTasks = [] } = useQuery({
+    queryKey: ["projects-task-completion"],
+    queryFn: async () => {
+      const { data } = await supabase.from("tasks").select("project_id,status,done");
+      return (data ?? []) as { project_id: string | null; status: string | null; done: boolean | null }[];
+    },
+  });
+
+  const completionByProject = useMemo(() => {
+    const m = new Map<string, number>();
+    const grouped = new Map<string, { status: string | null; done: boolean | null }[]>();
+    allTasks.forEach((t) => {
+      if (!t.project_id) return;
+      const arr = grouped.get(t.project_id) ?? [];
+      arr.push(t);
+      grouped.set(t.project_id, arr);
+    });
+    grouped.forEach((arr, pid) => m.set(pid, overallCompletion(arr)));
+    return m;
+  }, [allTasks]);
 
   const filtered = projects.filter((p) =>
     !query || `${p.name} ${p.location ?? ""}`.toLowerCase().includes(query.toLowerCase()),
@@ -93,7 +115,7 @@ function ProjectsPage() {
         ) : view === "grid" ? (
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {filtered.map((p) => (
-              <ProjectCard key={p.id} project={p} />
+              <ProjectCard key={p.id} project={p} completion={completionByProject.get(p.id) ?? p.completion} />
             ))}
           </section>
         ) : (
@@ -116,8 +138,8 @@ function ProjectsPage() {
                       <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider"><span className="h-1.5 w-1.5 rounded-full" style={{ background: h.color }} />{h.label}</span></td>
                       <td className="px-4 py-3 w-48">
                         <div className="flex items-center gap-2">
-                          <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden"><div className="h-full" style={{ width: `${p.completion}%`, background: "#c17f5a" }} /></div>
-                          <span className="font-mono text-xs">{p.completion}%</span>
+                          <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden"><div className="h-full" style={{ width: `${completionByProject.get(p.id) ?? p.completion}%`, background: "#c17f5a" }} /></div>
+                          <span className="font-mono text-xs">{completionByProject.get(p.id) ?? p.completion}%</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -135,7 +157,8 @@ function ProjectsPage() {
   );
 }
 
-function ProjectCard({ project: p }: { project: DbProject }) {
+function ProjectCard({ project: p, completion }: { project: DbProject; completion: number }) {
+  const pct = completion;
   const h = healthMap[p.health];
   return (
     <div
@@ -160,10 +183,10 @@ function ProjectCard({ project: p }: { project: DbProject }) {
         <div>
           <div className="flex justify-between text-[11px] mb-1.5">
             <span className="uppercase tracking-[0.18em] text-muted-foreground">Completion</span>
-            <span className="font-mono">{p.completion}%</span>
+            <span className="font-mono">{pct}%</span>
           </div>
           <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${p.completion}%`, background: "#c17f5a" }} />
+            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#c17f5a" }} />
           </div>
         </div>
       </Link>

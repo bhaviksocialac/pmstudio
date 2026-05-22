@@ -48,6 +48,64 @@ export const DEFAULT_ROOMS = [
   "Bathroom", "Dining", "Balcony", "All",
 ] as const;
 
+// ----- Phase inference + completion helpers -----
+
+export const PROJECT_PHASES = ["Survey", "Design", "Procurement", "Execution", "Finishing", "Handover"] as const;
+export type ProjectPhase = typeof PROJECT_PHASES[number];
+
+const PROCUREMENT_STATUSES = new Set([
+  "selection_pending", "approval_pending", "quotation_pending", "order_placed",
+  "payment_pending", "material_ordered", "material_delivered",
+]);
+
+export const WORK_TYPE_PHASE: Record<string, ProjectPhase> = {
+  Flooring: "Execution", Tiling: "Execution", Civil: "Execution",
+  Electrical: "Execution", Plumbing: "Execution", HVAC: "Execution",
+  Carpentry: "Execution",
+  "False Ceiling": "Finishing", Painting: "Finishing",
+  Other: "Execution",
+};
+
+export function phaseOfTask(t: {
+  status?: string | null; work_type?: string | null; done?: boolean | null;
+}): ProjectPhase {
+  if (t.work_type && WORK_TYPE_PHASE[t.work_type]) return WORK_TYPE_PHASE[t.work_type];
+  if (t.status && PROCUREMENT_STATUSES.has(t.status)) return "Procurement";
+  if (t.status === "wip" || t.status === "in_progress") return "Execution";
+  if (t.status === "done" || t.done) return "Execution";
+  return "Execution";
+}
+
+export function isTaskDone(t: { status?: string | null; done?: boolean | null }) {
+  return t.status === "done" || !!t.done;
+}
+
+export type ProgressRow = { key: string; total: number; done: number; pct: number };
+
+export function computeBreakdown<T extends { status?: string | null; done?: boolean | null }>(
+  tasks: T[],
+  keyFn: (t: T) => string | null | undefined,
+): ProgressRow[] {
+  const m = new Map<string, { total: number; done: number }>();
+  tasks.forEach((t) => {
+    const raw = keyFn(t);
+    const k = (raw ?? "").trim() || "Unassigned";
+    const cur = m.get(k) ?? { total: 0, done: 0 };
+    cur.total++;
+    if (isTaskDone(t)) cur.done++;
+    m.set(k, cur);
+  });
+  return Array.from(m.entries())
+    .map(([key, v]) => ({ key, total: v.total, done: v.done, pct: v.total ? Math.round((v.done / v.total) * 100) : 0 }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+}
+
+export function overallCompletion<T extends { status?: string | null; done?: boolean | null }>(tasks: T[]): number {
+  if (!tasks.length) return 0;
+  const done = tasks.filter(isTaskDone).length;
+  return Math.round((done / tasks.length) * 100);
+}
+
 export function nextStatus(current: string | null | undefined): TaskStatus | null {
   const i = STATUS_ORDER.indexOf((current ?? "not_started") as typeof STATUS_ORDER[number]);
   if (i < 0 || i === STATUS_ORDER.length - 1) return null;
