@@ -131,6 +131,7 @@ export function TaskEditSheet({
               <AgencyPicker
                 value={draft.agency}
                 vendors={vendors}
+                teamMembers={teamMembers}
                 onChange={(v) => patch({ agency: v })}
               />
             </Field>
