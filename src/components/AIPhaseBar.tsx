@@ -43,6 +43,11 @@ export function AIPhaseBar({ projectId }: { projectId: string }) {
       qc.invalidateQueries({ queryKey: ["project-activity", projectId] });
       qc.invalidateQueries({ queryKey: ["all-tasks"] });
       qc.invalidateQueries({ queryKey: ["project-tasks", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-tasks-progress", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-tasks-rollup", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-tasks-overview", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-tasks-autophase", projectId] });
+      qc.invalidateQueries({ queryKey: ["projects-task-completion"] });
       qc.invalidateQueries({ queryKey: ["project-tasks-grid", projectId] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
