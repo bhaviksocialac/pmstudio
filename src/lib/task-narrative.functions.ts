@@ -129,6 +129,19 @@ IFR / IFA / IFC DATE DETECTION (drawing/approval lifecycle):
 - IFC (Issue For Construction) — keywords: "issued for construction", "given to contractor", "construction started", "work issued", "IFC issued", "released to site"
 When the narrative contains one of these triggers WITH a date, set ifr_date / ifa_date / ifc_date on the matching task. A single task may have all three across multiple sentences.
 
+WORK TYPE AUTO-DETECTION — a single task may involve MULTIPLE work types. Set "work_types" as an array. Use these keyword cues:
+- "tiles", "tiling", "grouting" → Tiling
+- "flooring", "wooden floor", "marble floor", "laminate" → Flooring (often paired with Tiling)
+- "electrical", "conduit", "wiring", "switchboard", "MCB" → Electrical
+- "plumbing", "pipes", "CPVC", "drainage", "sanitary" → Plumbing
+- "plaster", "masonry", "brickwork", "RCC", "demolition" → Civil
+- "carpentry", "wardrobe", "modular", "shutter", "veneer" → Carpentry
+- "painting", "primer", "putty", "POP finish" → Painting
+- "false ceiling", "gypsum", "POP ceiling" → False Ceiling
+- "AC", "HVAC", "duct", "VRV", "split unit" → HVAC
+If unclear, leave work_types as [] and work_type as null. "work_type" should always be the first entry of "work_types" (or null).
+
+
 Return JSON of shape:
 {
   "english_text": "translated narrative",
