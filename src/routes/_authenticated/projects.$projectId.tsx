@@ -423,21 +423,21 @@ function AutoPhaseCompleter({
     queryFn: async () => {
       const { data } = await supabase
         .from("tasks")
-        .select("status,done,work_type")
+        .select("status,done,work_type,work_types,phase,ifr_date,ifa_date,ifc_date")
         .eq("project_id", project.id);
-      return (data ?? []) as { status: string | null; done: boolean | null; work_type: string | null }[];
+      return (data ?? []) as TaskLite[];
     },
     refetchInterval: 15000,
   });
 
   useEffect(() => {
     if (!tasks.length) return;
-    const byPhase = new Map<ProjectPhase, { total: number; done: number }>();
+    const byPhase = new Map<ExecutionPhaseGroup, { total: number; done: number }>();
     tasks.forEach((t) => {
       const ph = phaseOfTask(t);
       const cur = byPhase.get(ph) ?? { total: 0, done: 0 };
       cur.total++;
-      if (isTaskDone(t)) cur.done++;
+      if (isDone(t)) cur.done++;
       byPhase.set(ph, cur);
     });
     byPhase.forEach(async (v, ph) => {
@@ -451,8 +451,8 @@ function AutoPhaseCompleter({
         .update({ status: "done", end_date: today })
         .eq("project_id", project.id)
         .eq("phase", ph);
-      const idx = PROJECT_PHASES.indexOf(ph);
-      const next = PROJECT_PHASES[idx + 1];
+      const idx = EXECUTION_PHASE_GROUPS.indexOf(ph);
+      const next = EXECUTION_PHASE_GROUPS[idx + 1];
       if (next) {
         await supabase.from("project_phases")
           .update({ status: "active" })
