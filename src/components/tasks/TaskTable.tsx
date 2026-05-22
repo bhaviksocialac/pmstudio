@@ -169,18 +169,12 @@ export function TaskTable({
                       </button>
                     </Td>
                     <Td>
-                      <div className="py-3 min-w-[200px]">
+                      <div className="py-3 min-w-[220px]">
                         <div className={`font-medium ${t.done ? "line-through text-muted-foreground" : ""}`}>{t.title}</div>
+                        {t.work_type && <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">{t.work_type}</div>}
                         {projName && <div className="text-[11px] text-muted-foreground mt-1">{projName}</div>}
-                        {blockedBy.length > 0 && (
-                          <div className="text-[10px] text-[#c4685a] mt-1 flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3" /> Blocked by: {blockedBy.slice(0, 2).join(", ")}
-                          </div>
-                        )}
                       </div>
                     </Td>
-                    <Td><span className="text-xs">{t.area ?? "—"}</span></Td>
-                    <Td><span className="text-xs text-muted-foreground">{t.work_type ?? "—"}</span></Td>
                     <Td><span className="text-xs">{t.contractor ?? t.assignee ?? "—"}</span></Td>
                     <Td>
                       <button
@@ -190,9 +184,36 @@ export function TaskTable({
                         <Tag bg={sc.bg} fg={sc.fg}>{sc.label}</Tag>
                       </button>
                     </Td>
-                    <Td><Tag bg={pc.bg} fg={pc.fg}>{t.priority ?? "Medium"}</Tag></Td>
                     <Td><span className="text-xs text-muted-foreground font-mono">{t.start_date ?? "—"}</span></Td>
                     <Td><span className="text-xs text-muted-foreground font-mono">{t.due_date ?? "—"}</span></Td>
+                    <Td>
+                      <span className="text-xs text-muted-foreground font-mono whitespace-nowrap">
+                        {t.ifr_date ? `${t.ifr_type ?? "IFR"} · ${t.ifr_date}` : "—"}
+                      </span>
+                    </Td>
+                    <Td><span className="text-xs">{t.area ?? "—"}</span></Td>
+                    <Td><Tag bg={pc.bg} fg={pc.fg}>{t.priority ?? "Medium"}</Tag></Td>
+                    <Td>
+                      {blockedBy.length > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-[#8a4a3f]">
+                          <AlertCircle className="h-3 w-3" />{blockedBy.length === 1 ? blockedBy[0] : `${blockedBy.length} tasks`}
+                        </span>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </Td>
+                    <Td>
+                      {(blockingMap.get(t.id) ?? []).length > 0 ? (
+                        <span className="text-[11px] text-[#4f6b5e]">
+                          {(blockingMap.get(t.id) ?? []).length === 1
+                            ? blockingMap.get(t.id)![0]
+                            : `${blockingMap.get(t.id)!.length} tasks`}
+                        </span>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </Td>
+                    <Td>
+                      <span className="text-xs text-muted-foreground line-clamp-2 max-w-[180px] block">
+                        {t.notes || "—"}
+                      </span>
+                    </Td>
                     <Td>
                       {t.action_required ? (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-[#c4685a22] text-[#8a2a1f] text-[10px] font-medium uppercase tracking-wider">
