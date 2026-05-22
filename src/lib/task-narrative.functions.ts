@@ -79,8 +79,15 @@ export const processNarrative = createServerFn({ method: "POST" })
     // Existing tasks in project for duplicate detection
     const { data: existing } = await supabase
       .from("tasks")
-      .select("id,title,description,agency,contractor,areas,area,work_type,status")
+      .select("id,title,description,agency,contractor,areas,area,work_type,status,room")
       .eq("project_id", data.projectId);
+
+    // Project rooms so AI can fan-out "all rooms except X"
+    const { data: roomRows } = await supabase
+      .from("project_rooms")
+      .select("name")
+      .eq("project_id", data.projectId);
+    const projectRooms = (roomRows ?? []).map((r) => r.name);
 
     const existingList = (existing ?? []).map((t) => {
       const areas = Array.isArray(t.areas) ? (t.areas as string[]) : (t.area ? [t.area] : []);
@@ -89,6 +96,7 @@ export const processNarrative = createServerFn({ method: "POST" })
         desc: t.description || t.title,
         agency: t.agency || t.contractor || "",
         areas,
+        room: (t as { room?: string | null }).room ?? null,
         work_type: t.work_type || "",
       };
     });
