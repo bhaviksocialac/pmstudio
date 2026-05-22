@@ -170,7 +170,7 @@ function ProjectDetailView({ project }: { project: Project }) {
           </div>
         </header>
 
-        <AIPhaseBar projectId={project.id} />
+        {tab !== "tasks" && <AIPhaseBar projectId={project.id} />}
 
 
         {/* Tabs */}
