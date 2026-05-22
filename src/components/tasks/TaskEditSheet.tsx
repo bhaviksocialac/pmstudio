@@ -13,7 +13,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { STATUS_ORDER, STATUS_META, PRIORITY_META, WORK_TYPES } from "@/lib/task-flow";
 import type { TaskRow } from "./TaskTable";
-import { AgencyPicker, AreaPicker, DependencyPicker, DateField } from "./TaskInlineEditors";
+import { asWorkTypes } from "./TaskTable";
+import { AgencyPicker, AreaPicker, DependencyPicker, DateField, WorkTypePicker } from "./TaskInlineEditors";
 
 export function TaskEditSheet({
   task, open, onClose, onChanged, allTasks, vendors, teamMembers = [], rooms, onAddRoom,
