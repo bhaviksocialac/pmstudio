@@ -171,14 +171,14 @@ export function computeRollup(tasks: TaskLite[]): GroupRollup[] {
       const rooms = aggregateRoom(ts);
       const done = ts.filter(isDone).length;
       const total = ts.length;
-      const pct = Math.round(ts.reduce((s, t) => s + taskPct(t), 0) / Math.max(1, total));
+      const pct = total ? Math.round((done / total) * 100) : 0;
       return { workType: wt, rooms, pct, done, total };
     }).sort((a, b) => a.workType.localeCompare(b.workType));
 
     const allTasks = workTypes.flatMap((w) => wtMap.get(w.workType) ?? []);
     const total = allTasks.length;
     const done = allTasks.filter(isDone).length;
-    const pct = total ? Math.round(allTasks.reduce((s, t) => s + taskPct(t), 0) / total) : 0;
+    const pct = total ? Math.round((done / total) * 100) : 0;
 
     let blocker: string | null = null;
     if (pct < 100) {
@@ -198,8 +198,8 @@ export function computeRollup(tasks: TaskLite[]): GroupRollup[] {
 
 export function overallProjectPct(tasks: TaskLite[]): number {
   if (!tasks.length) return 0;
-  const total = tasks.reduce((s, t) => s + taskPct(t), 0);
-  return Math.round(total / tasks.length);
+  const done = tasks.filter(isDone).length;
+  return Math.round((done / tasks.length) * 100);
 }
 
 export function diffRollup(before: GroupRollup[], after: GroupRollup[]): string[] {
