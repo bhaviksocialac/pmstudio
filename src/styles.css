@@ -85,10 +85,13 @@
   * {
     border-color: var(--color-border);
   }
+  html { font-size: 15px; }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     background-image:
       radial-gradient(circle at 1px 1px, rgba(61,53,48,0.025) 1px, transparent 0);
@@ -99,6 +102,29 @@
     letter-spacing: -0.01em;
     font-weight: 500;
   }
+  h1 { font-size: 36px; line-height: 1.15; }
+  h2 { font-size: 22px; line-height: 1.25; }
+  h3 { font-size: 18px; line-height: 1.3; }
+  h4 { font-size: 16px; line-height: 1.3; }
+  table { font-size: 15px; }
+  thead th { font-size: 13px; }
+  label { font-size: 13px; }
+  input, textarea, select { font-size: 15px; }
+  button { font-size: 14px; }
+  small { font-size: 13px; }
+  /* Override common Tailwind text utilities to match the new scale */
+  .text-xs { font-size: 13px !important; }
+  .text-sm { font-size: 14px !important; }
+  .text-base { font-size: 15px !important; }
+  .text-lg { font-size: 18px !important; }
+  .text-xl { font-size: 22px !important; }
+  .text-2xl { font-size: 22px !important; }
+  .text-3xl { font-size: 28px !important; }
+  .text-4xl { font-size: 36px !important; }
+  /* Sidebar nav items */
+  [data-sidebar="menu-button"], aside nav a, aside nav button { font-size: 14px; }
+  /* Toasts (sonner) */
+  [data-sonner-toast] { font-size: 14px; }
 }
 
 /* Scrollbar */
