@@ -69,7 +69,7 @@ export function RoomProgressGrid({ projectId }: { projectId: string }) {
     <section className="mb-10">
       <div className="flex items-baseline justify-between mb-5">
         <h2 className="font-display text-2xl">Room-wise Progress</h2>
-        <Link to="/tasks" className="text-xs text-[#c17f5a] hover:underline">View all tasks →</Link>
+        
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {orderedRooms.map((room) => {
