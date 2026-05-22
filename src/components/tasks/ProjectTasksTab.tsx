@@ -6,9 +6,26 @@ import { TaskTable, type TaskRow } from "@/components/tasks/TaskTable";
 import { TaskFilters, emptyFilters, type FilterState } from "@/components/tasks/TaskFilters";
 import { STATUS_META, WORK_TYPES, deriveActionRequired } from "@/lib/task-flow";
 
+type GroupBy = "all" | "status" | "contractor" | "room" | "work_type";
+
+const PRIORITIES = ["None", "Urgent", "High", "Medium", "Low"];
+
+function titleCase(s: string) {
+  return s.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).trim();
+}
+
+function formatStatus(s: string) {
+  return STATUS_META[s]?.label ?? titleCase(s);
+}
+
 export function ProjectTasksTab({ projectId, projectName }: { projectId: string; projectName: string }) {
-  const [groupBy, setGroupBy] = useState<"status" | "contractor" | "room" | "work_type">("status");
+  const [groupBy, setGroupBy] = useState<GroupBy>("status");
   const [filters, setFilters] = useState<FilterState>(emptyFilters());
+
+  // Designer-added custom values (local — augments detected values)
+  const [extraRooms, setExtraRooms] = useState<string[]>([]);
+  const [extraStatuses, setExtraStatuses] = useState<string[]>([]);
+  const [extraWorkTypes, setExtraWorkTypes] = useState<string[]>([]);
 
   const tasksQ = useQuery({
     queryKey: ["project-tasks", projectId],
@@ -40,9 +57,9 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
   }), [tasksQ.data]);
 
   const filterGroups = useMemo(() => {
-    const rooms = new Set<string>();
+    const rooms = new Set<string>(extraRooms);
     const contractors = new Set<string>();
-    const workTypes = new Set<string>();
+    const workTypes = new Set<string>(extraWorkTypes);
     rows.forEach((t) => {
       if (t.area) rooms.add(t.area);
       const c = t.contractor || t.assignee;
@@ -50,21 +67,51 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
       if (t.work_type) workTypes.add(t.work_type);
     });
     WORK_TYPES.forEach((w) => workTypes.add(w));
+    const baseStatuses = Object.keys(STATUS_META).filter((s) => !["todo", "in_progress"].includes(s));
+    const statuses = Array.from(new Set([...baseStatuses, ...extraStatuses]));
+
     return [
-      { key: "rooms" as const,       label: "Room",       values: Array.from(rooms).sort() },
-      { key: "contractors" as const, label: "Contractor", values: Array.from(contractors).sort() },
-      { key: "statuses" as const,    label: "Status",     values: Object.keys(STATUS_META).filter((s) => !["todo","in_progress"].includes(s)) },
-      { key: "priorities" as const,  label: "Priority",   values: ["Urgent", "High", "Medium", "Low"] },
-      { key: "workTypes" as const,   label: "Work Type",  values: Array.from(workTypes).sort() },
+      {
+        key: "rooms" as const, label: "Room",
+        values: Array.from(rooms).sort(),
+        format: (v: string) => titleCase(v),
+        addLabel: "Add Room",
+        onAdd: (v: string) => setExtraRooms((p) => Array.from(new Set([...p, v]))),
+      },
+      {
+        key: "contractors" as const, label: "Contractor",
+        values: Array.from(contractors).sort(),
+      },
+      {
+        key: "statuses" as const, label: "Status",
+        values: statuses,
+        format: (v: string) => formatStatus(v),
+        addLabel: "Add Status",
+        onAdd: (v: string) => setExtraStatuses((p) => Array.from(new Set([...p, v]))),
+      },
+      {
+        key: "priorities" as const, label: "Priority",
+        values: PRIORITIES,
+      },
+      {
+        key: "workTypes" as const, label: "Work Type",
+        values: Array.from(workTypes).sort(),
+        format: (v: string) => titleCase(v),
+        addLabel: "Add Work Type",
+        onAdd: (v: string) => setExtraWorkTypes((p) => Array.from(new Set([...p, v]))),
+      },
     ];
-  }, [rows]);
+  }, [rows, extraRooms, extraStatuses, extraWorkTypes]);
 
   const filtered = useMemo(() => rows.filter((t) => {
     if (filters.rooms.size && !(t.area && filters.rooms.has(t.area))) return false;
     const c = t.contractor || t.assignee || "";
     if (filters.contractors.size && !filters.contractors.has(c)) return false;
     if (filters.statuses.size && !filters.statuses.has(t.status ?? "not_started")) return false;
-    if (filters.priorities.size && !filters.priorities.has(t.priority ?? "Medium")) return false;
+    if (filters.priorities.size) {
+      const p = t.priority ?? "None";
+      if (!filters.priorities.has(p)) return false;
+    }
     if (filters.workTypes.size && !(t.work_type && filters.workTypes.has(t.work_type))) return false;
     return true;
   }), [rows, filters]);
@@ -72,12 +119,13 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
   const parents = filtered.filter((t) => !t.parent_task_id);
 
   const groups = useMemo(() => {
+    if (groupBy === "all") return [["All Tasks", parents] as [string, TaskRow[]]];
     const m = new Map<string, TaskRow[]>();
     parents.forEach((t) => {
       let key = "Other";
       if (groupBy === "contractor") key = t.contractor || t.assignee || "Unassigned";
-      else if (groupBy === "room") key = t.area || "Unassigned";
-      else if (groupBy === "work_type") key = t.work_type || "Other";
+      else if (groupBy === "room") key = t.area ? titleCase(t.area) : "Unassigned";
+      else if (groupBy === "work_type") key = t.work_type ? titleCase(t.work_type) : "Other";
       else key = STATUS_META[t.status ?? "not_started"]?.label ?? "Not Started";
       const arr = m.get(key) ?? [];
       arr.push(t);
@@ -101,10 +149,14 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
         <div className="mt-5 pt-5 border-t border-border flex items-center gap-3 flex-wrap">
           <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-medium">Group by</span>
           {([
-            ["status", "Status"], ["contractor", "Contractor"], ["room", "Room"], ["work_type", "Work Type"],
+            ["all", "All"], ["status", "Status"], ["contractor", "Contractor"], ["room", "Room"], ["work_type", "Work Type"],
           ] as const).map(([k, l]) => (
             <button key={k} onClick={() => setGroupBy(k)}
-              className={`h-8 px-3 rounded-[8px] text-xs font-medium ${groupBy === k ? "bg-[#1a1612] text-white" : "border border-border bg-card hover:bg-muted"}`}>
+              className={`h-8 px-3 rounded-full text-xs font-medium border transition-all ${
+                groupBy === k
+                  ? "bg-[#c17f5a] text-white border-[#c17f5a]"
+                  : "bg-white border-[#e8e3da] text-foreground hover:bg-[#c17f5a18] hover:border-[#c17f5a66]"
+              }`}>
               {l}
             </button>
           ))}
@@ -114,18 +166,20 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
 
       {tasksQ.isLoading ? (
         <div className="py-20 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-      ) : groups.length === 0 ? (
+      ) : groups.length === 0 || parents.length === 0 ? (
         <div className="py-20 text-center text-sm text-muted-foreground">No tasks match these filters.</div>
       ) : (
         <div className="space-y-10">
           {groups.map(([groupKey, items]) => (
             <section key={groupKey}>
-              <div className="flex items-baseline justify-between mb-4">
-                <h2 className="font-display text-2xl">{groupKey}</h2>
-                <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground font-mono">
-                  {items.length} task{items.length === 1 ? "" : "s"}
-                </span>
-              </div>
+              {groupBy !== "all" && (
+                <div className="flex items-baseline justify-between mb-4">
+                  <h2 className="font-display text-2xl">{groupKey}</h2>
+                  <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground font-mono">
+                    {items.length} task{items.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+              )}
               <TaskTable
                 rows={[...items, ...filtered.filter((s) => s.parent_task_id && items.some((p) => p.id === s.parent_task_id))]}
                 projectMap={projectMap}
