@@ -37,7 +37,8 @@ export function GanttTimeline({ rows, onSelect }: { rows: TaskRow[]; onSelect?: 
     const phaseMap = new Map<ProjectPhase, Map<string, Item[]>>();
     items.forEach((it) => {
       const ph = phaseOfTask(it.t);
-      const wt = (it.t.work_type || "Other").trim();
+      const wtArr = Array.isArray((it.t as { work_types?: unknown }).work_types) ? ((it.t as { work_types?: unknown }).work_types as string[]) : [];
+      const wt = (wtArr[0] || it.t.work_type || "Other").trim();
       if (!phaseMap.has(ph)) phaseMap.set(ph, new Map());
       const wtMap = phaseMap.get(ph)!;
       const arr = wtMap.get(wt) ?? [];
