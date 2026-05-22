@@ -297,6 +297,8 @@ const confirmSchema = z.object({
     work_type: z.string().nullable(),
     work_types: z.array(z.string()).default([]),
     areas: z.array(z.string()),
+    room: z.string().nullable().optional(),
+    completion_pct: z.number().int().min(0).max(100).default(0),
     status: z.string(),
     priority: z.string(),
     planned_start: z.string().nullable(),
@@ -312,19 +314,33 @@ const confirmSchema = z.object({
   })),
 });
 
+// WORK_TYPE → phase group (mirror of src/lib/phase-sync.ts to avoid SSR import path issues)
+const WT_GROUP: Record<string, string> = {
+  Civil: "Civil Work", Electrical: "Electrical Work",
+  Plumbing: "Plumbing Work", HVAC: "Plumbing Work",
+  Flooring: "Flooring Work", Tiling: "Flooring Work",
+  Painting: "Painting Work", "False Ceiling": "Painting Work",
+  Carpentry: "Furniture Installation", Other: "Civil Work",
+};
+
 export const confirmNarrative = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => confirmSchema.parse(input))
-  .handler(async ({ data, context }): Promise<{ created: number; updated: number }> => {
+  .handler(async ({ data, context }): Promise<{ created: number; updated: number; groupUpdates: { group: string; delta: number; pct: number }[] }> => {
     const { supabase, userId } = context;
+
+    // Snapshot before
+    const { data: beforeRows } = await supabase
+      .from("tasks").select("status,done,work_type,work_types,completion_pct")
+      .eq("project_id", data.projectId);
+
     let created = 0;
     let updated = 0;
-
-    // First pass: create or update, capture id by description for dependency wiring
     const idByDesc = new Map<string, string>();
 
     for (const t of data.tasks) {
-      const primaryArea = t.areas[0] ?? null;
+      const primaryArea = t.room ?? t.areas[0] ?? null;
+      const phase = WT_GROUP[t.work_type ?? ""] ?? null;
       const payload = {
         title: t.description.slice(0, 200),
         description: t.description,
@@ -334,6 +350,9 @@ export const confirmNarrative = createServerFn({ method: "POST" })
         work_types: t.work_types ?? (t.work_type ? [t.work_type] : []),
         area: primaryArea,
         areas: t.areas,
+        room: t.room ?? primaryArea,
+        completion_pct: t.completion_pct,
+        phase,
         status: t.status,
         priority: t.priority,
         planned_start: t.planned_start,
@@ -352,24 +371,16 @@ export const confirmNarrative = createServerFn({ method: "POST" })
 
       if (t.duplicate_of) {
         const { error } = await supabase.from("tasks").update(payload).eq("id", t.duplicate_of);
-        if (!error) {
-          updated++;
-          idByDesc.set(t.description, t.duplicate_of);
-        }
+        if (!error) { updated++; idByDesc.set(t.description, t.duplicate_of); }
       } else {
         const { data: ins, error } = await supabase.from("tasks").insert({
-          ...payload,
-          user_id: userId,
-          project_id: data.projectId,
+          ...payload, user_id: userId, project_id: data.projectId,
         }).select("id").single();
-        if (!error && ins) {
-          created++;
-          idByDesc.set(t.description, ins.id);
-        }
+        if (!error && ins) { created++; idByDesc.set(t.description, ins.id); }
       }
     }
 
-    // Second pass: wire dependencies
+    // Dependencies
     for (const t of data.tasks) {
       if (!t.blocked_by.length) continue;
       const selfId = idByDesc.get(t.description);
@@ -385,5 +396,49 @@ export const confirmNarrative = createServerFn({ method: "POST" })
       }
     }
 
-    return { created, updated };
+    // Snapshot after for group-diff toast
+    const { data: afterRows } = await supabase
+      .from("tasks").select("status,done,work_type,work_types,completion_pct")
+      .eq("project_id", data.projectId);
+
+    const groupUpdates = computeGroupDiff(beforeRows ?? [], afterRows ?? []);
+    return { created, updated, groupUpdates };
   });
+
+type Row = { status: string | null; done: boolean | null; work_type: string | null; work_types: unknown; completion_pct: number | null };
+
+function pctOf(r: Row): number {
+  if (r.status === "done" || r.done) return 100;
+  const c = typeof r.completion_pct === "number" ? r.completion_pct : 0;
+  if (c > 0) return Math.min(100, c);
+  if (r.status === "wip" || r.status === "in_progress") return 50;
+  return 0;
+}
+
+function groupPct(rows: Row[]): Map<string, number> {
+  const buckets = new Map<string, number[]>();
+  rows.forEach((r) => {
+    const wts: string[] = Array.isArray(r.work_types) ? (r.work_types as string[]) : (r.work_type ? [r.work_type] : []);
+    wts.forEach((wt) => {
+      const g = WT_GROUP[wt];
+      if (!g) return;
+      const arr = buckets.get(g) ?? [];
+      arr.push(pctOf(r));
+      buckets.set(g, arr);
+    });
+  });
+  const out = new Map<string, number>();
+  buckets.forEach((arr, g) => out.set(g, Math.round(arr.reduce((s, n) => s + n, 0) / Math.max(1, arr.length))));
+  return out;
+}
+
+function computeGroupDiff(before: Row[], after: Row[]) {
+  const b = groupPct(before);
+  const a = groupPct(after);
+  const out: { group: string; delta: number; pct: number }[] = [];
+  a.forEach((pct, g) => {
+    const prev = b.get(g) ?? 0;
+    if (pct !== prev) out.push({ group: g, pct, delta: pct - prev });
+  });
+  return out;
+}
