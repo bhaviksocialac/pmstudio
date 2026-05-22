@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ChevronRight, ChevronDown, Check, AlertCircle, Paperclip, StickyNote,
-  ArrowRight, SplitSquareVertical, Mail, MailCheck, Search,
+  ArrowRight, SplitSquareVertical, Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,10 @@ import {
   STATUS_META, STATUS_ORDER, PRIORITY_META, rowTint, nextStatus,
 } from "@/lib/task-flow";
 import { cascadeDependents, splitTaskPerRoom } from "@/lib/task-ai.functions";
+import {
+  AgencyPicker, AreaPicker, DateField, DependencyPicker, PillPicker,
+} from "./TaskInlineEditors";
+import { TaskEditSheet } from "./TaskEditSheet";
 
 export type TaskRow = {
   id: string;
@@ -37,7 +41,7 @@ export type TaskRow = {
   planned_end: string | null;
   actual_start: string | null;
   actual_end: string | null;
-  mailed: boolean | null;
+  mailed?: boolean | null;
   done: boolean;
   notes: string | null;
   attachments: unknown;
@@ -58,30 +62,40 @@ function isEarly(t: TaskRow) {
   return !!(t.planned_end && t.actual_end && t.actual_end < t.planned_end);
 }
 
+const PRIORITIES = ["Urgent", "High", "Medium", "Low"] as const;
+
 export function TaskTable({
   rows, projectMap, showProject = true, onChanged,
+  vendors = [], rooms = [], onAddRoom,
+  allProjectTasks,
 }: {
   rows: TaskRow[];
   projectMap?: Map<string, string>;
   showProject?: boolean;
   onChanged?: () => void;
+  vendors?: { id: string; name: string }[];
+  rooms?: string[];
+  onAddRoom?: (r: string) => void;
+  /** All tasks in the project — used for dependency pickers (across filter groups). */
+  allProjectTasks?: TaskRow[];
 }) {
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [editing, setEditing] = useState<string | null>(null);
-  const [linkPicker, setLinkPicker] = useState<string | null>(null);
+  const [editSheet, setEditSheet] = useState<TaskRow | null>(null);
   const cascade = useServerFn(cascadeDependents);
   const splitFn = useServerFn(splitTaskPerRoom);
 
+  const projectScopeTasks = allProjectTasks ?? rows;
+
   const titleById = useMemo(() => {
     const m = new Map<string, string>();
-    rows.forEach((r) => m.set(r.id, r.title));
+    projectScopeTasks.forEach((r) => m.set(r.id, r.title));
     return m;
-  }, [rows]);
+  }, [projectScopeTasks]);
 
   const blockingMap = useMemo(() => {
     const m = new Map<string, string[]>();
-    rows.forEach((t) => {
+    projectScopeTasks.forEach((t) => {
       const deps = Array.isArray(t.depends_on) ? (t.depends_on as string[]) : [];
       deps.forEach((depId) => {
         const arr = m.get(depId) ?? [];
@@ -90,7 +104,7 @@ export function TaskTable({
       });
     });
     return m;
-  }, [rows]);
+  }, [projectScopeTasks]);
 
   const subs = useMemo(() => {
     const m = new Map<string, TaskRow[]>();
@@ -112,13 +126,18 @@ export function TaskTable({
     onChanged?.();
   };
 
-  const updateStatus = async (t: TaskRow, status: string) => {
+  const updateField = async (t: TaskRow, patch: Record<string, unknown>) => {
     const { error } = await supabase.from("tasks")
-      .update({ status, done: status === "done", updated_at: new Date().toISOString() })
+      .update({ ...patch, updated_at: new Date().toISOString() })
       .eq("id", t.id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(error.message); return false; }
     refresh();
-    if (t.project_id && (status === "done" || status === "material_delivered")) {
+    return true;
+  };
+
+  const updateStatus = async (t: TaskRow, status: string) => {
+    const ok = await updateField(t, { status, done: status === "done" });
+    if (ok && t.project_id && (status === "done" || status === "material_delivered")) {
       try {
         const res = await cascade({ data: { taskId: t.id, projectId: t.project_id } });
         if (res.unblocked) toast.success(`${res.unblocked} dependent task${res.unblocked === 1 ? "" : "s"} unblocked`);
@@ -126,17 +145,23 @@ export function TaskTable({
     }
   };
 
-  const toggleMailed = async (t: TaskRow) => {
-    const next = !t.mailed;
-    const { error } = await supabase.from("tasks").update({ mailed: next }).eq("id", t.id);
-    if (error) { toast.error(error.message); return; }
-    refresh();
-  };
-
-  const setBlockedBy = async (t: TaskRow, depIds: string[]) => {
-    const { error } = await supabase.from("tasks").update({ depends_on: depIds }).eq("id", t.id);
-    if (error) { toast.error(error.message); return; }
-    setLinkPicker(null);
+  // Setting "blocking" on a row T means updating other tasks so they depend_on T
+  const setBlocking = async (t: TaskRow, blockedTaskIds: string[]) => {
+    const currentlyBlocking = projectScopeTasks
+      .filter((x) => Array.isArray(x.depends_on) && (x.depends_on as string[]).includes(t.id))
+      .map((x) => x.id);
+    const toAdd = blockedTaskIds.filter((id) => !currentlyBlocking.includes(id));
+    const toRemove = currentlyBlocking.filter((id) => !blockedTaskIds.includes(id));
+    for (const id of toAdd) {
+      const target = projectScopeTasks.find((x) => x.id === id);
+      const cur = Array.isArray(target?.depends_on) ? (target!.depends_on as string[]) : [];
+      await supabase.from("tasks").update({ depends_on: [...cur, t.id] }).eq("id", id);
+    }
+    for (const id of toRemove) {
+      const target = projectScopeTasks.find((x) => x.id === id);
+      const cur = Array.isArray(target?.depends_on) ? (target!.depends_on as string[]) : [];
+      await supabase.from("tasks").update({ depends_on: cur.filter((d) => d !== t.id) }).eq("id", id);
+    }
     refresh();
   };
 
@@ -149,7 +174,7 @@ export function TaskTable({
   };
 
   return (
-    <div className="rounded-[16px] bg-card border border-border overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
+    <div className="rounded-[16px] bg-card border border-border overflow-visible" style={{ boxShadow: "var(--shadow-card)" }}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -166,9 +191,9 @@ export function TaskTable({
               <Th>Priority</Th>
               <Th>Blocked By</Th>
               <Th>Blocking</Th>
-              <Th>Mailed</Th>
               <Th>Notes</Th>
               <Th>Action</Th>
+              <Th className="w-10" />
             </tr>
           </thead>
           <tbody>
@@ -177,7 +202,10 @@ export function TaskTable({
               const deps = Array.isArray(t.depends_on) ? (t.depends_on as string[]) : [];
               const blockedBy = deps.map((id) => titleById.get(id)).filter(Boolean) as string[];
               const blocks = blockingMap.get(t.id) ?? [];
-              const hasDetail = childSubs.length > 0 || t.notes || (Array.isArray(t.attachments) && t.attachments.length > 0) || t.description || deps.length > 0;
+              const blocksIds = projectScopeTasks
+                .filter((x) => Array.isArray(x.depends_on) && (x.depends_on as string[]).includes(t.id))
+                .map((x) => x.id);
+              const hasDetail = childSubs.length > 0 || t.notes || (Array.isArray(t.attachments) && t.attachments.length > 0) || t.description;
               const isOpen = expanded.has(t.id);
               const sc = STATUS_META[t.status ?? "not_started"] ?? STATUS_META.not_started;
               const pc = PRIORITY_META[t.priority ?? "Medium"] ?? PRIORITY_META.Medium;
@@ -185,7 +213,6 @@ export function TaskTable({
               const tint = rowTint(t);
               const next = nextStatus(t.status);
               const areas = asAreas(t);
-              const agency = t.agency || t.contractor || t.assignee;
               const startD = t.actual_start ?? t.planned_start ?? t.start_date;
               const endD = t.actual_end ?? t.planned_end ?? t.due_date;
               const delayed = isDelayed(t);
@@ -225,70 +252,100 @@ export function TaskTable({
                       </div>
                     </Td>
                     <Td>
-                      <span className={`text-xs ${agency === "Client" ? "text-[#c17f5a] font-medium" : ""}`}>
-                        {agency ?? "—"}
-                      </span>
+                      <div className="min-w-[140px]">
+                        <AgencyPicker
+                          value={t.agency || t.contractor || t.assignee}
+                          vendors={vendors}
+                          onChange={(v) => updateField(t, { agency: v, contractor: v })}
+                        />
+                      </div>
                     </Td>
                     <Td>
-                      <button onClick={() => setEditing(editing === t.id ? null : t.id)} className="inline-flex items-center gap-1">
-                        <Tag bg={sc.bg} fg={sc.fg}>{sc.label}</Tag>
-                      </button>
+                      <PillPicker
+                        value={(t.status ?? "not_started")}
+                        options={STATUS_ORDER as unknown as readonly string[]}
+                        format={(s) => STATUS_META[s]?.label ?? s}
+                        onChange={(s) => updateStatus(t, s)}
+                        bg={sc.bg}
+                        fg={sc.fg}
+                      />
                     </Td>
-                    <Td><span className="text-xs text-muted-foreground font-mono whitespace-nowrap">{startD ?? "—"}</span></Td>
                     <Td>
-                      <div className="text-xs text-muted-foreground font-mono whitespace-nowrap">
-                        {endD ?? "—"}
+                      <div className="min-w-[120px]">
+                        <DateField
+                          value={startD}
+                          onChange={(v) => updateField(t, { planned_start: v, start_date: v })}
+                        />
+                      </div>
+                    </Td>
+                    <Td>
+                      <div className="min-w-[120px]">
+                        <DateField
+                          value={endD}
+                          onChange={(v) => updateField(t, { planned_end: v, due_date: v })}
+                        />
                         {delayed && <div className="text-[10px] text-[#8a2a1f] font-medium mt-0.5">+{delayDays}d delayed</div>}
                         {early && <div className="text-[10px] text-[#4f6b5e] font-medium mt-0.5">{earlyDays}d early</div>}
                       </div>
                     </Td>
                     <Td>
-                      <div className="text-[11px] font-mono whitespace-nowrap space-y-0.5 min-w-[110px]">
-                        <div className="text-[#7a7a7a]">IFR: {t.ifr_date ?? "—"}</div>
-                        <div className="text-[#b8862a]">IFA: {t.ifa_date ?? "—"}</div>
-                        <div className="text-[#c17f5a]">IFC: {t.ifc_date ?? "—"}</div>
+                      <div className="min-w-[130px] space-y-1">
+                        <DateField
+                          value={t.ifr_date}
+                          onChange={(v) => updateField(t, { ifr_date: v })}
+                          placeholder="IFR —"
+                          className="text-[#7a7a7a] h-7"
+                        />
+                        <DateField
+                          value={t.ifa_date ?? null}
+                          onChange={(v) => updateField(t, { ifa_date: v })}
+                          placeholder="IFA —"
+                          className="text-[#b8862a] h-7"
+                        />
+                        <DateField
+                          value={t.ifc_date ?? null}
+                          onChange={(v) => updateField(t, { ifc_date: v })}
+                          placeholder="IFC —"
+                          className="text-[#c17f5a] h-7"
+                        />
                       </div>
                     </Td>
                     <Td>
-                      {areas.length > 0 ? (
-                        <div className="flex flex-wrap gap-1 max-w-[180px]">
-                          {areas.map((a, i) => (
-                            <span key={i} className="px-1.5 py-0.5 rounded-[4px] text-[10px] bg-[#c17f5a18] text-[#7a4f37] whitespace-nowrap">{a}</span>
-                          ))}
-                        </div>
-                      ) : <span className="text-xs text-muted-foreground">—</span>}
-                    </Td>
-                    <Td><Tag bg={pc.bg} fg={pc.fg}>{t.priority ?? "Medium"}</Tag></Td>
-                    <Td>
-                      <button
-                        onClick={() => setLinkPicker(linkPicker === t.id ? null : t.id)}
-                        className="text-left"
-                      >
-                        {blockedBy.length > 0 ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-[#8a4a3f]">
-                            <AlertCircle className="h-3 w-3" />
-                            {blockedBy.length === 1 ? blockedBy[0].slice(0, 22) : `${blockedBy.length} tasks`}
-                          </span>
-                        ) : <span className="text-xs text-muted-foreground hover:text-[#c17f5a]">+ Link</span>}
-                      </button>
+                      <div className="min-w-[160px] max-w-[220px]">
+                        <AreaPicker
+                          value={areas}
+                          rooms={rooms}
+                          onChange={(v) => updateField(t, { areas: v, area: v[0] ?? null })}
+                          onAddRoom={onAddRoom}
+                        />
+                      </div>
                     </Td>
                     <Td>
-                      {blocks.length > 0 ? (
-                        <span className="text-[11px] text-[#4f6b5e]">
-                          {blocks.length === 1 ? blocks[0].slice(0, 22) : `${blocks.length} tasks`}
-                        </span>
-                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                      <PillPicker
+                        value={(t.priority ?? "Medium")}
+                        options={PRIORITIES as unknown as readonly string[]}
+                        onChange={(p) => updateField(t, { priority: p })}
+                        bg={pc.bg}
+                        fg={pc.fg}
+                      />
                     </Td>
                     <Td>
-                      <button
-                        onClick={() => toggleMailed(t)}
-                        className={`h-7 w-7 rounded-[6px] flex items-center justify-center transition-colors ${
-                          t.mailed ? "text-[#7a9e8a]" : "text-muted-foreground hover:text-[#c17f5a]"
-                        }`}
-                        title={t.mailed ? "Mailed" : "Mark as mailed"}
-                      >
-                        {t.mailed ? <MailCheck className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
-                      </button>
+                      <div className="min-w-[160px]">
+                        <DependencyPicker
+                          allTasks={projectScopeTasks.filter((p) => p.id !== t.id && !p.parent_task_id)}
+                          selected={deps}
+                          onChange={(ids) => updateField(t, { depends_on: ids })}
+                        />
+                      </div>
+                    </Td>
+                    <Td>
+                      <div className="min-w-[160px]">
+                        <DependencyPicker
+                          allTasks={projectScopeTasks.filter((p) => p.id !== t.id && !p.parent_task_id)}
+                          selected={blocksIds}
+                          onChange={(ids) => setBlocking(t, ids)}
+                        />
+                      </div>
                     </Td>
                     <Td>
                       <span className="text-xs text-muted-foreground line-clamp-2 max-w-[160px] block">
@@ -310,39 +367,16 @@ export function TaskTable({
                         </button>
                       ) : null}
                     </Td>
+                    <Td>
+                      <button
+                        onClick={() => setEditSheet(t)}
+                        className="h-7 w-7 rounded-[6px] hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-[#c17f5a]"
+                        title="Edit task"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    </Td>
                   </tr>
-
-                  {editing === t.id && (
-                    <tr className="bg-[#fff7eb] border-b border-border">
-                      <td colSpan={15} className="px-6 py-4">
-                        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">Set status</div>
-                        <div className="flex flex-wrap gap-2">
-                          {STATUS_ORDER.map((s) => (
-                            <button
-                              key={s}
-                              onClick={() => { updateStatus(t, s); setEditing(null); }}
-                              className={`px-3 py-1.5 rounded-[6px] text-xs ${t.status === s ? "bg-[#1a1612] text-white" : "bg-card border border-border hover:border-[#c17f5a]"}`}
-                            >
-                              {STATUS_META[s].label}
-                            </button>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-
-                  {linkPicker === t.id && (
-                    <tr className="bg-[#fff7eb] border-b border-border">
-                      <td colSpan={15} className="px-6 py-4">
-                        <DependencyPicker
-                          allTasks={parents.filter((p) => p.id !== t.id)}
-                          selected={deps}
-                          onSave={(ids) => setBlockedBy(t, ids)}
-                          onCancel={() => setLinkPicker(null)}
-                        />
-                      </td>
-                    </tr>
-                  )}
 
                   {isOpen && hasDetail && (
                     <tr className="bg-muted/10 border-b border-border">
@@ -387,6 +421,15 @@ export function TaskTable({
                           </div>
                         )}
 
+                        {blocks.length > 0 && (
+                          <div className="mt-5">
+                            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">Blocking</div>
+                            <ul className="text-sm space-y-1">
+                              {blocks.map((b, i) => <li key={i} className="text-[#4f6b5e]">• {b}</li>)}
+                            </ul>
+                          </div>
+                        )}
+
                         {Array.isArray(t.attachments) && (t.attachments as unknown[]).length > 0 && (
                           <div className="mt-5">
                             <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2 flex items-center gap-1.5">
@@ -421,7 +464,8 @@ export function TaskTable({
                                       {s.done && <Check className="h-2.5 w-2.5" />}
                                     </button>
                                     <span className={`flex-1 text-sm ${s.done ? "line-through text-muted-foreground" : ""}`}>{s.title}</span>
-                                    <Tag bg={ssc.bg} fg={ssc.fg}>{ssc.label}</Tag>
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-[6px] text-[10px] uppercase tracking-wider font-mono font-medium"
+                                      style={{ background: ssc.bg, color: ssc.fg }}>{ssc.label}</span>
                                   </li>
                                 );
                               })}
@@ -456,68 +500,17 @@ export function TaskTable({
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
 
-function DependencyPicker({
-  allTasks, selected, onSave, onCancel,
-}: {
-  allTasks: TaskRow[];
-  selected: string[];
-  onSave: (ids: string[]) => void;
-  onCancel: () => void;
-}) {
-  const [q, setQ] = useState("");
-  const [picked, setPicked] = useState<Set<string>>(new Set(selected));
-  const filtered = allTasks.filter((t) =>
-    !q || t.title.toLowerCase().includes(q.toLowerCase()) ||
-    (t.agency || t.contractor || "").toLowerCase().includes(q.toLowerCase())
-  );
-
-  return (
-    <div>
-      <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">Blocked by — pick task(s) from this project</div>
-      <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          autoFocus
-          placeholder="Search tasks…"
-          className="w-full h-9 pl-9 pr-3 rounded-[8px] bg-white border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-        />
-      </div>
-      <div className="max-h-[200px] overflow-y-auto space-y-1 mb-3">
-        {filtered.length === 0 && <div className="text-xs text-muted-foreground py-2 text-center">No matches</div>}
-        {filtered.map((t) => {
-          const on = picked.has(t.id);
-          return (
-            <button
-              key={t.id}
-              onClick={() => {
-                const n = new Set(picked);
-                on ? n.delete(t.id) : n.add(t.id);
-                setPicked(n);
-              }}
-              className={`w-full text-left px-3 py-2 rounded-[6px] text-xs border ${
-                on ? "bg-[#c17f5a18] border-[#c17f5a]" : "bg-white border-border hover:border-[#c17f5a66]"
-              }`}
-            >
-              <div className="font-medium">{t.title}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">
-                {(t.agency || t.contractor || "—")}{t.area ? " · " + t.area : ""} · {t.status ?? "—"}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-      <div className="flex justify-end gap-2">
-        <button onClick={onCancel} className="h-8 px-3 rounded-[6px] border border-border text-xs hover:bg-muted">Cancel</button>
-        <button onClick={() => onSave(Array.from(picked))} className="h-8 px-3 rounded-[6px] bg-[#c17f5a] text-white text-xs font-medium hover:brightness-95">
-          Save ({picked.size})
-        </button>
-      </div>
+      <TaskEditSheet
+        task={editSheet}
+        open={!!editSheet}
+        onClose={() => setEditSheet(null)}
+        onChanged={refresh}
+        allTasks={projectScopeTasks}
+        vendors={vendors}
+        rooms={rooms}
+        onAddRoom={onAddRoom ?? (() => {})}
+      />
     </div>
   );
 }
@@ -527,12 +520,4 @@ function Th({ children, className = "" }: { children?: React.ReactNode; classNam
 }
 function Td({ children, className = "" }: { children?: React.ReactNode; className?: string }) {
   return <td className={`px-4 py-2 align-middle ${className}`}>{children}</td>;
-}
-function Tag({ children, bg, fg }: { children: React.ReactNode; bg: string; fg: string }) {
-  return (
-    <span className="inline-flex items-center px-2.5 py-1 rounded-[6px] text-[10px] uppercase tracking-wider font-mono font-medium whitespace-nowrap"
-      style={{ background: bg, color: fg }}>
-      {children}
-    </span>
-  );
 }

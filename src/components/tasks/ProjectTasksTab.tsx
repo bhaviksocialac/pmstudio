@@ -41,6 +41,16 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
     },
   });
 
+  const vendorsQ = useQuery({
+    queryKey: ["vendors-for-tasks"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("vendors").select("id,name").order("name");
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
+
+
   useEffect(() => {
     const ch = supabase.channel(`tasks-rt-${projectId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `project_id=eq.${projectId}` }, () => {
@@ -202,6 +212,10 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
               <TaskTable
                 rows={[...items, ...filtered.filter((s) => s.parent_task_id && items.some((p) => p.id === s.parent_task_id))]}
                 projectMap={projectMap}
+                vendors={vendorsQ.data ?? []}
+                rooms={filterGroups[0].values}
+                onAddRoom={(r) => setExtraRooms((p) => Array.from(new Set([...p, r])))}
+                allProjectTasks={rows}
               />
             </section>
           ))}
@@ -210,3 +224,4 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
     </div>
   );
 }
+
