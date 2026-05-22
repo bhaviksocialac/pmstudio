@@ -138,8 +138,8 @@ function ProjectsPage() {
                       <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider"><span className="h-1.5 w-1.5 rounded-full" style={{ background: h.color }} />{h.label}</span></td>
                       <td className="px-4 py-3 w-48">
                         <div className="flex items-center gap-2">
-                          <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden"><div className="h-full" style={{ width: `${p.completion}%`, background: "#c17f5a" }} /></div>
-                          <span className="font-mono text-xs">{p.completion}%</span>
+                          <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden"><div className="h-full" style={{ width: `${completionByProject.get(p.id) ?? p.completion}%`, background: "#c17f5a" }} /></div>
+                          <span className="font-mono text-xs">{completionByProject.get(p.id) ?? p.completion}%</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
