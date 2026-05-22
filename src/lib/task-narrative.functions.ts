@@ -27,6 +27,9 @@ export type ExtractedTask = {
   planned_end: string | null;
   actual_start: string | null;
   actual_end: string | null;
+  ifr_date: string | null;
+  ifa_date: string | null;
+  ifc_date: string | null;
   blocked_by: string[];         // descriptions of other tasks in this batch
   notes: string | null;
   duplicate_of: string | null;  // existing task id (set by server, not AI)
@@ -97,6 +100,12 @@ EXTRACTION RULES:
 - work_type: one of ${WORK_TYPES.join(", ")}
 - status: one of ${STATUSES.join(", ")}
 
+IFR / IFA / IFC DATE DETECTION (drawing/approval lifecycle):
+- IFR (Issue For Review) — keywords: "sent for review", "issued for review", "shared for feedback", "sent to check", "sent floor plan for review", "shared drawing"
+- IFA (Issue For Approval) — keywords: "sent for approval", "client approved", "issued for approval", "approval given", "approval pending", "sent layout to client", "sent to client"
+- IFC (Issue For Construction) — keywords: "issued for construction", "given to contractor", "construction started", "work issued", "IFC issued", "released to site"
+When the narrative contains one of these triggers WITH a date, set ifr_date / ifa_date / ifc_date on the matching task. A single task may have all three across multiple sentences.
+
 Return JSON of shape:
 {
   "english_text": "translated narrative",
@@ -113,6 +122,9 @@ Return JSON of shape:
       "planned_end": null,
       "actual_start": null,
       "actual_end": "2026-01-25",
+      "ifr_date": null,
+      "ifa_date": null,
+      "ifc_date": null,
       "blocked_by": [],
       "notes": null
     }
@@ -180,6 +192,9 @@ ${data.text}
         planned_end: t.planned_end ?? null,
         actual_start: t.actual_start ?? null,
         actual_end: t.actual_end ?? null,
+        ifr_date: t.ifr_date ?? null,
+        ifa_date: t.ifa_date ?? null,
+        ifc_date: t.ifc_date ?? null,
         blocked_by: Array.isArray(t.blocked_by) ? t.blocked_by : [],
         notes: t.notes ?? null,
         duplicate_of: dupId,
@@ -226,6 +241,9 @@ const confirmSchema = z.object({
     planned_end: z.string().nullable(),
     actual_start: z.string().nullable(),
     actual_end: z.string().nullable(),
+    ifr_date: z.string().nullable(),
+    ifa_date: z.string().nullable(),
+    ifc_date: z.string().nullable(),
     blocked_by: z.array(z.string()),
     notes: z.string().nullable(),
     duplicate_of: z.string().nullable(),
@@ -259,6 +277,9 @@ export const confirmNarrative = createServerFn({ method: "POST" })
         planned_end: t.planned_end,
         actual_start: t.actual_start,
         actual_end: t.actual_end,
+        ifr_date: t.ifr_date,
+        ifa_date: t.ifa_date,
+        ifc_date: t.ifc_date,
         start_date: t.actual_start ?? t.planned_start,
         due_date: t.actual_end ?? t.planned_end,
         notes: t.notes,

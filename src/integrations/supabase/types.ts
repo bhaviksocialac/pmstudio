@@ -1170,6 +1170,8 @@ export type Database = {
           done: boolean
           due_date: string | null
           id: string
+          ifa_date: string | null
+          ifc_date: string | null
           ifr_date: string | null
           ifr_type: string | null
           mailed: boolean
@@ -1205,6 +1207,8 @@ export type Database = {
           done?: boolean
           due_date?: string | null
           id?: string
+          ifa_date?: string | null
+          ifc_date?: string | null
           ifr_date?: string | null
           ifr_type?: string | null
           mailed?: boolean
@@ -1240,6 +1244,8 @@ export type Database = {
           done?: boolean
           due_date?: string | null
           id?: string
+          ifa_date?: string | null
+          ifc_date?: string | null
           ifr_date?: string | null
           ifr_type?: string | null
           mailed?: boolean

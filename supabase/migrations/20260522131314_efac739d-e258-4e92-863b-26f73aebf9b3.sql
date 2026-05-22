@@ -1,0 +1,1 @@
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS ifa_date date, ADD COLUMN IF NOT EXISTS ifc_date date;
