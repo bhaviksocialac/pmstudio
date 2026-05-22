@@ -1,33 +1,56 @@
-// Phase sync: tasks → execution phase groups (parallel, room-wise).
+// Phase sync: tasks → 6 lifecycle project phases (parallel, room-wise, fully task-driven).
 // One source of truth used by Tasks, Phases, Timeline, Overview, Dashboard.
 
 export const EXECUTION_PHASE_GROUPS = [
-  "Civil Work",
-  "Electrical Work",
-  "Plumbing Work",
-  "Flooring Work",
-  "Painting Work",
-  "Furniture Installation",
+  "Survey",
+  "Design",
+  "Procurement",
+  "Execution",
+  "Finishing",
+  "Handover",
 ] as const;
 export type ExecutionPhaseGroup = typeof EXECUTION_PHASE_GROUPS[number];
 
-// WORK_TYPE → phase group bucket.
+// WORK_TYPE → lifecycle phase.
 export const WORK_TYPE_GROUP: Record<string, ExecutionPhaseGroup> = {
-  Civil: "Civil Work",
-  Electrical: "Electrical Work",
-  Plumbing: "Plumbing Work",
-  HVAC: "Plumbing Work",
-  Flooring: "Flooring Work",
-  Tiling: "Flooring Work",
-  Painting: "Painting Work",
-  "False Ceiling": "Painting Work",
-  Carpentry: "Furniture Installation",
-  Other: "Civil Work",
+  Survey: "Survey",
+  Design: "Design",
+  Procurement: "Procurement",
+  Civil: "Execution",
+  Electrical: "Execution",
+  Plumbing: "Execution",
+  HVAC: "Execution",
+  Flooring: "Execution",
+  Tiling: "Execution",
+  Carpentry: "Execution",
+  Painting: "Finishing",
+  "False Ceiling": "Finishing",
+  Snags: "Finishing",
+  Finishing: "Finishing",
+  Handover: "Handover",
+  Other: "Execution",
 };
+
+const PROCUREMENT_STATUSES = new Set([
+  "selection_pending", "approval_pending", "quotation_pending",
+  "order_placed", "payment_pending", "material_ordered", "material_delivered",
+]);
 
 export function groupOfWorkType(wt: string | null | undefined): ExecutionPhaseGroup | null {
   if (!wt) return null;
   return WORK_TYPE_GROUP[wt] ?? null;
+}
+
+export function phaseOfTask(t: TaskLite): ExecutionPhaseGroup {
+  const p = (t.phase ?? "").trim();
+  if ((EXECUTION_PHASE_GROUPS as readonly string[]).includes(p)) return p as ExecutionPhaseGroup;
+  for (const wt of workTypesOf(t)) {
+    const g = WORK_TYPE_GROUP[wt];
+    if (g) return g;
+  }
+  if (t.ifc_date || t.ifa_date || t.ifr_date) return "Design";
+  if (PROCUREMENT_STATUSES.has(t.status ?? "")) return "Procurement";
+  return "Execution";
 }
 
 export type TaskLite = {
