@@ -19,7 +19,8 @@ const WORK_TYPES = [
 export type ExtractedTask = {
   description: string;
   agency: string | null;        // "Client", contractor name, vendor name
-  work_type: string | null;
+  work_type: string | null;     // primary work type (first of work_types)
+  work_types: string[];         // one task may have multiple work types
   areas: string[];              // [] = none, ["All"] = all rooms
   status: string;
   priority: "Urgent" | "High" | "Medium" | "Low" | "None";
