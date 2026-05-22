@@ -41,6 +41,16 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
     },
   });
 
+  const vendorsQ = useQuery({
+    queryKey: ["vendors-for-tasks"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("vendors").select("id,name").order("name");
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
+
+
   useEffect(() => {
     const ch = supabase.channel(`tasks-rt-${projectId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `project_id=eq.${projectId}` }, () => {
