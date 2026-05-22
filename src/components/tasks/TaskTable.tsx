@@ -30,6 +30,7 @@ export type TaskRow = {
   contractor: string | null;
   assignee: string | null;
   work_type: string | null;
+  work_types?: unknown;
   vendor_id: string | null;
   start_date: string | null;
   due_date: string | null;
