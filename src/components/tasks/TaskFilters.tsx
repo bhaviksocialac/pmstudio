@@ -1,4 +1,5 @@
-import { X } from "lucide-react";
+import { useState } from "react";
+import { Plus, X } from "lucide-react";
 
 export type FilterState = {
   rooms: Set<string>;
@@ -13,7 +14,16 @@ export const emptyFilters = (): FilterState => ({
   priorities: new Set(), workTypes: new Set(),
 });
 
-type Group = { key: keyof FilterState; label: string; values: string[] };
+type Group = {
+  key: keyof FilterState;
+  label: string;
+  values: string[];
+  /** Optional display formatter (raw value → label). */
+  format?: (v: string) => string;
+  /** If provided, shows a "+ Add" button that lets the user add a custom value. */
+  onAdd?: (v: string) => void;
+  addLabel?: string;
+};
 
 export function TaskFilters({
   groups, state, setState,
@@ -40,16 +50,17 @@ export function TaskFilters({
               <button
                 key={v}
                 onClick={() => toggle(g.key, v)}
-                className={`px-3 py-1.5 rounded-full text-xs transition-all ${
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                   active
-                    ? "bg-[#1a1612] text-white border border-[#1a1612]"
-                    : "bg-card border border-border text-muted-foreground hover:border-[#c17f5a] hover:text-foreground"
+                    ? "bg-[#c17f5a] text-white border-[#c17f5a]"
+                    : "bg-white border-[#e8e3da] text-foreground hover:bg-[#c17f5a18] hover:border-[#c17f5a66]"
                 }`}
               >
-                {v}
+                {g.format ? g.format(v) : v}
               </button>
             );
           })}
+          {g.onAdd && <AddPill label={g.addLabel ?? "Add"} onAdd={g.onAdd} />}
         </div>
       ))}
       {activeCount > 0 && (
@@ -61,5 +72,37 @@ export function TaskFilters({
         </button>
       )}
     </div>
+  );
+}
+
+function AddPill({ label, onAdd }: { label: string; onAdd: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [val, setVal] = useState("");
+  const commit = () => {
+    const v = val.trim();
+    if (v) { onAdd(v); setVal(""); setOpen(false); }
+  };
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border border-dashed border-[#c17f5a] text-[#c17f5a] bg-white hover:bg-[#c17f5a18] transition-all"
+      >
+        <Plus className="h-3 w-3" /> {label}
+      </button>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-[#c17f5a] bg-white">
+      <input
+        autoFocus
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setVal(""); setOpen(false); } }}
+        onBlur={commit}
+        placeholder={label}
+        className="h-5 w-32 text-xs bg-transparent outline-none placeholder:text-muted-foreground"
+      />
+    </span>
   );
 }

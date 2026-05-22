@@ -23,9 +23,9 @@ export const STATUS_META: Record<string, { label: string; bg: string; fg: string
   order_placed:        { label: "Order Placed",        bg: "#c17f5a30", fg: "#7a4f37", dot: "#a86b4a" },
   payment_pending:     { label: "Payment Pending",     bg: "#c4685a22", fg: "#8a4a3f", dot: "#c4685a" },
   material_ordered:    { label: "Material Ordered",    bg: "#7a9e8a22", fg: "#4f6b5e", dot: "#7a9e8a" },
-  material_delivered:  { label: "Material at Site",    bg: "#7a9e8a30", fg: "#3f5a4d", dot: "#5e8a76" },
-  wip:                 { label: "Work in Progress",    bg: "#c17f5a40", fg: "#6a3f27", dot: "#c17f5a" },
-  in_progress:         { label: "Work in Progress",    bg: "#c17f5a40", fg: "#6a3f27", dot: "#c17f5a" },
+  material_delivered:  { label: "Material Delivered",  bg: "#7a9e8a30", fg: "#3f5a4d", dot: "#5e8a76" },
+  wip:                 { label: "WIP",                 bg: "#c17f5a40", fg: "#6a3f27", dot: "#c17f5a" },
+  in_progress:         { label: "WIP",                 bg: "#c17f5a40", fg: "#6a3f27", dot: "#c17f5a" },
   blocked:             { label: "Blocked",             bg: "#c4685a40", fg: "#6a2a1f", dot: "#c4685a" },
   done:                { label: "Done",                bg: "#7a9e8a40", fg: "#2f4a3d", dot: "#5e8a76" },
 };
