@@ -25,6 +25,7 @@ import { SiteReportsList } from "@/components/SiteReportsList";
 import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
 import { ProjectActivityFeed } from "@/components/ProjectActivityFeed";
 import { RoomProgressGrid } from "@/components/tasks/RoomProgressGrid";
+import { ProjectTasksTab } from "@/components/tasks/ProjectTasksTab";
 import { BoqUploadButton } from "@/components/BoqUploadButton";
 import { SnagsTab } from "@/components/SnagsTab";
 import { ChangeOrdersTab } from "@/components/ChangeOrdersTab";
@@ -108,10 +109,11 @@ function ProjectDetail() {
   return <ProjectDetailView project={project} />;
 }
 
-type Tab = "overview" | "timeline" | "phases" | "snags" | "attendance" | "change-orders" | "reports" | "photos" | "vendors" | "finance" | "documents";
+type Tab = "overview" | "timeline" | "tasks" | "phases" | "snags" | "attendance" | "change-orders" | "reports" | "photos" | "vendors" | "finance" | "documents";
 const tabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "timeline", label: "Timeline" },
+  { id: "tasks", label: "Tasks" },
   { id: "phases", label: "Phases" },
   { id: "snags", label: "Snags" },
   { id: "attendance", label: "Attendance" },
@@ -122,6 +124,7 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "finance", label: "Finance" },
   { id: "documents", label: "Documents" },
 ];
+
 
 function ProjectDetailView({ project }: { project: Project }) {
   const [tab, setTab] = useState<Tab>("overview");
@@ -184,6 +187,7 @@ function ProjectDetailView({ project }: { project: Project }) {
 
         {tab === "overview" && <OverviewTab project={project} />}
         {tab === "timeline" && <TimelineTab project={project} />}
+        {tab === "tasks" && <ProjectTasksTab projectId={project.id} projectName={project.name} />}
         {tab === "phases" && <PhaseChecklistTab projectId={project.id} projectBudget={project.budget} />}
         {tab === "snags" && <SnagsTab projectId={project.id} />}
         {tab === "attendance" && (
