@@ -1188,6 +1188,7 @@ export type Database = {
           user_id: string
           vendor_id: string | null
           work_type: string | null
+          work_types: Json
         }
         Insert: {
           action_label?: string | null
@@ -1225,6 +1226,7 @@ export type Database = {
           user_id: string
           vendor_id?: string | null
           work_type?: string | null
+          work_types?: Json
         }
         Update: {
           action_label?: string | null
@@ -1262,6 +1264,7 @@ export type Database = {
           user_id?: string
           vendor_id?: string | null
           work_type?: string | null
+          work_types?: Json
         }
         Relationships: [
           {
