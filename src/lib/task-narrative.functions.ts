@@ -276,6 +276,7 @@ const confirmSchema = z.object({
     description: z.string(),
     agency: z.string().nullable(),
     work_type: z.string().nullable(),
+    work_types: z.array(z.string()).default([]),
     areas: z.array(z.string()),
     status: z.string(),
     priority: z.string(),
