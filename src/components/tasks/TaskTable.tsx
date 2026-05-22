@@ -233,7 +233,7 @@ export function TaskTable({
 
                   {editing === t.id && (
                     <tr className="bg-[#fff7eb] border-b border-border">
-                      <td colSpan={11} className="px-6 py-4">
+                      <td colSpan={15} className="px-6 py-4">
                         <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">Set status</div>
                         <div className="flex flex-wrap gap-2">
                           {STATUS_ORDER.map((s) => (
@@ -252,7 +252,7 @@ export function TaskTable({
 
                   {isOpen && hasDetail && (
                     <tr className="bg-muted/10 border-b border-border">
-                      <td colSpan={11} className="px-6 py-5">
+                      <td colSpan={15} className="px-6 py-5">
                         {t.action_required && t.action_label && (
                           <div className="mb-4 px-3 py-2 rounded-[8px] bg-[#c4685a18] border border-[#c4685a40] text-sm text-[#8a2a1f] flex items-center gap-2">
                             <AlertCircle className="h-4 w-4" /> {t.action_label}
