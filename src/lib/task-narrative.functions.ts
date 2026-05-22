@@ -12,8 +12,10 @@ const STATUSES = [
 ] as const;
 
 const WORK_TYPES = [
+  "Survey", "Design", "Procurement",
   "Carpentry", "Civil", "Electrical", "False Ceiling", "Flooring",
-  "HVAC", "Painting", "Plumbing", "Tiling", "Other",
+  "HVAC", "Painting", "Plumbing", "Tiling",
+  "Finishing", "Snags", "Handover", "Other",
 ] as const;
 
 export type ExtractedTask = {
