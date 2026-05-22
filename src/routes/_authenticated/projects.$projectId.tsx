@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Send, Check, Phone, Mail, Plus, Upload, Image as ImageIcon,
   FileText, MessageCircle, FilePlus, Loader2, Pencil, ClipboardList,
 } from "lucide-react";
+import { ProjectProgressPanels } from "@/components/tasks/ProjectProgressPanels";
+import { phaseOfTask, isTaskDone, PROJECT_PHASES, type ProjectPhase } from "@/lib/task-flow";
 import { phases, healthMap, type Project } from "@/lib/projects";
 import { labelForProjectType } from "@/lib/project-types";
 import { supabase } from "@/integrations/supabase/client";
