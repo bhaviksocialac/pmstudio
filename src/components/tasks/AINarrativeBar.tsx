@@ -20,11 +20,17 @@ export function AINarrativeBar({ projectId, teamMembers = [] }: { projectId: str
 
   const confirm = useMutation({
     mutationFn: (res: ProcessResult) => confirmFn({ data: { projectId, tasks: res.tasks } }),
-    onSuccess: ({ created, updated }) => {
+    onSuccess: ({ created, updated, groupUpdates }) => {
       toast.success(`Created ${created} task${created === 1 ? "" : "s"}${updated ? `, updated ${updated}` : ""}`);
+      (groupUpdates ?? []).slice(0, 3).forEach((g) => {
+        const arrow = g.delta > 0 ? "▲" : "▼";
+        toast(`${g.group} updated — now ${g.pct}% ${arrow}${Math.abs(g.delta)}%`, { duration: 4500 });
+      });
       setPreview(null);
       setText("");
       qc.invalidateQueries({ queryKey: ["project-tasks", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-tasks-progress", projectId] });
+      qc.invalidateQueries({ queryKey: ["projects-task-completion"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });

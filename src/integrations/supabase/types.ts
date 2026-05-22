@@ -1162,6 +1162,7 @@ export type Database = {
           areas: Json
           assignee: string | null
           attachments: Json
+          completion_pct: number
           contractor: string | null
           created_at: string
           delayed: boolean
@@ -1177,10 +1178,12 @@ export type Database = {
           mailed: boolean
           notes: string | null
           parent_task_id: string | null
+          phase: string | null
           planned_end: string | null
           planned_start: string | null
           priority: string
           project_id: string | null
+          room: string | null
           start_date: string | null
           status: string
           title: string
@@ -1200,6 +1203,7 @@ export type Database = {
           areas?: Json
           assignee?: string | null
           attachments?: Json
+          completion_pct?: number
           contractor?: string | null
           created_at?: string
           delayed?: boolean
@@ -1215,10 +1219,12 @@ export type Database = {
           mailed?: boolean
           notes?: string | null
           parent_task_id?: string | null
+          phase?: string | null
           planned_end?: string | null
           planned_start?: string | null
           priority?: string
           project_id?: string | null
+          room?: string | null
           start_date?: string | null
           status?: string
           title: string
@@ -1238,6 +1244,7 @@ export type Database = {
           areas?: Json
           assignee?: string | null
           attachments?: Json
+          completion_pct?: number
           contractor?: string | null
           created_at?: string
           delayed?: boolean
@@ -1253,10 +1260,12 @@ export type Database = {
           mailed?: boolean
           notes?: string | null
           parent_task_id?: string | null
+          phase?: string | null
           planned_end?: string | null
           planned_start?: string | null
           priority?: string
           project_id?: string | null
+          room?: string | null
           start_date?: string | null
           status?: string
           title?: string

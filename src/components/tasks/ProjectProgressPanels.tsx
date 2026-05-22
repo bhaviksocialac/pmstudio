@@ -1,10 +1,8 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  computeBreakdown, overallCompletion, phaseOfTask, isTaskDone,
-  PROJECT_PHASES, type ProgressRow,
-} from "@/lib/task-flow";
+import { computeBreakdown, type ProgressRow } from "@/lib/task-flow";
+import { computeRollup, overallProjectPct, type TaskLite } from "@/lib/phase-sync";
 
 type TaskLite = {
   status: string | null;
