@@ -183,10 +183,10 @@ function ProjectCard({ project: p, completion }: { project: DbProject; completio
         <div>
           <div className="flex justify-between text-[11px] mb-1.5">
             <span className="uppercase tracking-[0.18em] text-muted-foreground">Completion</span>
-            <span className="font-mono">{p.completion}%</span>
+            <span className="font-mono">{pct}%</span>
           </div>
           <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${p.completion}%`, background: "#c17f5a" }} />
+            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#c17f5a" }} />
           </div>
         </div>
       </Link>
