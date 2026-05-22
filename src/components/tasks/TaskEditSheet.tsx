@@ -16,7 +16,7 @@ import type { TaskRow } from "./TaskTable";
 import { AgencyPicker, AreaPicker, DependencyPicker, DateField } from "./TaskInlineEditors";
 
 export function TaskEditSheet({
-  task, open, onClose, onChanged, allTasks, vendors, rooms, onAddRoom,
+  task, open, onClose, onChanged, allTasks, vendors, teamMembers = [], rooms, onAddRoom,
 }: {
   task: TaskRow | null;
   open: boolean;
@@ -24,6 +24,7 @@ export function TaskEditSheet({
   onChanged: () => void;
   allTasks: TaskRow[];
   vendors: { id: string; name: string }[];
+  teamMembers?: { name: string; role?: string }[];
   rooms: string[];
   onAddRoom: (r: string) => void;
 }) {
