@@ -510,6 +510,7 @@ export function TaskTable({
         onChanged={refresh}
         allTasks={projectScopeTasks}
         vendors={vendors}
+        teamMembers={teamMembers}
         rooms={rooms}
         onAddRoom={onAddRoom ?? (() => {})}
       />
