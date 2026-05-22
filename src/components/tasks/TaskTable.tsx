@@ -12,8 +12,9 @@ import {
 } from "@/lib/task-flow";
 import { cascadeDependents, splitTaskPerRoom } from "@/lib/task-ai.functions";
 import {
-  AgencyPicker, AreaPicker, DateField, DependencyPicker, PillPicker,
+  AgencyPicker, AreaPicker, DateField, DependencyPicker, PillPicker, WorkTypePicker,
 } from "./TaskInlineEditors";
+import { WORK_TYPES } from "@/lib/task-flow";
 import { TaskEditSheet } from "./TaskEditSheet";
 
 export type TaskRow = {
