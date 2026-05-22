@@ -45,7 +45,7 @@ export function TaskEditSheet({
       work_type: draft.work_type,
       agency: draft.agency,
       contractor: draft.agency,
-      status: draft.status,
+      status: draft.status ?? "not_started",
       done: draft.status === "done",
       priority: draft.priority ?? "Medium",
       area: areasArr[0] ?? null,
