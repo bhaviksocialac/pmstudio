@@ -56,6 +56,11 @@ function asAreas(t: Pick<TaskRow, "areas" | "area">): string[] {
   return t.area ? [t.area] : [];
 }
 
+export function asWorkTypes(t: Pick<TaskRow, "work_types" | "work_type">): string[] {
+  if (Array.isArray(t.work_types) && (t.work_types as string[]).length) return t.work_types as string[];
+  return t.work_type ? [t.work_type] : [];
+}
+
 function isDelayed(t: TaskRow) {
   return !!(t.planned_end && t.actual_end && t.actual_end > t.planned_end);
 }
