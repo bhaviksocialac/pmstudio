@@ -6,7 +6,7 @@ import {
   Search, Plus, LayoutDashboard, FolderKanban, Users, Truck, Wallet,
   MessageSquare, Bell, X, ChevronRight, Check, Phone, Mail, Link2,
   Settings, LogOut, HelpCircle, CreditCard, UserCircle,
-  Sparkles, AlertTriangle, ListChecks,
+  Sparkles, AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
