@@ -21,7 +21,7 @@ import { AICopilot } from "@/components/AICopilot";
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/" as const },
   { label: "Projects", icon: FolderKanban, to: "/projects" as const },
-  { label: "Tasks", icon: ListChecks, to: "/tasks" as const },
+  
   { label: "Clients", icon: Users, to: "/clients" as const },
   { label: "Vendors", icon: Truck, to: "/vendors" as const },
   { label: "Finance", icon: Wallet, to: "/finance" as const },
