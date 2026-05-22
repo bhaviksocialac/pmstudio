@@ -302,6 +302,96 @@ export function AreaPicker({ value, rooms, onChange, onAddRoom }: {
   );
 }
 
+// ---------- Work Type multi-select ----------
+
+export function WorkTypePicker({ value, options, onChange, onAddOption }: {
+  value: string[];
+  options: readonly string[];
+  onChange: (v: string[]) => void;
+  onAddOption?: (v: string) => void;
+}) {
+  const [q, setQ] = useState("");
+  const seen = useMemo(() => {
+    const s = new Set<string>();
+    const out: string[] = [];
+    options.forEach((o) => {
+      const k = o.toLowerCase();
+      if (!s.has(k)) { s.add(k); out.push(o); }
+    });
+    return out;
+  }, [options]);
+  const ql = q.toLowerCase().trim();
+  const filtered = seen.filter((o) => !ql || o.toLowerCase().includes(ql));
+  const toggle = (o: string) => {
+    onChange(value.includes(o) ? value.filter((x) => x !== o) : [...value, o]);
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="min-h-9 w-full px-2 py-1 rounded-[8px] bg-white border border-border text-left hover:border-[#c17f5a]">
+          {value.length === 0 ? (
+            <span className="text-xs text-muted-foreground">—</span>
+          ) : (
+            <div className="flex flex-wrap gap-1">
+              {value.map((w) => (
+                <span key={w} className="px-1.5 py-0.5 rounded-[4px] text-[10px] bg-[#7a9e8a22] text-[#3f5a4d] border border-[#7a9e8a55] whitespace-nowrap">
+                  {w}
+                </span>
+              ))}
+            </div>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-2 z-50" align="start">
+        <div className="relative mb-2">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <input
+            autoFocus value={q} onChange={(e) => setQ(e.target.value)}
+            placeholder="Search work types…"
+            className="w-full h-8 pl-8 pr-2 rounded-[6px] bg-muted/30 border border-border text-xs focus:outline-none"
+          />
+        </div>
+        <div className="max-h-[220px] overflow-y-auto space-y-0.5">
+          {filtered.map((o) => {
+            const on = value.includes(o);
+            return (
+              <button key={o} onClick={() => toggle(o)}
+                className={cn(
+                  "w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted inline-flex items-center justify-between",
+                  on && "bg-[#7a9e8a22]"
+                )}>
+                <span>{o}</span>
+                {on && <Check className="h-3 w-3 text-[#3f5a4d]" />}
+              </button>
+            );
+          })}
+          {filtered.length === 0 && <div className="text-xs text-muted-foreground py-2 text-center">No matches</div>}
+        </div>
+        {q.trim() && !seen.some((o) => o.toLowerCase() === ql) && (
+          <button
+            onClick={() => {
+              const v = q.trim();
+              onAddOption?.(v);
+              if (!value.includes(v)) onChange([...value, v]);
+              setQ("");
+            }}
+            className="w-full mt-2 px-2 py-1.5 rounded text-xs text-[#c17f5a] hover:bg-[#c17f5a18] inline-flex items-center gap-1 border border-dashed border-[#c17f5a]"
+          >
+            <Plus className="h-3 w-3" /> Add Work Type "{q.trim()}"
+          </button>
+        )}
+        {value.length > 0 && (
+          <button onClick={() => onChange([])}
+            className="w-full mt-2 px-2 py-1.5 rounded text-xs text-muted-foreground hover:bg-muted inline-flex items-center gap-1">
+            <X className="h-3 w-3" /> Clear
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // ---------- Dependency picker ----------
 
 export function DependencyPicker({ allTasks, selected, onChange }: {

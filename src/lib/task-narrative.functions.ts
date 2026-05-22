@@ -19,7 +19,8 @@ const WORK_TYPES = [
 export type ExtractedTask = {
   description: string;
   agency: string | null;        // "Client", contractor name, vendor name
-  work_type: string | null;
+  work_type: string | null;     // primary work type (first of work_types)
+  work_types: string[];         // one task may have multiple work types
   areas: string[];              // [] = none, ["All"] = all rooms
   status: string;
   priority: "Urgent" | "High" | "Medium" | "Low" | "None";
@@ -128,6 +129,19 @@ IFR / IFA / IFC DATE DETECTION (drawing/approval lifecycle):
 - IFC (Issue For Construction) — keywords: "issued for construction", "given to contractor", "construction started", "work issued", "IFC issued", "released to site"
 When the narrative contains one of these triggers WITH a date, set ifr_date / ifa_date / ifc_date on the matching task. A single task may have all three across multiple sentences.
 
+WORK TYPE AUTO-DETECTION — a single task may involve MULTIPLE work types. Set "work_types" as an array. Use these keyword cues:
+- "tiles", "tiling", "grouting" → Tiling
+- "flooring", "wooden floor", "marble floor", "laminate" → Flooring (often paired with Tiling)
+- "electrical", "conduit", "wiring", "switchboard", "MCB" → Electrical
+- "plumbing", "pipes", "CPVC", "drainage", "sanitary" → Plumbing
+- "plaster", "masonry", "brickwork", "RCC", "demolition" → Civil
+- "carpentry", "wardrobe", "modular", "shutter", "veneer" → Carpentry
+- "painting", "primer", "putty", "POP finish" → Painting
+- "false ceiling", "gypsum", "POP ceiling" → False Ceiling
+- "AC", "HVAC", "duct", "VRV", "split unit" → HVAC
+If unclear, leave work_types as [] and work_type as null. "work_type" should always be the first entry of "work_types" (or null).
+
+
 Return JSON of shape:
 {
   "english_text": "translated narrative",
@@ -137,6 +151,7 @@ Return JSON of shape:
       "description": "...",
       "agency": "Ramesh" | "Client" | null,
       "work_type": "Tiling",
+      "work_types": ["Tiling", "Flooring"],
       "areas": ["Living Room"],
       "status": "done",
       "priority": "Medium",
@@ -187,7 +202,11 @@ ${data.text}
       const description = (t.description ?? "").trim();
       const agency = t.agency || null;
       const areas = Array.isArray(t.areas) ? t.areas.filter(Boolean) : [];
-      const wt = t.work_type || null;
+      const wtsRaw = Array.isArray((t as { work_types?: unknown }).work_types)
+        ? ((t as { work_types?: unknown }).work_types as unknown[]).filter(Boolean).map(String)
+        : (t.work_type ? [t.work_type] : []);
+      const work_types = Array.from(new Set(wtsRaw.map((s) => s.trim()).filter(Boolean)));
+      const wt = work_types[0] || t.work_type || null;
 
       let dupId: string | null = null;
       for (const ex of existingList) {
@@ -207,6 +226,7 @@ ${data.text}
         description,
         agency,
         work_type: wt,
+        work_types,
         areas,
         status: (t.status as string) ?? "not_started",
         priority: (t.priority as ExtractedTask["priority"]) ?? "Medium",
@@ -256,6 +276,7 @@ const confirmSchema = z.object({
     description: z.string(),
     agency: z.string().nullable(),
     work_type: z.string().nullable(),
+    work_types: z.array(z.string()).default([]),
     areas: z.array(z.string()),
     status: z.string(),
     priority: z.string(),
@@ -291,6 +312,7 @@ export const confirmNarrative = createServerFn({ method: "POST" })
         agency: t.agency,
         contractor: t.agency,
         work_type: t.work_type,
+        work_types: t.work_types ?? (t.work_type ? [t.work_type] : []),
         area: primaryArea,
         areas: t.areas,
         status: t.status,

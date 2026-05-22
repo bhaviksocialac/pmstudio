@@ -104,7 +104,8 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
       areas.forEach((a) => rooms.add(a));
       const c = t.agency || t.contractor || t.assignee;
       if (c) contractors.add(c);
-      if (t.work_type) workTypes.add(t.work_type);
+      const wts = Array.isArray(t.work_types) && (t.work_types as string[]).length ? (t.work_types as string[]) : (t.work_type ? [t.work_type] : []);
+      wts.forEach((w) => workTypes.add(w));
     });
     WORK_TYPES.forEach((w) => workTypes.add(w));
     const baseStatuses = Object.keys(STATUS_META).filter((s) => !["todo", "in_progress"].includes(s));
@@ -145,7 +146,10 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
       const p = t.priority ?? "None";
       if (!filters.priorities.has(p)) return false;
     }
-    if (filters.workTypes.size && !(t.work_type && filters.workTypes.has(t.work_type))) return false;
+    if (filters.workTypes.size) {
+      const wts = Array.isArray(t.work_types) && (t.work_types as string[]).length ? (t.work_types as string[]) : (t.work_type ? [t.work_type] : []);
+      if (!wts.some((w) => filters.workTypes.has(w))) return false;
+    }
     return true;
   }), [rows, filters]);
 
@@ -161,7 +165,10 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
         const areas = Array.isArray(t.areas) && (t.areas as string[]).length ? (t.areas as string[]) : (t.area ? [t.area] : []);
         key = areas[0] ? titleCase(areas[0]) : "Unassigned";
       }
-      else if (groupBy === "work_type") key = t.work_type ? titleCase(t.work_type) : "Other";
+      else if (groupBy === "work_type") {
+        const wts = Array.isArray(t.work_types) && (t.work_types as string[]).length ? (t.work_types as string[]) : (t.work_type ? [t.work_type] : []);
+        key = wts[0] ? titleCase(wts[0]) : "Other";
+      }
       else key = STATUS_META[t.status ?? "not_started"]?.label ?? "Not Started";
       const arr = m.get(key) ?? [];
       arr.push(t);

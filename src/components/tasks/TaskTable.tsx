@@ -8,11 +8,11 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  STATUS_META, STATUS_ORDER, PRIORITY_META, rowTint, nextStatus,
+  STATUS_META, STATUS_ORDER, PRIORITY_META, rowTint, nextStatus, WORK_TYPES,
 } from "@/lib/task-flow";
 import { cascadeDependents, splitTaskPerRoom } from "@/lib/task-ai.functions";
 import {
-  AgencyPicker, AreaPicker, DateField, DependencyPicker, PillPicker,
+  AgencyPicker, AreaPicker, DateField, DependencyPicker, PillPicker, WorkTypePicker,
 } from "./TaskInlineEditors";
 import { TaskEditSheet } from "./TaskEditSheet";
 
@@ -30,6 +30,7 @@ export type TaskRow = {
   contractor: string | null;
   assignee: string | null;
   work_type: string | null;
+  work_types?: unknown;
   vendor_id: string | null;
   start_date: string | null;
   due_date: string | null;
@@ -53,6 +54,11 @@ export type TaskRow = {
 function asAreas(t: Pick<TaskRow, "areas" | "area">): string[] {
   if (Array.isArray(t.areas) && (t.areas as string[]).length) return t.areas as string[];
   return t.area ? [t.area] : [];
+}
+
+export function asWorkTypes(t: Pick<TaskRow, "work_types" | "work_type">): string[] {
+  if (Array.isArray(t.work_types) && (t.work_types as string[]).length) return t.work_types as string[];
+  return t.work_type ? [t.work_type] : [];
 }
 
 function isDelayed(t: TaskRow) {
@@ -184,6 +190,7 @@ export function TaskTable({
               <Th className="w-10" />
               <Th>Description</Th>
               <Th>Agency</Th>
+              <Th>Work Type</Th>
               <Th>Status</Th>
               <Th>Start Date</Th>
               <Th>End Date</Th>
@@ -248,7 +255,6 @@ export function TaskTable({
                     <Td>
                       <div className="py-3 min-w-[220px]">
                         <div className={`font-medium ${t.done ? "line-through text-muted-foreground" : ""}`}>{t.title}</div>
-                        {t.work_type && <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">{t.work_type}</div>}
                         {projName && <div className="text-[11px] text-muted-foreground mt-1">{projName}</div>}
                       </div>
                     </Td>
@@ -259,6 +265,15 @@ export function TaskTable({
                           vendors={vendors}
                           teamMembers={teamMembers}
                           onChange={(v) => updateField(t, { agency: v, contractor: v })}
+                        />
+                      </div>
+                    </Td>
+                    <Td>
+                      <div className="min-w-[160px] max-w-[220px]">
+                        <WorkTypePicker
+                          value={asWorkTypes(t)}
+                          options={WORK_TYPES as unknown as readonly string[]}
+                          onChange={(v) => updateField(t, { work_types: v, work_type: v[0] ?? null })}
                         />
                       </div>
                     </Td>
@@ -382,7 +397,7 @@ export function TaskTable({
 
                   {isOpen && hasDetail && (
                     <tr className="bg-muted/10 border-b border-border">
-                      <td colSpan={15} className="px-6 py-5">
+                      <td colSpan={16} className="px-6 py-5">
                         {t.action_required && t.action_label && (
                           <div className="mb-4 px-3 py-2 rounded-[8px] bg-[#c4685a18] border border-[#c4685a40] text-sm text-[#8a2a1f] flex items-center gap-2">
                             <AlertCircle className="h-4 w-4" /> {t.action_label}

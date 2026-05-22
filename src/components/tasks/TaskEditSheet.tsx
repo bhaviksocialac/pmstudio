@@ -13,7 +13,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { STATUS_ORDER, STATUS_META, PRIORITY_META, WORK_TYPES } from "@/lib/task-flow";
 import type { TaskRow } from "./TaskTable";
-import { AgencyPicker, AreaPicker, DependencyPicker, DateField } from "./TaskInlineEditors";
+import { asWorkTypes } from "./TaskTable";
+import { AgencyPicker, AreaPicker, DependencyPicker, DateField, WorkTypePicker } from "./TaskInlineEditors";
 
 export function TaskEditSheet({
   task, open, onClose, onChanged, allTasks, vendors, teamMembers = [], rooms, onAddRoom,
@@ -43,7 +44,8 @@ export function TaskEditSheet({
     const payload = {
       title: draft.title,
       description: draft.description,
-      work_type: draft.work_type,
+      work_type: (Array.isArray((draft as TaskRow).work_types) ? ((draft as TaskRow).work_types as string[])[0] : draft.work_type) ?? null,
+      work_types: (Array.isArray((draft as TaskRow).work_types) ? (draft as TaskRow).work_types : (draft.work_type ? [draft.work_type] : [])) as unknown as string[],
       agency: draft.agency,
       contractor: draft.agency,
       status: draft.status ?? "not_started",
@@ -117,14 +119,11 @@ export function TaskEditSheet({
             </Field>
 
             <Field label="Work Type">
-              <select
-                value={draft.work_type ?? ""}
-                onChange={(e) => patch({ work_type: e.target.value || null })}
-                className="w-full h-9 px-3 rounded-[8px] bg-white border border-border text-sm"
-              >
-                <option value="">—</option>
-                {WORK_TYPES.map((w) => <option key={w} value={w}>{w}</option>)}
-              </select>
+              <WorkTypePicker
+                value={asWorkTypes(draft)}
+                options={WORK_TYPES as unknown as readonly string[]}
+                onChange={(v) => patch({ work_types: v as unknown, work_type: v[0] ?? null })}
+              />
             </Field>
 
             <Field label="Agency">
