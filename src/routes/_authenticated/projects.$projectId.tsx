@@ -6,7 +6,7 @@ import {
   FileText, MessageCircle, FilePlus, Loader2, Pencil, ClipboardList,
 } from "lucide-react";
 import { ProjectProgressPanels } from "@/components/tasks/ProjectProgressPanels";
-import { phaseOfTask, isTaskDone, PROJECT_PHASES, type ProjectPhase } from "@/lib/task-flow";
+import { computeRollup, EXECUTION_PHASE_GROUPS, overallProjectPct, type GroupRollup, type TaskLite } from "@/lib/phase-sync";
 import { phases, healthMap, type Project } from "@/lib/projects";
 import { labelForProjectType } from "@/lib/project-types";
 import { supabase } from "@/integrations/supabase/client";
@@ -238,7 +238,6 @@ const Card: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = "", 
 
 /* ---------------- Overview ---------------- */
 function OverviewTab({ project }: { project: Project }) {
-  const phaseIdx = phases.indexOf(project.phase);
   const budgetPct = Math.round((project.spent / project.budget) * 100);
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -260,6 +259,20 @@ function OverviewTab({ project }: { project: Project }) {
   phaseRows.forEach((r: { phase: string; status: string; updated_at: string; end_date: string | null }) =>
     phaseMeta.set(r.phase, { status: r.status, updated_at: r.updated_at, end_date: r.end_date })
   );
+
+  const { data: overviewTasks = [] } = useQuery({
+    queryKey: ["project-tasks-overview", project.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tasks")
+        .select("id,status,done,work_type,work_types,areas,area,room,completion_pct,notes,phase,ifr_date,ifa_date,ifc_date")
+        .eq("project_id", project.id);
+      return (data ?? []) as TaskLite[];
+    },
+  });
+  const overviewRollups = useMemo<GroupRollup[]>(() => computeRollup(overviewTasks), [overviewTasks]);
+  const rollupByPhase = useMemo(() => new Map(overviewRollups.map((r) => [r.group, r])), [overviewRollups]);
+  const taskDrivenOverall = overallProjectPct(overviewTasks);
 
   const PHASE_INVOICE_PCT: Record<string, number> = {
     Survey: 5, Design: 15, Procurement: 20, Execution: 35, Finishing: 15, Handover: 10,
