@@ -138,6 +138,7 @@ Return JSON of shape:
       "description": "...",
       "agency": "Ramesh" | "Client" | null,
       "work_type": "Tiling",
+      "work_types": ["Tiling", "Flooring"],
       "areas": ["Living Room"],
       "status": "done",
       "priority": "Medium",
