@@ -266,7 +266,7 @@ function OverviewTab({ project }: { project: Project }) {
   const rollupByPhase = useMemo(() => new Map(overviewRollups.map((r) => [r.group, r])), [overviewRollups]);
   const taskDrivenOverall = overallProjectPct(overviewTasks);
 
-  const signOffPhase = async (phase: string) => {
+  const signOffPhase = async (phase: ExecutionPhaseGroup) => {
     const today = new Date().toISOString().slice(0, 10);
     const { error } = await supabase
       .from("project_phases")
@@ -285,66 +285,56 @@ function OverviewTab({ project }: { project: Project }) {
     <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
       <Card className="p-6 md:p-8">
         <h2 className="font-display text-2xl mb-1">Phase Progress</h2>
-        <p className="text-xs text-muted-foreground mb-6">All 6 stages run in parallel. Mark each complete when ready.</p>
+        <p className="text-xs text-muted-foreground mb-6">All 6 stages run in parallel. Progress is calculated only from tasks.</p>
         <div className="relative pl-8">
           <div className="absolute left-3 top-2 bottom-2 w-px bg-border" />
-          {phases.map((ph, i) => {
+          {EXECUTION_PHASE_GROUPS.map((ph) => {
             const meta = phaseMeta.get(ph);
-            const done = meta ? meta.status === "done" : i < phaseIdx;
-            const current = i === phaseIdx;
-            const mile = project.milestones[i];
-            const undoable =
-              done && meta?.updated_at &&
-              Date.now() - new Date(meta.updated_at).getTime() < 24 * 60 * 60 * 1000;
+            const rollup = rollupByPhase.get(ph);
+            const pct = rollup?.pct ?? 0;
+            const done = pct === 100 && (rollup?.total ?? 0) > 0;
+            const signed = meta?.status === "done";
             return (
               <div key={ph} className="relative pb-6 last:pb-0">
                 <span className="absolute -left-[22px] top-1 h-3.5 w-3.5 rounded-full flex items-center justify-center"
                       style={{
-                        background: done ? "#7a9e8a" : current ? "#d4882a" : "transparent",
-                        border: done || current ? "none" : "2px solid #d4c9b9",
-                        boxShadow: current ? "0 0 0 4px rgba(212,136,42,0.18)" : "none",
+                        background: done ? "#7a9e8a" : pct > 0 ? "#d4882a" : "transparent",
+                        border: done || pct > 0 ? "none" : "2px solid #d4c9b9",
+                        boxShadow: pct > 0 && !done ? "0 0 0 4px rgba(212,136,42,0.18)" : "none",
                       }}>
                   {done && <Check className="h-2 w-2 text-white" />}
                 </span>
-                <div className={`rounded-[10px] border ${current ? "border-[#d4882a] bg-[#fff7eb]" : done ? "border-[#cfe0d4] bg-[#f4f9f5]" : "border-border bg-card"} p-4`}>
+                <div className={`rounded-[10px] border ${pct > 0 && !done ? "border-[#d4882a] bg-[#fff7eb]" : done ? "border-[#cfe0d4] bg-[#f4f9f5]" : "border-border bg-card"} p-4`}>
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <h3 className="font-display text-lg">{ph}</h3>
                     <div className="flex items-center gap-2">
-                      {mile && <span className="text-[11px] font-mono text-muted-foreground">{mile.date}</span>}
-                      <button onClick={(e) => { e.stopPropagation(); setEditPhase(ph); }}
-                        className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px] border border-border hover:bg-white">
-                        Edit
-                      </button>
+                      <span className="text-[11px] font-mono text-muted-foreground">{rollup?.done ?? 0}/{rollup?.total ?? 0} · {pct}%</span>
+                      {signed && <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px] bg-[#7a9e8a]/20 text-[#3d6f5a]">Signed Off</span>}
                     </div>
                   </div>
-                  {(ph === "Procurement" || ph === "Execution") ? (
-                    <div className="mt-3">
-                      <PhaseSubcategoriesPanel projectId={project.id} phase={ph} />
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5 mt-2">
-                      {["Site visit","Vendor confirmation","Material delivery"].map((t, k) => (
-                        <label key={k} className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <input type="checkbox" defaultChecked={done || (current && k === 0)} className="accent-[#c17f5a]" />
-                          <span>{t}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
+                  <div className="mt-3 h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full transition-all" style={{ width: `${pct}%`, background: done ? "#7a9e8a" : "#c17f5a" }} />
+                  </div>
+                  <div className="space-y-1.5 mt-3">
+                    {(rollup?.workTypes ?? []).slice(0, 4).map((wt) => (
+                      <div key={wt.workType} className="flex justify-between text-xs text-muted-foreground">
+                        <span>{wt.workType}</span><span className="font-mono">{wt.done}/{wt.total} · {wt.pct}%</span>
+                      </div>
+                    ))}
+                    {!rollup?.total && <div className="text-xs text-muted-foreground italic">No tasks tagged to {ph} yet.</div>}
+                  </div>
                   <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border/60">
-                    {!done && (
-                      <button onClick={() => setConfirmPhase(ph)} className="h-8 px-3 rounded-[6px] bg-[#7a9e8a] text-white text-xs font-medium hover:brightness-110">Mark Phase Complete</button>
-                    )}
-                    {undoable && (
-                      <button
-                        onClick={() => undoComplete.mutate(ph)}
-                        disabled={undoComplete.isPending}
-                        className="h-8 px-3 rounded-[6px] border border-border text-xs font-medium hover:bg-white disabled:opacity-60"
-                      >
-                        Undo Complete
-                      </button>
-                    )}
                     <button onClick={() => setAddTaskFor(ph)} className="h-8 px-3 rounded-[6px] border border-border text-xs font-medium hover:bg-white">+ Add Task</button>
+                    <button
+                      onClick={() => signOffPhase(ph).catch((e) => toast.error(e instanceof Error ? e.message : "Failed"))}
+                      disabled={!done || signed}
+                      className="h-8 px-3 rounded-[6px] bg-[#7a9e8a] text-white text-xs font-medium hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Sign Off
+                    </button>
+                    {!done && rollup?.blocker && (
+                      <span className="text-[11px] text-[#8a5a1a] self-center">{rollup.blocker}</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -361,25 +351,6 @@ function OverviewTab({ project }: { project: Project }) {
           onClose={() => setAddTaskFor(null)}
         />
       )}
-      {editPhase && (
-        <EditPhaseModal projectId={project.id} phase={editPhase} onClose={() => setEditPhase(null)} />
-      )}
-      {confirmPhase && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setConfirmPhase(null)}>
-          <div className="bg-card rounded-[16px] p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-2xl mb-2">Complete {confirmPhase}?</h3>
-            <p className="text-sm text-muted-foreground mb-5">This will advance the project to the next phase and draft an invoice for {PHASE_INVOICE_PCT[confirmPhase] ?? 10}% of the budget.</p>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setConfirmPhase(null)} className="h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">Cancel</button>
-              <button onClick={() => markPhaseComplete.mutate(confirmPhase)} disabled={markPhaseComplete.isPending} className="h-10 px-5 rounded-[6px] bg-[#7a9e8a] text-white text-sm font-medium hover:brightness-110 inline-flex items-center gap-2 disabled:opacity-60">
-                {markPhaseComplete.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="space-y-6">
         <Card className="p-6">
           <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">Total Budget</div>
