@@ -217,15 +217,22 @@ ${data.text}
       const work_types = Array.from(new Set(wtsRaw.map((s) => s.trim()).filter(Boolean)));
       const wt = work_types[0] || t.work_type || null;
 
+      const roomVal = ((t as { room?: string | null }).room ?? null) || areas[0] || null;
+      const cpRaw = (t as { completion_pct?: unknown }).completion_pct;
+      let completion_pct = typeof cpRaw === "number" ? Math.max(0, Math.min(100, Math.round(cpRaw))) : 0;
+      if (((t.status as string) ?? "") === "done") completion_pct = 100;
+      else if (((t.status as string) ?? "") === "wip" && completion_pct === 0) completion_pct = 50;
+
       let dupId: string | null = null;
       for (const ex of existingList) {
         const sameDesc = norm(ex.desc).includes(norm(description).slice(0, 30)) ||
           norm(description).includes(norm(ex.desc).slice(0, 30));
         const sameAgency = norm(ex.agency) === norm(agency ?? "");
+        const sameRoom = !roomVal || !ex.room || norm(ex.room) === norm(roomVal);
         const overlapArea = areas.length === 0 || ex.areas.length === 0 ||
           areas.some((a) => ex.areas.map(norm).includes(norm(a)));
         const sameWorkType = !wt || !ex.work_type || norm(wt) === norm(ex.work_type);
-        if (sameDesc && sameAgency && overlapArea && sameWorkType) {
+        if (sameDesc && sameAgency && (sameRoom || overlapArea) && sameWorkType) {
           dupId = ex.id;
           break;
         }
@@ -237,6 +244,8 @@ ${data.text}
         work_type: wt,
         work_types,
         areas,
+        room: roomVal,
+        completion_pct,
         status: (t.status as string) ?? "not_started",
         priority: (t.priority as ExtractedTask["priority"]) ?? "Medium",
         planned_start: t.planned_start ?? null,
@@ -271,6 +280,7 @@ ${data.text}
         rooms,
         delays,
         dependencies,
+        groupUpdates: [],
       },
       original_language: parsed.original_language ?? "english",
       english_text: parsed.english_text ?? data.text,
