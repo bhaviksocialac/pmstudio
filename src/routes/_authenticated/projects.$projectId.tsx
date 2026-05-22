@@ -1,16 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Send, Check, Phone, Mail, Plus, Upload, Image as ImageIcon,
   FileText, MessageCircle, FilePlus, Loader2, Pencil, ClipboardList,
 } from "lucide-react";
 import { ProjectProgressPanels } from "@/components/tasks/ProjectProgressPanels";
-import { computeRollup, EXECUTION_PHASE_GROUPS, overallProjectPct, type GroupRollup, type TaskLite } from "@/lib/phase-sync";
+import { computeRollup, EXECUTION_PHASE_GROUPS, isDone, overallProjectPct, phaseOfTask, type ExecutionPhaseGroup, type GroupRollup, type TaskLite } from "@/lib/phase-sync";
 import { phases, healthMap, type Project } from "@/lib/projects";
 import { labelForProjectType } from "@/lib/project-types";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
 import type { DbProject } from "@/lib/db-types";
 import { formatINR } from "@/lib/studio-data";
 import { AppShell } from "@/components/AppShell";
@@ -19,9 +18,7 @@ import { toast } from "sonner";
 import { SharePortalButton } from "@/components/SharePortalButton";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { AddTaskPanel } from "@/components/AddTaskPanel";
-import { PhaseSubcategoriesPanel } from "@/components/PhaseSubcategoriesPanel";
 import { AIPhaseBar } from "@/components/AIPhaseBar";
-import { EditPhaseModal } from "@/components/EditPhaseModal";
 import { DailyReportModal } from "@/components/DailyReportModal";
 import { SiteReportsList } from "@/components/SiteReportsList";
 import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
@@ -32,8 +29,6 @@ import { BoqUploadButton } from "@/components/BoqUploadButton";
 import { SnagsTab } from "@/components/SnagsTab";
 import { ChangeOrdersTab } from "@/components/ChangeOrdersTab";
 import { AttendanceTab } from "@/components/AttendanceTab";
-import { useServerFn } from "@tanstack/react-start";
-import { sendInvoiceEmail, sendMilestoneEmail } from "@/lib/emails.functions";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
