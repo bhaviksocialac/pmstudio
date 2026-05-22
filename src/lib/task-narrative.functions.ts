@@ -12,8 +12,10 @@ const STATUSES = [
 ] as const;
 
 const WORK_TYPES = [
+  "Survey", "Design", "Procurement",
   "Carpentry", "Civil", "Electrical", "False Ceiling", "Flooring",
-  "HVAC", "Painting", "Plumbing", "Tiling", "Other",
+  "HVAC", "Painting", "Plumbing", "Tiling",
+  "Finishing", "Snags", "Handover", "Other",
 ] as const;
 
 export type ExtractedTask = {
@@ -141,6 +143,9 @@ IFR/IFA/IFC DATE DETECTION:
 - IFC: "issued for construction", "given to contractor", "construction started"
 
 WORK TYPE KEYWORDS (work_types may be multi):
+- site visit/measurement/survey/recce → Survey
+- drawing/design/concept/3D/render/IFR/IFA/IFC/approval → Design
+- quotation/quote/PO/purchase order/order placed/delivery/payment/material ordered → Procurement
 - tiles/grouting → Tiling
 - flooring/wooden/marble/laminate → Flooring
 - electrical/conduit/wiring/MCB → Electrical
@@ -150,6 +155,8 @@ WORK TYPE KEYWORDS (work_types may be multi):
 - painting/primer/putty → Painting
 - false ceiling/gypsum/POP ceiling → False Ceiling
 - AC/HVAC/duct → HVAC
+- snag/touch-up/cleaning/deep clean/polish → Snags
+- handover/keys handed/documents handed/final payment received → Handover
 "work_type" = first of "work_types".
 
 Return JSON:
@@ -314,13 +321,15 @@ const confirmSchema = z.object({
   })),
 });
 
-// WORK_TYPE → phase group (mirror of src/lib/phase-sync.ts to avoid SSR import path issues)
+// WORK_TYPE → lifecycle phase (mirror of src/lib/phase-sync.ts).
 const WT_GROUP: Record<string, string> = {
-  Civil: "Civil Work", Electrical: "Electrical Work",
-  Plumbing: "Plumbing Work", HVAC: "Plumbing Work",
-  Flooring: "Flooring Work", Tiling: "Flooring Work",
-  Painting: "Painting Work", "False Ceiling": "Painting Work",
-  Carpentry: "Furniture Installation", Other: "Civil Work",
+  Survey: "Survey", Design: "Design", Procurement: "Procurement",
+  Civil: "Execution", Electrical: "Execution",
+  Plumbing: "Execution", HVAC: "Execution",
+  Flooring: "Execution", Tiling: "Execution", Carpentry: "Execution",
+  Painting: "Finishing", "False Ceiling": "Finishing",
+  Snags: "Finishing", Finishing: "Finishing",
+  Handover: "Handover", Other: "Execution",
 };
 
 export const confirmNarrative = createServerFn({ method: "POST" })
