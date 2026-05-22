@@ -180,7 +180,7 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
         </p>
       </div>
 
-      <AINarrativeBar projectId={projectId} />
+      <AINarrativeBar projectId={projectId} teamMembers={teamMembers} />
 
       <div className="rounded-[16px] bg-card border border-border p-5 md:p-6" style={{ boxShadow: "var(--shadow-card)" }}>
         <TaskFilters groups={filterGroups} state={filters} setState={setFilters} />
