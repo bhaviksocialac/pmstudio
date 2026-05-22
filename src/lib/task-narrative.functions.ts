@@ -312,6 +312,7 @@ export const confirmNarrative = createServerFn({ method: "POST" })
         agency: t.agency,
         contractor: t.agency,
         work_type: t.work_type,
+        work_types: t.work_types ?? (t.work_type ? [t.work_type] : []),
         area: primaryArea,
         areas: t.areas,
         status: t.status,
