@@ -57,6 +57,20 @@ export function TaskTable({
     return m;
   }, [rows]);
 
+  // Reverse map: which tasks depend on this task (i.e. it blocks them)
+  const blockingMap = useMemo(() => {
+    const m = new Map<string, string[]>();
+    rows.forEach((t) => {
+      const deps = Array.isArray(t.depends_on) ? (t.depends_on as string[]) : [];
+      deps.forEach((depId) => {
+        const arr = m.get(depId) ?? [];
+        arr.push(t.title);
+        m.set(depId, arr);
+      });
+    });
+    return m;
+  }, [rows]);
+
   const subs = useMemo(() => {
     const m = new Map<string, TaskRow[]>();
     rows.forEach((t) => {
