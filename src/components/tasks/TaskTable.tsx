@@ -243,9 +243,11 @@ export function TaskTable({
                       </div>
                     </Td>
                     <Td>
-                      <span className="text-xs text-muted-foreground font-mono whitespace-nowrap">
-                        {t.ifr_date ? `${t.ifr_type ?? "IFR"} · ${t.ifr_date}` : "—"}
-                      </span>
+                      <div className="text-[11px] font-mono whitespace-nowrap space-y-0.5 min-w-[110px]">
+                        <div className="text-[#7a7a7a]">IFR: {t.ifr_date ?? "—"}</div>
+                        <div className="text-[#b8862a]">IFA: {t.ifa_date ?? "—"}</div>
+                        <div className="text-[#c17f5a]">IFC: {t.ifc_date ?? "—"}</div>
+                      </div>
                     </Td>
                     <Td>
                       {areas.length > 0 ? (
