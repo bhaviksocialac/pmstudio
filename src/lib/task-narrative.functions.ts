@@ -321,13 +321,15 @@ const confirmSchema = z.object({
   })),
 });
 
-// WORK_TYPE → phase group (mirror of src/lib/phase-sync.ts to avoid SSR import path issues)
+// WORK_TYPE → lifecycle phase (mirror of src/lib/phase-sync.ts).
 const WT_GROUP: Record<string, string> = {
-  Civil: "Civil Work", Electrical: "Electrical Work",
-  Plumbing: "Plumbing Work", HVAC: "Plumbing Work",
-  Flooring: "Flooring Work", Tiling: "Flooring Work",
-  Painting: "Painting Work", "False Ceiling": "Painting Work",
-  Carpentry: "Furniture Installation", Other: "Civil Work",
+  Survey: "Survey", Design: "Design", Procurement: "Procurement",
+  Civil: "Execution", Electrical: "Execution",
+  Plumbing: "Execution", HVAC: "Execution",
+  Flooring: "Execution", Tiling: "Execution", Carpentry: "Execution",
+  Painting: "Finishing", "False Ceiling": "Finishing",
+  Snags: "Finishing", Finishing: "Finishing",
+  Handover: "Handover", Other: "Execution",
 };
 
 export const confirmNarrative = createServerFn({ method: "POST" })
