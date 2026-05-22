@@ -143,6 +143,9 @@ IFR/IFA/IFC DATE DETECTION:
 - IFC: "issued for construction", "given to contractor", "construction started"
 
 WORK TYPE KEYWORDS (work_types may be multi):
+- site visit/measurement/survey/recce → Survey
+- drawing/design/concept/3D/render/IFR/IFA/IFC/approval → Design
+- quotation/quote/PO/purchase order/order placed/delivery/payment/material ordered → Procurement
 - tiles/grouting → Tiling
 - flooring/wooden/marble/laminate → Flooring
 - electrical/conduit/wiring/MCB → Electrical
@@ -152,6 +155,8 @@ WORK TYPE KEYWORDS (work_types may be multi):
 - painting/primer/putty → Painting
 - false ceiling/gypsum/POP ceiling → False Ceiling
 - AC/HVAC/duct → HVAC
+- snag/touch-up/cleaning/deep clean/polish → Snags
+- handover/keys handed/documents handed/final payment received → Handover
 "work_type" = first of "work_types".
 
 Return JSON:
