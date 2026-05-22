@@ -27,6 +27,8 @@ export type TaskRow = {
   vendor_id: string | null;
   start_date: string | null;
   due_date: string | null;
+  ifr_date: string | null;
+  ifr_type: string | null;
   done: boolean;
   notes: string | null;
   attachments: unknown;
