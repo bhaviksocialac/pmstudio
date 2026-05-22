@@ -31,6 +31,8 @@ export type TaskRow = {
   due_date: string | null;
   ifr_date: string | null;
   ifr_type: string | null;
+  ifa_date?: string | null;
+  ifc_date?: string | null;
   planned_start: string | null;
   planned_end: string | null;
   actual_start: string | null;
