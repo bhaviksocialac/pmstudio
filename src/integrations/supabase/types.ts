@@ -1155,7 +1155,11 @@ export type Database = {
         Row: {
           action_label: string | null
           action_required: boolean
+          actual_end: string | null
+          actual_start: string | null
+          agency: string | null
           area: string | null
+          areas: Json
           assignee: string | null
           attachments: Json
           contractor: string | null
@@ -1168,8 +1172,11 @@ export type Database = {
           id: string
           ifr_date: string | null
           ifr_type: string | null
+          mailed: boolean
           notes: string | null
           parent_task_id: string | null
+          planned_end: string | null
+          planned_start: string | null
           priority: string
           project_id: string | null
           start_date: string | null
@@ -1183,7 +1190,11 @@ export type Database = {
         Insert: {
           action_label?: string | null
           action_required?: boolean
+          actual_end?: string | null
+          actual_start?: string | null
+          agency?: string | null
           area?: string | null
+          areas?: Json
           assignee?: string | null
           attachments?: Json
           contractor?: string | null
@@ -1196,8 +1207,11 @@ export type Database = {
           id?: string
           ifr_date?: string | null
           ifr_type?: string | null
+          mailed?: boolean
           notes?: string | null
           parent_task_id?: string | null
+          planned_end?: string | null
+          planned_start?: string | null
           priority?: string
           project_id?: string | null
           start_date?: string | null
@@ -1211,7 +1225,11 @@ export type Database = {
         Update: {
           action_label?: string | null
           action_required?: boolean
+          actual_end?: string | null
+          actual_start?: string | null
+          agency?: string | null
           area?: string | null
+          areas?: Json
           assignee?: string | null
           attachments?: Json
           contractor?: string | null
@@ -1224,8 +1242,11 @@ export type Database = {
           id?: string
           ifr_date?: string | null
           ifr_type?: string | null
+          mailed?: boolean
           notes?: string | null
           parent_task_id?: string | null
+          planned_end?: string | null
+          planned_start?: string | null
           priority?: string
           project_id?: string | null
           start_date?: string | null
