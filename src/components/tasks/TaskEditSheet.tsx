@@ -119,14 +119,11 @@ export function TaskEditSheet({
             </Field>
 
             <Field label="Work Type">
-              <select
-                value={draft.work_type ?? ""}
-                onChange={(e) => patch({ work_type: e.target.value || null })}
-                className="w-full h-9 px-3 rounded-[8px] bg-white border border-border text-sm"
-              >
-                <option value="">—</option>
-                {WORK_TYPES.map((w) => <option key={w} value={w}>{w}</option>)}
-              </select>
+              <WorkTypePicker
+                value={asWorkTypes(draft)}
+                options={WORK_TYPES as unknown as readonly string[]}
+                onChange={(v) => patch({ work_types: v as unknown, work_type: v[0] ?? null })}
+              />
             </Field>
 
             <Field label="Agency">
