@@ -91,6 +91,16 @@ export const processNarrative = createServerFn({ method: "POST" })
 
     const prompt = `You are extracting structured project tasks from a designer's free-text narrative about an interior project.
 
+DESIGNER (self) NAME: ${selfName || "(unknown)"}
+TEAM MEMBERS (designer's own team): ${teamNames.length ? teamNames.join(", ") : "(none)"}
+
+AGENCY ASSIGNMENT RULES (CRITICAL):
+- First-person verbs ("I showed…", "I sent…", "I visited…", "we met…", "our team did…") → agency = "${selfName || "Designer"}" (the designer themselves).
+- A specific team member name from the TEAM MEMBERS list → agency = that team member's exact name.
+- "Client approved / Client said / client visited" → agency = "Client".
+- Any other named person/company (contractor, vendor) → agency = that name verbatim.
+- Never leave agency null when a human/agent is clearly responsible.
+
 LANGUAGE: The input may be English, Hindi (Devanagari), or Hinglish (romanised Hindi mixed with English). FIRST translate the entire narrative to clean English. Then extract tasks. All output (descriptions, agency names, areas) must be in English.
 
 EXTRACTION RULES:
