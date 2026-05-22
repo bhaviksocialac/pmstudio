@@ -188,7 +188,11 @@ ${data.text}
       const description = (t.description ?? "").trim();
       const agency = t.agency || null;
       const areas = Array.isArray(t.areas) ? t.areas.filter(Boolean) : [];
-      const wt = t.work_type || null;
+      const wtsRaw = Array.isArray((t as { work_types?: unknown }).work_types)
+        ? ((t as { work_types?: unknown }).work_types as unknown[]).filter(Boolean).map(String)
+        : (t.work_type ? [t.work_type] : []);
+      const work_types = Array.from(new Set(wtsRaw.map((s) => s.trim()).filter(Boolean)));
+      const wt = work_types[0] || t.work_type || null;
 
       let dupId: string | null = null;
       for (const ex of existingList) {
@@ -208,6 +212,7 @@ ${data.text}
         description,
         agency,
         work_type: wt,
+        work_types,
         areas,
         status: (t.status as string) ?? "not_started",
         priority: (t.priority as ExtractedTask["priority"]) ?? "Medium",
