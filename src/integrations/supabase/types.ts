@@ -1166,6 +1166,8 @@ export type Database = {
           done: boolean
           due_date: string | null
           id: string
+          ifr_date: string | null
+          ifr_type: string | null
           notes: string | null
           parent_task_id: string | null
           priority: string
@@ -1192,6 +1194,8 @@ export type Database = {
           done?: boolean
           due_date?: string | null
           id?: string
+          ifr_date?: string | null
+          ifr_type?: string | null
           notes?: string | null
           parent_task_id?: string | null
           priority?: string
@@ -1218,6 +1222,8 @@ export type Database = {
           done?: boolean
           due_date?: string | null
           id?: string
+          ifr_date?: string | null
+          ifr_type?: string | null
           notes?: string | null
           parent_task_id?: string | null
           priority?: string

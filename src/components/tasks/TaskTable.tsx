@@ -27,6 +27,8 @@ export type TaskRow = {
   vendor_id: string | null;
   start_date: string | null;
   due_date: string | null;
+  ifr_date: string | null;
+  ifr_type: string | null;
   done: boolean;
   notes: string | null;
   attachments: unknown;
@@ -52,6 +54,20 @@ export function TaskTable({
   const titleById = useMemo(() => {
     const m = new Map<string, string>();
     rows.forEach((r) => m.set(r.id, r.title));
+    return m;
+  }, [rows]);
+
+  // Reverse map: which tasks depend on this task (i.e. it blocks them)
+  const blockingMap = useMemo(() => {
+    const m = new Map<string, string[]>();
+    rows.forEach((t) => {
+      const deps = Array.isArray(t.depends_on) ? (t.depends_on as string[]) : [];
+      deps.forEach((depId) => {
+        const arr = m.get(depId) ?? [];
+        arr.push(t.title);
+        m.set(depId, arr);
+      });
+    });
     return m;
   }, [rows]);
 
@@ -105,14 +121,17 @@ export function TaskTable({
             <tr className="border-b border-border bg-muted/30">
               <Th className="w-10" />
               <Th className="w-10" />
-              <Th>Task</Th>
-              <Th>Room</Th>
-              <Th>Work Type</Th>
-              <Th>Contractor</Th>
+              <Th>Description</Th>
+              <Th>Agency</Th>
               <Th>Status</Th>
-              <Th>Priority</Th>
               <Th>Start</Th>
               <Th>End</Th>
+              <Th>IFR/IFA/IFC</Th>
+              <Th>Area</Th>
+              <Th>Priority</Th>
+              <Th>Blocked By</Th>
+              <Th>Blocking</Th>
+              <Th>Notes</Th>
               <Th>Action</Th>
             </tr>
           </thead>
@@ -150,18 +169,12 @@ export function TaskTable({
                       </button>
                     </Td>
                     <Td>
-                      <div className="py-3 min-w-[200px]">
+                      <div className="py-3 min-w-[220px]">
                         <div className={`font-medium ${t.done ? "line-through text-muted-foreground" : ""}`}>{t.title}</div>
+                        {t.work_type && <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">{t.work_type}</div>}
                         {projName && <div className="text-[11px] text-muted-foreground mt-1">{projName}</div>}
-                        {blockedBy.length > 0 && (
-                          <div className="text-[10px] text-[#c4685a] mt-1 flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3" /> Blocked by: {blockedBy.slice(0, 2).join(", ")}
-                          </div>
-                        )}
                       </div>
                     </Td>
-                    <Td><span className="text-xs">{t.area ?? "—"}</span></Td>
-                    <Td><span className="text-xs text-muted-foreground">{t.work_type ?? "—"}</span></Td>
                     <Td><span className="text-xs">{t.contractor ?? t.assignee ?? "—"}</span></Td>
                     <Td>
                       <button
@@ -171,9 +184,36 @@ export function TaskTable({
                         <Tag bg={sc.bg} fg={sc.fg}>{sc.label}</Tag>
                       </button>
                     </Td>
-                    <Td><Tag bg={pc.bg} fg={pc.fg}>{t.priority ?? "Medium"}</Tag></Td>
                     <Td><span className="text-xs text-muted-foreground font-mono">{t.start_date ?? "—"}</span></Td>
                     <Td><span className="text-xs text-muted-foreground font-mono">{t.due_date ?? "—"}</span></Td>
+                    <Td>
+                      <span className="text-xs text-muted-foreground font-mono whitespace-nowrap">
+                        {t.ifr_date ? `${t.ifr_type ?? "IFR"} · ${t.ifr_date}` : "—"}
+                      </span>
+                    </Td>
+                    <Td><span className="text-xs">{t.area ?? "—"}</span></Td>
+                    <Td><Tag bg={pc.bg} fg={pc.fg}>{t.priority ?? "Medium"}</Tag></Td>
+                    <Td>
+                      {blockedBy.length > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-[#8a4a3f]">
+                          <AlertCircle className="h-3 w-3" />{blockedBy.length === 1 ? blockedBy[0] : `${blockedBy.length} tasks`}
+                        </span>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </Td>
+                    <Td>
+                      {(blockingMap.get(t.id) ?? []).length > 0 ? (
+                        <span className="text-[11px] text-[#4f6b5e]">
+                          {(blockingMap.get(t.id) ?? []).length === 1
+                            ? blockingMap.get(t.id)![0]
+                            : `${blockingMap.get(t.id)!.length} tasks`}
+                        </span>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </Td>
+                    <Td>
+                      <span className="text-xs text-muted-foreground line-clamp-2 max-w-[180px] block">
+                        {t.notes || "—"}
+                      </span>
+                    </Td>
                     <Td>
                       {t.action_required ? (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-[#c4685a22] text-[#8a2a1f] text-[10px] font-medium uppercase tracking-wider">
@@ -193,7 +233,7 @@ export function TaskTable({
 
                   {editing === t.id && (
                     <tr className="bg-[#fff7eb] border-b border-border">
-                      <td colSpan={11} className="px-6 py-4">
+                      <td colSpan={15} className="px-6 py-4">
                         <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">Set status</div>
                         <div className="flex flex-wrap gap-2">
                           {STATUS_ORDER.map((s) => (
@@ -212,7 +252,7 @@ export function TaskTable({
 
                   {isOpen && hasDetail && (
                     <tr className="bg-muted/10 border-b border-border">
-                      <td colSpan={11} className="px-6 py-5">
+                      <td colSpan={15} className="px-6 py-5">
                         {t.action_required && t.action_label && (
                           <div className="mb-4 px-3 py-2 rounded-[8px] bg-[#c4685a18] border border-[#c4685a40] text-sm text-[#8a2a1f] flex items-center gap-2">
                             <AlertCircle className="h-4 w-4" /> {t.action_label}
