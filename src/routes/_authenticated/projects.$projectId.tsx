@@ -234,11 +234,8 @@ const Card: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = "", 
 /* ---------------- Overview ---------------- */
 function OverviewTab({ project }: { project: Project }) {
   const budgetPct = Math.round((project.spent / project.budget) * 100);
-  const { user } = useAuth();
   const qc = useQueryClient();
-  const [confirmPhase, setConfirmPhase] = useState<string | null>(null);
   const [addTaskFor, setAddTaskFor] = useState<string | null>(null);
-  const [editPhase, setEditPhase] = useState<string | null>(null);
 
   const { data: phaseRows = [] } = useQuery({
     queryKey: ["project-phases", project.id],
@@ -269,90 +266,20 @@ function OverviewTab({ project }: { project: Project }) {
   const rollupByPhase = useMemo(() => new Map(overviewRollups.map((r) => [r.group, r])), [overviewRollups]);
   const taskDrivenOverall = overallProjectPct(overviewTasks);
 
-  const PHASE_INVOICE_PCT: Record<string, number> = {
-    Survey: 5, Design: 15, Procurement: 20, Execution: 35, Finishing: 15, Handover: 10,
+  const signOffPhase = async (phase: string) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { error } = await supabase
+      .from("project_phases")
+      .update({ status: "done", end_date: today })
+      .eq("project_id", project.id)
+      .eq("phase", phase);
+    if (error) throw error;
+    await supabase.from("projects").update({ completion: taskDrivenOverall }).eq("id", project.id);
+    await qc.invalidateQueries({ queryKey: ["project-phases", project.id] });
+    await qc.invalidateQueries({ queryKey: ["project", project.id] });
+    await qc.invalidateQueries({ queryKey: ["projects"] });
+    toast.success(`${phase} signed off`);
   };
-
-  const sendInvoiceEmailFn = useServerFn(sendInvoiceEmail);
-  const sendMilestoneEmailFn = useServerFn(sendMilestoneEmail);
-
-  const markPhaseComplete = useMutation({
-    mutationFn: async (targetPhaseStr: string) => {
-      const targetPhase = targetPhaseStr as Project["phase"];
-      const today = new Date().toISOString().slice(0, 10);
-      const targetIdx = phases.indexOf(targetPhase as Project["phase"]);
-      const nextPhase = phases[targetIdx + 1];
-      await supabase.from("project_phases")
-        .update({ status: "done", end_date: today })
-        .eq("project_id", project.id)
-        .eq("phase", targetPhase);
-      if (nextPhase) {
-        await supabase.from("project_phases")
-          .update({ status: "active" })
-          .eq("project_id", project.id)
-          .eq("phase", nextPhase);
-      }
-      const newCompletion = Math.min(100, Math.round(((targetIdx + 1) / phases.length) * 100));
-      await supabase.from("projects")
-        .update({ phase: nextPhase ?? targetPhase, completion: newCompletion })
-        .eq("id", project.id);
-      const pct = PHASE_INVOICE_PCT[targetPhase] ?? 10;
-      const amount = +(project.budget * 100000 * (pct / 100)).toFixed(0);
-      await supabase.from("invoices").insert({
-        user_id: user!.id,
-        project_id: project.id,
-        amount,
-        milestone: `${targetPhase} complete`,
-        status: "draft",
-      });
-      return { currentPhase: targetPhase, amount };
-    },
-    onSuccess: ({ currentPhase, amount }) => {
-      qc.invalidateQueries({ queryKey: ["project", project.id] });
-      qc.invalidateQueries({ queryKey: ["projects"] });
-      qc.invalidateQueries({ queryKey: ["project-phases", project.id] });
-      qc.invalidateQueries({ queryKey: ["invoices"] });
-      toast.success("Phase marked complete. Draft invoice created. You can undo within 24 h.");
-      setConfirmPhase(null);
-      const milestone = `${currentPhase} complete`;
-      sendMilestoneEmailFn({ data: { projectId: project.id, milestone } }).catch((e: unknown) =>
-        console.warn("milestone email failed", e),
-      );
-      sendInvoiceEmailFn({ data: { projectId: project.id, milestone, amount } }).catch((e: unknown) =>
-        console.warn("invoice email failed", e),
-      );
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
-  });
-
-  const undoComplete = useMutation({
-    mutationFn: async (targetPhaseStr: string) => {
-      const targetPhase = targetPhaseStr as Project["phase"];
-      const targetIdx = phases.indexOf(targetPhase as Project["phase"]);
-      const nextPhase = phases[targetIdx + 1];
-      await supabase.from("project_phases")
-        .update({ status: "active", end_date: null })
-        .eq("project_id", project.id)
-        .eq("phase", targetPhase);
-      if (nextPhase) {
-        await supabase.from("project_phases")
-          .update({ status: "planned" })
-          .eq("project_id", project.id)
-          .eq("phase", nextPhase);
-      }
-      const newCompletion = Math.max(0, Math.round((targetIdx / phases.length) * 100));
-      await supabase.from("projects")
-        .update({ phase: targetPhase, completion: newCompletion })
-        .eq("id", project.id);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["project", project.id] });
-      qc.invalidateQueries({ queryKey: ["projects"] });
-      qc.invalidateQueries({ queryKey: ["project-phases", project.id] });
-      toast.success("Phase completion reverted");
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
-  });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
