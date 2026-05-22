@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Plus, LayoutGrid, List as ListIcon } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -8,6 +8,7 @@ import { healthMap, type DbProject } from "@/lib/db-types";
 import { labelForProjectType } from "@/lib/project-types";
 import { openModal } from "@/lib/app-bus";
 import { SharePortalButton } from "@/components/SharePortalButton";
+import { overallCompletion } from "@/lib/task-flow";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   head: () => ({
