@@ -44,7 +44,8 @@ export function TaskEditSheet({
     const payload = {
       title: draft.title,
       description: draft.description,
-      work_type: draft.work_type,
+      work_type: (Array.isArray((draft as TaskRow).work_types) ? ((draft as TaskRow).work_types as string[])[0] : draft.work_type) ?? null,
+      work_types: (Array.isArray((draft as TaskRow).work_types) ? (draft as TaskRow).work_types : (draft.work_type ? [draft.work_type] : [])) as unknown as string[],
       agency: draft.agency,
       contractor: draft.agency,
       status: draft.status ?? "not_started",
