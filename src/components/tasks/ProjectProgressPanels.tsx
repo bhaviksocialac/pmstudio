@@ -2,15 +2,18 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { computeBreakdown, type ProgressRow } from "@/lib/task-flow";
-import { computeRollup, overallProjectPct, type TaskLite } from "@/lib/phase-sync";
+import {
+  computeRollup,
+  overallProjectPct,
+  isDone,
+  EXECUTION_PHASE_GROUPS,
+  type TaskLite,
+} from "@/lib/phase-sync";
 
-type TaskLite = {
-  status: string | null;
-  done: boolean | null;
+type TaskRow = TaskLite & {
   agency: string | null;
   contractor: string | null;
   assignee: string | null;
-  work_type: string | null;
 };
 
 function Bar({ pct, tone = "#c17f5a" }: { pct: number; tone?: string }) {
@@ -54,27 +57,32 @@ export function ProjectProgressPanels({ projectId }: { projectId: string }) {
     queryFn: async () => {
       const { data } = await supabase
         .from("tasks")
-        .select("status,done,agency,contractor,assignee,work_type")
+        .select("status,done,agency,contractor,assignee,work_type,work_types,area,areas,room,completion_pct")
         .eq("project_id", projectId);
-      return (data ?? []) as TaskLite[];
+      return (data ?? []) as TaskRow[];
     },
   });
 
-  const overall = overallCompletion(tasks);
-  const doneCount = tasks.filter(isTaskDone).length;
+  const overall = overallProjectPct(tasks);
+  const doneCount = tasks.filter((t) => isDone(t)).length;
 
-  const phaseRows = useMemo(() => {
-    const raw = computeBreakdown(tasks, (t) => phaseOfTask(t));
-    // Order by PROJECT_PHASES
-    const order = new Map(PROJECT_PHASES.map((p, i) => [p, i]));
-    return raw.sort((a, b) => (order.get(a.key as never) ?? 99) - (order.get(b.key as never) ?? 99));
+  const phaseRows = useMemo<ProgressRow[]>(() => {
+    const rollup = computeRollup(tasks);
+    const order = new Map(EXECUTION_PHASE_GROUPS.map((p, i) => [p, i] as const));
+    return rollup
+      .filter((g) => g.total > 0)
+      .sort((a, b) => (order.get(a.group) ?? 99) - (order.get(b.group) ?? 99))
+      .map((g) => ({ key: g.group, done: g.done, total: g.total, pct: g.pct }));
   }, [tasks]);
 
   const agencyRows = useMemo(
-    () => computeBreakdown(tasks, (t) => t.agency || t.contractor || t.assignee || "Unassigned"),
+    () => computeBreakdown(tasks as any, (t: TaskRow) => t.agency || t.contractor || t.assignee || "Unassigned"),
     [tasks],
   );
-  const workTypeRows = useMemo(() => computeBreakdown(tasks, (t) => t.work_type), [tasks]);
+  const workTypeRows = useMemo(
+    () => computeBreakdown(tasks as any, (t: TaskRow) => t.work_type ?? null),
+    [tasks],
+  );
 
   return (
     <div className="rounded-[16px] bg-card border border-border p-6" style={{ boxShadow: "var(--shadow-card)" }}>
