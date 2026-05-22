@@ -212,6 +212,10 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
               <TaskTable
                 rows={[...items, ...filtered.filter((s) => s.parent_task_id && items.some((p) => p.id === s.parent_task_id))]}
                 projectMap={projectMap}
+                vendors={vendorsQ.data ?? []}
+                rooms={filterGroups[0].values}
+                onAddRoom={(r) => setExtraRooms((p) => Array.from(new Set([...p, r])))}
+                allProjectTasks={rows}
               />
             </section>
           ))}
@@ -220,3 +224,4 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
     </div>
   );
 }
+
