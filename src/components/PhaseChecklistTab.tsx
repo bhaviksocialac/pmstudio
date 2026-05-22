@@ -27,7 +27,7 @@ export function PhaseChecklistTab({ projectId, projectBudget }: { projectId: str
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tasks")
-        .select("id,status,done,work_type,work_types,areas,area,room,completion_pct,notes,signed_off")
+        .select("id,status,done,work_type,work_types,areas,area,room,completion_pct,notes")
         .eq("project_id", projectId);
       if (error) throw error;
       return (data ?? []) as TaskLite[];
