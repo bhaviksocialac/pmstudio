@@ -38,6 +38,7 @@ export function TaskEditSheet({
 
   const save = async () => {
     if (!draft) return;
+    const areasArr = (Array.isArray(draft.areas) ? (draft.areas as string[]) : (draft.area ? [draft.area] : [])) as string[];
     const payload = {
       title: draft.title,
       description: draft.description,
@@ -47,8 +48,8 @@ export function TaskEditSheet({
       status: draft.status,
       done: draft.status === "done",
       priority: draft.priority,
-      area: Array.isArray(draft.areas) ? (draft.areas as string[])[0] ?? null : draft.area,
-      areas: draft.areas,
+      area: areasArr[0] ?? null,
+      areas: areasArr as unknown as string[],
       planned_start: draft.planned_start,
       planned_end: draft.planned_end,
       actual_start: draft.actual_start,
@@ -58,10 +59,11 @@ export function TaskEditSheet({
       ifc_date: draft.ifc_date,
       start_date: draft.actual_start ?? draft.planned_start,
       due_date: draft.actual_end ?? draft.planned_end,
-      depends_on: draft.depends_on,
+      depends_on: (Array.isArray(draft.depends_on) ? (draft.depends_on as string[]) : []) as unknown as string[],
       notes: draft.notes,
       updated_at: new Date().toISOString(),
     };
+
     const { error } = await supabase.from("tasks").update(payload).eq("id", draft.id);
     if (error) return toast.error(error.message);
     toast.success("Saved");
