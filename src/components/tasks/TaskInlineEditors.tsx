@@ -68,35 +68,77 @@ export function InlineDateCell({ value, color, label, onChange }: {
 
 // ---------- Agency ----------
 
-export function AgencyPicker({ value, vendors, onChange }: {
+export type AgencyKind = "team" | "client" | "vendor" | "unknown";
+
+export function classifyAgency(
+  value: string | null | undefined,
+  teamNames: string[],
+  vendorNames: string[],
+): AgencyKind {
+  if (!value) return "unknown";
+  const v = value.toLowerCase().trim();
+  if (v === "client") return "client";
+  if (teamNames.some((n) => n.toLowerCase() === v)) return "team";
+  if (vendorNames.some((n) => n.toLowerCase() === v)) return "vendor";
+  return "unknown";
+}
+
+export function AgencyTag({ value, kind, className }: { value: string | null; kind: AgencyKind; className?: string }) {
+  if (!value) return <span className="text-xs text-muted-foreground">—</span>;
+  const styles: Record<AgencyKind, string> = {
+    team:    "bg-[#c17f5a22] text-[#7a4628] border-[#c17f5a55]",
+    client:  "bg-[#7a9e8a22] text-[#3d5e4b] border-[#7a9e8a55]",
+    vendor:  "bg-[#e6e2da] text-[#3a3a3a] border-[#cfc8bd]",
+    unknown: "bg-[#e6e2da] text-[#3a3a3a] border-[#cfc8bd]",
+  };
+  return (
+    <span className={cn(
+      "inline-flex items-center px-2 py-0.5 rounded-[6px] text-[11px] font-medium border whitespace-nowrap",
+      styles[kind], className,
+    )}>
+      {value}
+    </span>
+  );
+}
+
+export function AgencyPicker({ value, vendors, teamMembers = [], onChange }: {
   value: string | null;
   vendors: { id: string; name: string }[];
+  teamMembers?: { name: string; role?: string }[];
   onChange: (v: string | null) => void;
 }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
 
-  const options = useMemo(() => {
-    const all = ["Client", ...vendors.map((v) => v.name)];
+  const teamNames = useMemo(() => {
     const seen = new Set<string>();
-    return all.filter((n) => {
-      const k = n.toLowerCase();
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return !q || n.toLowerCase().includes(q.toLowerCase());
-    });
-  }, [vendors, q]);
+    return teamMembers
+      .map((m) => m.name)
+      .filter((n) => { const k = n.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+  }, [teamMembers]);
+
+  const vendorNames = useMemo(() => {
+    const seen = new Set([...teamNames.map((n) => n.toLowerCase()), "client"]);
+    return vendors
+      .map((v) => v.name)
+      .filter((n) => { const k = n.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+  }, [vendors, teamNames]);
+
+  const ql = q.toLowerCase();
+  const filteredTeam = teamNames.filter((n) => !ql || n.toLowerCase().includes(ql));
+  const filteredVendors = vendorNames.filter((n) => !ql || n.toLowerCase().includes(ql));
+  const showClient = !ql || "client".includes(ql);
+
+  const kind = classifyAgency(value, teamNames, vendorNames);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="h-9 w-full px-3 rounded-[8px] bg-white border border-border text-xs text-left hover:border-[#c17f5a] inline-flex items-center justify-between">
-          <span className={cn(value ? (value === "Client" ? "text-[#c17f5a] font-medium" : "text-foreground") : "text-muted-foreground")}>
-            {value ?? "—"}
-          </span>
+        <button className="h-9 w-full px-2 rounded-[8px] bg-white border border-border text-left hover:border-[#c17f5a] inline-flex items-center">
+          <AgencyTag value={value} kind={kind} />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-2 z-50" align="start">
+      <PopoverContent className="w-72 p-2 z-50" align="start">
         <div className="relative mb-2">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <input
@@ -105,7 +147,7 @@ export function AgencyPicker({ value, vendors, onChange }: {
             className="w-full h-8 pl-8 pr-2 rounded-[6px] bg-muted/30 border border-border text-xs focus:outline-none"
           />
         </div>
-        <div className="max-h-[240px] overflow-y-auto space-y-0.5">
+        <div className="max-h-[280px] overflow-y-auto space-y-2">
           {value && (
             <button
               onClick={() => { onChange(null); setOpen(false); }}
@@ -114,27 +156,66 @@ export function AgencyPicker({ value, vendors, onChange }: {
               Clear
             </button>
           )}
-          {q.trim() && !options.some((o) => o.toLowerCase() === q.toLowerCase()) && (
+
+          {filteredTeam.length > 0 && (
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.18em] text-[#c17f5a] font-medium px-2 mb-1">My Team</div>
+              {filteredTeam.map((n) => {
+                const role = teamMembers.find((m) => m.name === n)?.role;
+                return (
+                  <button key={n} onClick={() => { onChange(n); setOpen(false); }}
+                    className={cn("w-full text-left px-2 py-1.5 rounded text-xs hover:bg-[#c17f5a14] inline-flex items-center justify-between gap-2", value === n && "bg-[#c17f5a22]")}>
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-[#c17f5a]" />
+                      <span className="font-medium">{n}</span>
+                      {role && <span className="text-[10px] text-muted-foreground">{role}</span>}
+                    </span>
+                    {value === n && <Check className="h-3 w-3 text-[#c17f5a]" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {showClient && (
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.18em] text-[#3d5e4b] font-medium px-2 mb-1">Client</div>
+              <button onClick={() => { onChange("Client"); setOpen(false); }}
+                className={cn("w-full text-left px-2 py-1.5 rounded text-xs hover:bg-[#7a9e8a14] inline-flex items-center justify-between", value === "Client" && "bg-[#7a9e8a22]")}>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-[#7a9e8a]" />
+                  <span>Client</span>
+                </span>
+                {value === "Client" && <Check className="h-3 w-3 text-[#7a9e8a]" />}
+              </button>
+            </div>
+          )}
+
+          {filteredVendors.length > 0 && (
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground font-medium px-2 mb-1">Vendors &amp; Contractors</div>
+              {filteredVendors.map((n) => (
+                <button key={n} onClick={() => { onChange(n); setOpen(false); }}
+                  className={cn("w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted inline-flex items-center justify-between", value === n && "bg-[#c17f5a18]")}>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-[#9a9388]" />
+                    <span>{n}</span>
+                  </span>
+                  {value === n && <Check className="h-3 w-3 text-[#c17f5a]" />}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {q.trim() &&
+            ![...teamNames, ...vendorNames, "Client"].some((o) => o.toLowerCase() === ql) && (
             <button
               onClick={() => { onChange(q.trim()); setOpen(false); setQ(""); }}
               className="w-full text-left px-2 py-1.5 rounded text-xs text-[#c17f5a] hover:bg-[#c17f5a18]"
             >
-              + Use "{q.trim()}"
+              + Use &quot;{q.trim()}&quot;
             </button>
           )}
-          {options.map((n) => (
-            <button
-              key={n}
-              onClick={() => { onChange(n); setOpen(false); }}
-              className={cn(
-                "w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted inline-flex items-center justify-between",
-                value === n && "bg-[#c17f5a18]"
-              )}
-            >
-              <span>{n}</span>
-              {value === n && <Check className="h-3 w-3 text-[#c17f5a]" />}
-            </button>
-          ))}
         </div>
       </PopoverContent>
     </Popover>
