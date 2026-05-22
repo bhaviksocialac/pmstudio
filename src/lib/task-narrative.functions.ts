@@ -64,6 +64,14 @@ export const processNarrative = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<ProcessResult> => {
     const { supabase } = context;
 
+    const { data: profile } = await supabase.from("profiles").select("full_name").maybeSingle();
+    const selfName = (profile?.full_name ?? "").trim();
+    const teamList = data.teamMembers ?? [];
+    const teamNames = Array.from(new Set([
+      ...(selfName ? [selfName] : []),
+      ...teamList.map((t) => t.name),
+    ]));
+
     // Existing tasks in project for duplicate detection
     const { data: existing } = await supabase
       .from("tasks")
