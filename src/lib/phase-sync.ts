@@ -67,6 +67,10 @@ export type TaskLite = {
   planned_end?: string | null;
   actual_end?: string | null;
   due_date?: string | null;
+  phase?: string | null;
+  ifr_date?: string | null;
+  ifa_date?: string | null;
+  ifc_date?: string | null;
 };
 
 export function isDone(t: TaskLite): boolean {
