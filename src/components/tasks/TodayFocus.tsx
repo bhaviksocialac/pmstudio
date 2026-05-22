@@ -51,7 +51,7 @@ export function TodayFocus() {
           </div>
           <h2 className="font-display text-2xl">Today's Focus</h2>
         </div>
-        <Link to="/tasks" className="text-xs text-[#c17f5a] hover:underline">View all →</Link>
+        
       </div>
       <div className="rounded-[16px] bg-card border border-border overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
         <ul className="divide-y divide-border">
