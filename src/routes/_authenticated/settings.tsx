@@ -25,6 +25,7 @@ function SettingsPage() {
         </div>
         <div className="space-y-12">
           <BillingPanel />
+          <TeamMembersSettings />
           <WhatsAppGroupsSettings />
         </div>
       </main>
