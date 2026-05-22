@@ -57,7 +57,7 @@ export function ProjectProgressPanels({ projectId }: { projectId: string }) {
     queryFn: async () => {
       const { data } = await supabase
         .from("tasks")
-        .select("status,done,agency,contractor,assignee,work_type,work_types,area,areas,room,completion_pct")
+        .select("status,done,agency,contractor,assignee,work_type,work_types,area,areas,room,completion_pct,phase,ifr_date,ifa_date,ifc_date")
         .eq("project_id", projectId);
       return (data ?? []) as TaskRow[];
     },
@@ -76,11 +76,11 @@ export function ProjectProgressPanels({ projectId }: { projectId: string }) {
   }, [tasks]);
 
   const agencyRows = useMemo(
-    () => computeBreakdown(tasks as any, (t: TaskRow) => t.agency || t.contractor || t.assignee || "Unassigned"),
+    () => computeBreakdown(tasks, (t: TaskRow) => t.agency || t.contractor || t.assignee || "Unassigned"),
     [tasks],
   );
   const workTypeRows = useMemo(
-    () => computeBreakdown(tasks as any, (t: TaskRow) => t.work_type ?? null),
+    () => computeBreakdown(tasks, (t: TaskRow) => t.work_type ?? null),
     [tasks],
   );
 
@@ -89,7 +89,7 @@ export function ProjectProgressPanels({ projectId }: { projectId: string }) {
       <div className="flex items-start justify-between mb-5 gap-4">
         <div>
           <h3 className="font-display text-xl">Task Progress</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Auto-calculated from task completion.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Tasks are the single source of truth.</p>
         </div>
         <div className="text-right shrink-0">
           <div className="font-display text-3xl tabular-nums">{overall}%</div>
