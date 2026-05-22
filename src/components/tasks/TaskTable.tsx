@@ -121,14 +121,17 @@ export function TaskTable({
             <tr className="border-b border-border bg-muted/30">
               <Th className="w-10" />
               <Th className="w-10" />
-              <Th>Task</Th>
-              <Th>Room</Th>
-              <Th>Work Type</Th>
-              <Th>Contractor</Th>
+              <Th>Description</Th>
+              <Th>Agency</Th>
               <Th>Status</Th>
-              <Th>Priority</Th>
               <Th>Start</Th>
               <Th>End</Th>
+              <Th>IFR/IFA/IFC</Th>
+              <Th>Area</Th>
+              <Th>Priority</Th>
+              <Th>Blocked By</Th>
+              <Th>Blocking</Th>
+              <Th>Notes</Th>
               <Th>Action</Th>
             </tr>
           </thead>
