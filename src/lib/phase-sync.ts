@@ -154,15 +154,14 @@ function aggregateRoom(tasks: TaskLite[]): RoomCell[] {
 export function computeRollup(tasks: TaskLite[]): GroupRollup[] {
   const byGroup = new Map<ExecutionPhaseGroup, Map<string, TaskLite[]>>();
   tasks.forEach((t) => {
-    workTypesOf(t).forEach((wt) => {
-      const grp = groupOfWorkType(wt);
-      if (!grp) return;
-      const wtMap = byGroup.get(grp) ?? new Map<string, TaskLite[]>();
-      const arr = wtMap.get(wt) ?? [];
-      arr.push(t);
-      wtMap.set(wt, arr);
-      byGroup.set(grp, wtMap);
-    });
+    const grp = phaseOfTask(t);
+    const wts = workTypesOf(t);
+    const wtKey = wts[0] ?? grp;
+    const wtMap = byGroup.get(grp) ?? new Map<string, TaskLite[]>();
+    const arr = wtMap.get(wtKey) ?? [];
+    arr.push(t);
+    wtMap.set(wtKey, arr);
+    byGroup.set(grp, wtMap);
   });
 
   return EXECUTION_PHASE_GROUPS.map((group): GroupRollup => {
