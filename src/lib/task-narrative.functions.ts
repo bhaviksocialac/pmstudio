@@ -27,6 +27,9 @@ export type ExtractedTask = {
   planned_end: string | null;
   actual_start: string | null;
   actual_end: string | null;
+  ifr_date: string | null;
+  ifa_date: string | null;
+  ifc_date: string | null;
   blocked_by: string[];         // descriptions of other tasks in this batch
   notes: string | null;
   duplicate_of: string | null;  // existing task id (set by server, not AI)
