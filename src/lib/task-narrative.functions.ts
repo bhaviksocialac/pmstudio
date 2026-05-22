@@ -52,6 +52,10 @@ export type ProcessResult = {
 const processSchema = z.object({
   projectId: z.string().uuid(),
   text: z.string().min(2).max(8000),
+  teamMembers: z.array(z.object({
+    name: z.string().min(1).max(120),
+    role: z.string().max(60).optional(),
+  })).max(50).optional(),
 });
 
 export const processNarrative = createServerFn({ method: "POST" })
