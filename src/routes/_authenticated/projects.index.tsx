@@ -33,6 +33,27 @@ function ProjectsPage() {
     },
   });
 
+  const { data: allTasks = [] } = useQuery({
+    queryKey: ["projects-task-completion"],
+    queryFn: async () => {
+      const { data } = await supabase.from("tasks").select("project_id,status,done");
+      return (data ?? []) as { project_id: string | null; status: string | null; done: boolean | null }[];
+    },
+  });
+
+  const completionByProject = useMemo(() => {
+    const m = new Map<string, number>();
+    const grouped = new Map<string, { status: string | null; done: boolean | null }[]>();
+    allTasks.forEach((t) => {
+      if (!t.project_id) return;
+      const arr = grouped.get(t.project_id) ?? [];
+      arr.push(t);
+      grouped.set(t.project_id, arr);
+    });
+    grouped.forEach((arr, pid) => m.set(pid, overallCompletion(arr)));
+    return m;
+  }, [allTasks]);
+
   const filtered = projects.filter((p) =>
     !query || `${p.name} ${p.location ?? ""}`.toLowerCase().includes(query.toLowerCase()),
   );
