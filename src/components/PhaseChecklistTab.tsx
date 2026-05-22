@@ -11,8 +11,8 @@ import {
 } from "@/lib/phase-sync";
 
 const BUDGET_PCT: Record<string, number> = {
-  "Civil Work": 15, "Electrical Work": 10, "Plumbing Work": 10,
-  "Flooring Work": 20, "Painting Work": 8, "Furniture Installation": 12,
+  Survey: 5, Design: 15, Procurement: 25,
+  Execution: 35, Finishing: 12, Handover: 8,
 };
 
 export function PhaseChecklistTab({ projectId, projectBudget }: { projectId: string; projectBudget: number }) {
