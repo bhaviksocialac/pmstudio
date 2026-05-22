@@ -493,10 +493,74 @@ function OverviewTab({ project }: { project: Project }) {
         </Card>
 
         <RoomProgressGrid projectId={project.id} />
+        <ProjectProgressPanels projectId={project.id} />
         <ProjectActivityFeed projectId={project.id} />
+        <AutoPhaseCompleter project={project} phaseMeta={phaseMeta} />
       </div>
     </div>
   );
+}
+
+/** Watches task completion per phase. When all tasks in a phase are done and >=1 task exists,
+ *  auto-marks that phase complete (idempotent via a ref). */
+function AutoPhaseCompleter({
+  project, phaseMeta,
+}: {
+  project: Project;
+  phaseMeta: Map<string, { status: string; updated_at: string; end_date: string | null }>;
+}) {
+  const qc = useQueryClient();
+  const triggered = useRef<Set<string>>(new Set());
+
+  const { data: tasks = [] } = useQuery({
+    queryKey: ["project-tasks-autophase", project.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tasks")
+        .select("status,done,work_type")
+        .eq("project_id", project.id);
+      return (data ?? []) as { status: string | null; done: boolean | null; work_type: string | null }[];
+    },
+    refetchInterval: 15000,
+  });
+
+  useEffect(() => {
+    if (!tasks.length) return;
+    const byPhase = new Map<ProjectPhase, { total: number; done: number }>();
+    tasks.forEach((t) => {
+      const ph = phaseOfTask(t);
+      const cur = byPhase.get(ph) ?? { total: 0, done: 0 };
+      cur.total++;
+      if (isTaskDone(t)) cur.done++;
+      byPhase.set(ph, cur);
+    });
+    byPhase.forEach(async (v, ph) => {
+      if (v.total === 0 || v.done < v.total) return;
+      if (phaseMeta.get(ph)?.status === "done") return;
+      const key = `${project.id}:${ph}`;
+      if (triggered.current.has(key)) return;
+      triggered.current.add(key);
+      const today = new Date().toISOString().slice(0, 10);
+      await supabase.from("project_phases")
+        .update({ status: "done", end_date: today })
+        .eq("project_id", project.id)
+        .eq("phase", ph);
+      const idx = PROJECT_PHASES.indexOf(ph);
+      const next = PROJECT_PHASES[idx + 1];
+      if (next) {
+        await supabase.from("project_phases")
+          .update({ status: "active" })
+          .eq("project_id", project.id)
+          .eq("phase", next);
+      }
+      qc.invalidateQueries({ queryKey: ["project-phases", project.id] });
+      qc.invalidateQueries({ queryKey: ["project", project.id] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      toast.success(`${ph} phase auto-completed — all tasks done`);
+    });
+  }, [tasks, phaseMeta, project.id, qc]);
+
+  return null;
 }
 
 function QA({ icon: Icon, label, onClick }: { icon: React.ComponentType<{ className?: string }>; label: string; onClick: () => void }) {
