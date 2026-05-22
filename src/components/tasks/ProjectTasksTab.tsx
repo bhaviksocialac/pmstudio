@@ -146,7 +146,10 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
       const p = t.priority ?? "None";
       if (!filters.priorities.has(p)) return false;
     }
-    if (filters.workTypes.size && !(t.work_type && filters.workTypes.has(t.work_type))) return false;
+    if (filters.workTypes.size) {
+      const wts = Array.isArray(t.work_types) && (t.work_types as string[]).length ? (t.work_types as string[]) : (t.work_type ? [t.work_type] : []);
+      if (!wts.some((w) => filters.workTypes.has(w))) return false;
+    }
     return true;
   }), [rows, filters]);
 
