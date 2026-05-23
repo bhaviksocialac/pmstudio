@@ -117,95 +117,16 @@ export const deleteMilestone = createServerFn({ method: "POST" })
 
 // ---------- evaluate (auto-fire) ----------
 
-export type FiredMilestone = {
-  id: string;
-  name: string;
-  invoice_amount: number;
-  invoice_id: string | null;
-  approval_id: string | null;
-  triggered_at: string;
-};
+export type FiredMilestone = { id: string; name: string; invoice_amount: number };
 
 export const evaluateMilestones = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ projectId: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }): Promise<{ fired: FiredMilestone[] }> => {
-    const { supabase, userId } = context;
-    const [{ data: ms }, { data: tasks }, { data: project }] = await Promise.all([
-      supabase.from("milestones").select("*").eq("project_id", data.projectId).eq("status", "pending"),
-      supabase.from("tasks").select("id,status,done,work_type,work_types,areas,area,room,completion_pct,phase,ifr_date,ifa_date,ifc_date,planned_end,due_date,actual_end").eq("project_id", data.projectId),
-      supabase.from("projects").select("name,client_id").eq("id", data.projectId).maybeSingle(),
-    ]);
-
-    const allTasks = (tasks ?? []) as TaskLite[];
-    const fired: FiredMilestone[] = [];
-
-    for (const m of (ms ?? []) as MilestoneRow[]) {
-      const set = tasksForMilestone({ kind: m.kind, trigger: m.trigger }, allTasks);
-      if (!set.length) continue;
-      const allDone = set.every((t) => t.status === "done" || !!t.done);
-      if (!allDone) continue;
-
-      const triggeredAt = triggerLatestDoneDate({ kind: m.kind, trigger: m.trigger }, allTasks) ?? new Date().toISOString().slice(0, 10);
-      const today = new Date().toISOString().slice(0, 10);
-      const onTime = triggeredAt <= today;
-
-      // 1. Create invoice draft
-      const dueAt = new Date(triggeredAt);
-      dueAt.setDate(dueAt.getDate() + 7);
-      const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
-      const { data: invIns } = await supabase.from("invoices").insert({
-        user_id: userId,
-        project_id: data.projectId,
-        client_id: project?.client_id ?? null,
-        number: invoiceNumber,
-        milestone: m.name,
-        amount: m.invoice_amount,
-        status: "draft",
-        sent_at: null,
-        due_at: dueAt.toISOString().slice(0, 10),
-      }).select("id").single();
-
-      // 2. Create client update draft
-      const template = m.client_message_template ?? defaultClientMessage(m.name, project?.name ?? "your project", m.invoice_amount, invoiceNumber);
-      const { data: draftIns } = await supabase.from("ai_drafts").insert({
-        user_id: userId,
-        project_id: data.projectId,
-        recipient_kind: "client",
-        recipient_id: project?.client_id ?? null,
-        kind: "event_notification",
-        subject: `${m.name} — milestone complete`,
-        body: template,
-        status: "pending",
-        meta: { milestone_id: m.id, milestone_name: m.name, invoice_id: invIns?.id ?? null, invoice_amount: m.invoice_amount },
-      }).select("id").single();
-
-      // 3. Mark milestone triggered
-      await supabase.from("milestones").update({
-        status: "triggered",
-        triggered_at: new Date(triggeredAt).toISOString(),
-        triggered_on_time: onTime,
-        invoice_id: invIns?.id ?? null,
-        approval_id: draftIns?.id ?? null,
-      }).eq("id", m.id);
-
-      fired.push({
-        id: m.id,
-        name: m.name,
-        invoice_amount: m.invoice_amount,
-        invoice_id: invIns?.id ?? null,
-        approval_id: draftIns?.id ?? null,
-        triggered_at: triggeredAt,
-      });
-    }
-
+    const { evaluateMilestonesInline } = await import("@/lib/milestones.server");
+    const fired = await evaluateMilestonesInline(context.supabase, context.userId, data.projectId);
     return { fired };
   });
-
-function defaultClientMessage(name: string, projectName: string, amount: number, invNo: string): string {
-  const amt = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
-  return `Hi,\n\nGreat news — "${name}" is now complete on ${projectName}. Photos from the site will follow shortly.\n\nAs per our schedule, the linked invoice (${invNo}) for ${amt} is attached. Payment is due within 7 days.\n\nPlease let me know if you'd like to do a site walkthrough.\n\nThank you!`;
-}
 
 // ---------- AI-suggest milestones ----------
 
