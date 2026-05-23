@@ -29,6 +29,7 @@ import { BoqUploadButton } from "@/components/BoqUploadButton";
 import { SnagsTab } from "@/components/SnagsTab";
 import { ChangeOrdersTab } from "@/components/ChangeOrdersTab";
 import { AttendanceTab } from "@/components/AttendanceTab";
+import { MilestonesTab } from "@/components/milestones/MilestonesTab";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
@@ -106,9 +107,10 @@ function ProjectDetail() {
   return <ProjectDetailView project={project} />;
 }
 
-type Tab = "overview" | "timeline" | "tasks" | "phases" | "snags" | "attendance" | "change-orders" | "reports" | "photos" | "vendors" | "finance" | "documents";
+type Tab = "overview" | "milestones" | "timeline" | "tasks" | "phases" | "snags" | "attendance" | "change-orders" | "reports" | "photos" | "vendors" | "finance" | "documents";
 const tabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "milestones", label: "Milestones" },
   { id: "timeline", label: "Timeline" },
   { id: "tasks", label: "Tasks" },
   { id: "phases", label: "Phases" },
@@ -183,6 +185,7 @@ function ProjectDetailView({ project }: { project: Project }) {
         </div>
 
         {tab === "overview" && <OverviewTab project={project} />}
+        {tab === "milestones" && <MilestonesTab projectId={project.id} />}
         {tab === "timeline" && <TimelineTab project={project} />}
         {tab === "tasks" && <ProjectTasksTab projectId={project.id} projectName={project.name} />}
         {tab === "phases" && <PhaseChecklistTab projectId={project.id} projectBudget={project.budget} />}

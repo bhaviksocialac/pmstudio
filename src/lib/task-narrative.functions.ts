@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { evaluateMilestonesInline } from "@/lib/milestones.server";
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "google/gemini-2.5-flash";
@@ -332,10 +333,17 @@ const WT_GROUP: Record<string, string> = {
   Handover: "Handover", Other: "Execution",
 };
 
+export type ConfirmResult = {
+  created: number;
+  updated: number;
+  groupUpdates: { group: string; delta: number; pct: number }[];
+  firedMilestones: { id: string; name: string; invoice_amount: number }[];
+};
+
 export const confirmNarrative = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => confirmSchema.parse(input))
-  .handler(async ({ data, context }): Promise<{ created: number; updated: number; groupUpdates: { group: string; delta: number; pct: number }[] }> => {
+  .handler(async ({ data, context }): Promise<ConfirmResult> => {
     const { supabase, userId } = context;
 
     // Snapshot before
@@ -411,7 +419,8 @@ export const confirmNarrative = createServerFn({ method: "POST" })
       .eq("project_id", data.projectId);
 
     const groupUpdates = computeGroupDiff(beforeRows ?? [], afterRows ?? []);
-    return { created, updated, groupUpdates };
+    const firedMilestones = await evaluateMilestonesInline(supabase, userId, data.projectId);
+    return { created, updated, groupUpdates, firedMilestones };
   });
 
 type Row = { status: string | null; done: boolean | null; work_type: string | null; work_types: unknown; completion_pct: number | null };

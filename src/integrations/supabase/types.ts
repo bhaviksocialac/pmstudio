@@ -463,6 +463,66 @@ export type Database = {
         }
         Relationships: []
       }
+      milestones: {
+        Row: {
+          approval_id: string | null
+          client_message_template: string | null
+          created_at: string
+          description: string | null
+          id: string
+          invoice_amount: number
+          invoice_id: string | null
+          kind: Database["public"]["Enums"]["milestone_kind"]
+          name: string
+          order_index: number
+          project_id: string
+          status: Database["public"]["Enums"]["milestone_status"]
+          trigger: Json
+          triggered_at: string | null
+          triggered_on_time: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approval_id?: string | null
+          client_message_template?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          invoice_amount?: number
+          invoice_id?: string | null
+          kind?: Database["public"]["Enums"]["milestone_kind"]
+          name: string
+          order_index?: number
+          project_id: string
+          status?: Database["public"]["Enums"]["milestone_status"]
+          trigger?: Json
+          triggered_at?: string | null
+          triggered_on_time?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approval_id?: string | null
+          client_message_template?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          invoice_amount?: number
+          invoice_id?: string | null
+          kind?: Database["public"]["Enums"]["milestone_kind"]
+          name?: string
+          order_index?: number
+          project_id?: string
+          status?: Database["public"]["Enums"]["milestone_status"]
+          trigger?: Json
+          triggered_at?: string | null
+          triggered_on_time?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       one_time_payments: {
         Row: {
           amount: number
@@ -1522,6 +1582,8 @@ export type Database = {
         | "failed"
       invoice_status: "draft" | "sent" | "paid" | "overdue"
       message_kind: "client" | "vendor"
+      milestone_kind: "room" | "phase" | "work_type" | "custom"
+      milestone_status: "pending" | "triggered" | "invoice_sent" | "paid"
       payment_status: "pending" | "approved" | "paid" | "held"
       photo_status: "pending" | "approved" | "rejected"
       project_health: "on-track" | "attention" | "urgent"
@@ -1691,6 +1753,8 @@ export const Constants = {
       ],
       invoice_status: ["draft", "sent", "paid", "overdue"],
       message_kind: ["client", "vendor"],
+      milestone_kind: ["room", "phase", "work_type", "custom"],
+      milestone_status: ["pending", "triggered", "invoice_sent", "paid"],
       payment_status: ["pending", "approved", "paid", "held"],
       photo_status: ["pending", "approved", "rejected"],
       project_health: ["on-track", "attention", "urgent"],
