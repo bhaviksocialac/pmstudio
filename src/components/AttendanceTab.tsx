@@ -686,7 +686,10 @@ function MarkAttendanceModal({ projectId, projectName, projectLocation, contract
     mutationFn: async () => {
       if (activeTrades.length === 0) throw new Error("Enter at least one worker count");
       // Resolve / create a contractor per active trade
-      const payloads: Array<Record<string, unknown>> = [];
+      const payloads: Array<{
+        user_id: string; project_id: string; contractor_id: string;
+        attendance_date: string; present: boolean; workers_count: number; work_done: string;
+      }> = [];
       let tradeCount = 0;
       for (const e of activeTrades) {
         tradeCount++;
