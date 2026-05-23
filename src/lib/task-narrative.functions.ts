@@ -419,7 +419,8 @@ export const confirmNarrative = createServerFn({ method: "POST" })
       .eq("project_id", data.projectId);
 
     const groupUpdates = computeGroupDiff(beforeRows ?? [], afterRows ?? []);
-    return { created, updated, groupUpdates };
+    const firedMilestones = await evaluateMilestonesInline(supabase, userId, data.projectId);
+    return { created, updated, groupUpdates, firedMilestones };
   });
 
 type Row = { status: string | null; done: boolean | null; work_type: string | null; work_types: unknown; completion_pct: number | null };
