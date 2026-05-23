@@ -113,6 +113,15 @@ function Dashboard() {
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const fireAlerts: { project: DbProject; reason: string }[] = [];
+  const overdueSnagsQuery = useQuery({
+    queryKey: ["overdue-snags-dashboard"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("snags").select("id,project_id,description,room,contractor_name,target_fix_date,status")
+        .in("status", ["open", "in_progress", "reopened"]);
+      return data ?? [];
+    },
+  });
   projects.forEach((p) => {
     const overdueCount = openTasks.filter(
       (t) => t.project_id === p.id && t.due_date && t.due_date < todayStr,
@@ -120,6 +129,11 @@ function Dashboard() {
     if (overdueCount > 0) {
       fireAlerts.push({ project: p, reason: `${overdueCount} overdue task${overdueCount === 1 ? "" : "s"}` });
     }
+    const projSnags = (overdueSnagsQuery.data ?? []).filter((s) => s.project_id === p.id && s.target_fix_date && s.target_fix_date < todayStr);
+    projSnags.forEach((s) => {
+      const days = Math.max(1, Math.round((Date.now() - new Date(s.target_fix_date!).getTime()) / 86400000));
+      fireAlerts.push({ project: p, reason: `Snag overdue ${days}d — ${s.description.slice(0, 40)}${s.contractor_name ? ` · ${s.contractor_name}` : ""}` });
+    });
     if (p.expected_handover) {
       const hrs = (new Date(p.expected_handover).getTime() - Date.now()) / 3600000;
       if (hrs >= 0 && hrs <= 48) {

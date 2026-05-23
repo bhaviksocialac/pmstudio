@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, X, Loader2, Upload, Trash2, AlertTriangle, Check, RotateCcw, Filter, Camera } from "lucide-react";
 import { toast } from "sonner";
@@ -56,6 +56,15 @@ export function SnagsTab({ projectId }: { projectId: string }) {
   const [filterWorkType, setFilterWorkType] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
+
+  useEffect(() => {
+    const h = (e: Event) => {
+      const d = (e as CustomEvent).detail as { projectId: string; description: string };
+      if (d?.projectId === projectId) setAdding({ prefill: { description: d.description } });
+    };
+    window.addEventListener("snag:create-from-narrative", h);
+    return () => window.removeEventListener("snag:create-from-narrative", h);
+  }, [projectId]);
 
   const { data: snags = [], isLoading } = useQuery({
     queryKey: ["snags", projectId],
