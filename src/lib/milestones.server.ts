@@ -34,11 +34,20 @@ export async function evaluateMilestonesInline(
   const allTasks = (tasks ?? []) as TaskLite[];
   const fired: FiredMilestoneLite[] = [];
 
+  // Snag blocker — open snags prevent Finishing/Handover milestones from firing.
+  const { count: openSnagCount } = await supabase
+    .from("snags").select("id", { count: "exact", head: true })
+    .eq("project_id", projectId).in("status", ["open", "in_progress", "reopened"]);
+
   for (const m of (ms ?? []) as MilestoneRow[]) {
     const set = tasksForMilestone({ kind: m.kind, trigger: m.trigger }, allTasks);
     if (!set.length) continue;
     const allDone = set.every((t) => t.status === "done" || !!t.done);
     if (!allDone) continue;
+
+    const blob = `${m.name} ${m.trigger.phase ?? ""} ${m.trigger.work_type ?? ""}`.toLowerCase();
+    const blocks = /finish|handover|snag/.test(blob);
+    if (blocks && (openSnagCount ?? 0) > 0) continue;
 
     const triggeredAt = triggerLatestDoneDate({ kind: m.kind, trigger: m.trigger }, allTasks)
       ?? new Date().toISOString().slice(0, 10);

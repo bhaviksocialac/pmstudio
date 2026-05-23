@@ -1129,43 +1129,79 @@ export type Database = {
       }
       snags: {
         Row: {
+          after_photo_url: string | null
+          before_photo_url: string | null
           contractor_name: string | null
           created_at: string
           deadline: string | null
           description: string
           id: string
+          linked_task_id: string | null
           photo_url: string | null
+          priority: string
           project_id: string
+          raised_date: string
+          reopen_reason: string | null
           resolved_at: string | null
+          room: string | null
           status: Database["public"]["Enums"]["snag_status"]
+          target_fix_date: string | null
           updated_at: string
           user_id: string
+          vendor_id: string | null
+          verified_at: string | null
+          verified_by: string | null
+          work_type: string | null
         }
         Insert: {
+          after_photo_url?: string | null
+          before_photo_url?: string | null
           contractor_name?: string | null
           created_at?: string
           deadline?: string | null
           description: string
           id?: string
+          linked_task_id?: string | null
           photo_url?: string | null
+          priority?: string
           project_id: string
+          raised_date?: string
+          reopen_reason?: string | null
           resolved_at?: string | null
+          room?: string | null
           status?: Database["public"]["Enums"]["snag_status"]
+          target_fix_date?: string | null
           updated_at?: string
           user_id: string
+          vendor_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          work_type?: string | null
         }
         Update: {
+          after_photo_url?: string | null
+          before_photo_url?: string | null
           contractor_name?: string | null
           created_at?: string
           deadline?: string | null
           description?: string
           id?: string
+          linked_task_id?: string | null
           photo_url?: string | null
+          priority?: string
           project_id?: string
+          raised_date?: string
+          reopen_reason?: string | null
           resolved_at?: string | null
+          room?: string | null
           status?: Database["public"]["Enums"]["snag_status"]
+          target_fix_date?: string | null
           updated_at?: string
           user_id?: string
+          vendor_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          work_type?: string | null
         }
         Relationships: []
       }
@@ -1595,7 +1631,14 @@ export type Database = {
         | "Finishing"
         | "Handover"
       project_type: "residential" | "commercial"
-      snag_status: "open" | "in_progress" | "resolved"
+      snag_status:
+        | "open"
+        | "in_progress"
+        | "resolved"
+        | "fixed"
+        | "verified"
+        | "closed"
+        | "reopened"
       vendor_delivery_status: "pending" | "delivered" | "delayed"
       whatsapp_group_kind: "client" | "design" | "execution" | "accounts"
     }
@@ -1767,7 +1810,15 @@ export const Constants = {
         "Handover",
       ],
       project_type: ["residential", "commercial"],
-      snag_status: ["open", "in_progress", "resolved"],
+      snag_status: [
+        "open",
+        "in_progress",
+        "resolved",
+        "fixed",
+        "verified",
+        "closed",
+        "reopened",
+      ],
       vendor_delivery_status: ["pending", "delivered", "delayed"],
       whatsapp_group_kind: ["client", "design", "execution", "accounts"],
     },
