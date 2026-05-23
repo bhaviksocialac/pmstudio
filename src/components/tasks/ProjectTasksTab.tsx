@@ -228,7 +228,7 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
       {tasksQ.isLoading ? (
         <div className="py-20 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : view === "gantt" ? (
-        <GanttTimeline rows={parents} />
+        <GanttTimeline rows={parents} projectId={projectId} />
       ) : groups.length === 0 || parents.length === 0 ? (
         <div className="py-20 text-center text-sm text-muted-foreground">No tasks match these filters.</div>
       ) : (
