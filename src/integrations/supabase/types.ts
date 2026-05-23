@@ -1595,7 +1595,14 @@ export type Database = {
         | "Finishing"
         | "Handover"
       project_type: "residential" | "commercial"
-      snag_status: "open" | "in_progress" | "resolved"
+      snag_status:
+        | "open"
+        | "in_progress"
+        | "resolved"
+        | "fixed"
+        | "verified"
+        | "closed"
+        | "reopened"
       vendor_delivery_status: "pending" | "delivered" | "delayed"
       whatsapp_group_kind: "client" | "design" | "execution" | "accounts"
     }
@@ -1767,7 +1774,15 @@ export const Constants = {
         "Handover",
       ],
       project_type: ["residential", "commercial"],
-      snag_status: ["open", "in_progress", "resolved"],
+      snag_status: [
+        "open",
+        "in_progress",
+        "resolved",
+        "fixed",
+        "verified",
+        "closed",
+        "reopened",
+      ],
       vendor_delivery_status: ["pending", "delivered", "delayed"],
       whatsapp_group_kind: ["client", "design", "execution", "accounts"],
     },
