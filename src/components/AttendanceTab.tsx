@@ -535,8 +535,35 @@ function EfficiencyPanel({ contractors, byContractor, projectStartDate }: {
 }
 
 // ============================================================
-// MARK ATTENDANCE MODAL
+// MARK ATTENDANCE MODAL — Trade × Worker-Type grid
 // ============================================================
+const DEFAULT_TRADES = ["Civil", "Carpentry", "Electrical", "Plumbing", "Flooring", "Painting", "HVAC", "Other"];
+const DEFAULT_WORKER_TYPES = ["Labour", "Worker", "Supervisor", "Helper", "Wireman", "Foreman", "Technician", "Electrician", "Contractor"];
+
+type TradeEntry = {
+  trade: string;
+  contractor: string;
+  open: boolean;
+  types: { name: string; count: number }[];
+};
+
+function memKey(projectId: string) { return `att_mem_${projectId}`; }
+function readMem(projectId: string): { trades: string[]; typesByTrade: Record<string, string[]> } {
+  try {
+    const raw = localStorage.getItem(memKey(projectId));
+    if (!raw) return { trades: [], typesByTrade: {} };
+    return JSON.parse(raw);
+  } catch { return { trades: [], typesByTrade: {} }; }
+}
+function writeMem(projectId: string, data: { trades: string[]; typesByTrade: Record<string, string[]> }) {
+  try { localStorage.setItem(memKey(projectId), JSON.stringify(data)); } catch {}
+}
+
+function decodeBreakdown(workDone: string | null): { types: { name: string; count: number }[]; contractor: string; notes: string } | null {
+  if (!workDone || !workDone.startsWith("MB:")) return null;
+  try { return JSON.parse(workDone.slice(3)); } catch { return null; }
+}
+
 function MarkAttendanceModal({ projectId, projectName, projectLocation, contractors, existingToday, onClose }: {
   projectId: string; projectName: string; projectLocation: string | null;
   contractors: Contractor[]; existingToday: Attendance[]; onClose: () => void;
@@ -544,133 +571,338 @@ function MarkAttendanceModal({ projectId, projectName, projectLocation, contract
   const { user } = useAuth();
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0, 10);
-  const existing = new Map(existingToday.map((a) => [a.contractor_id, a]));
+  const mem = useMemo(() => readMem(projectId), [projectId]);
 
-  type Row = { contractorId: string; present: boolean; workers: string; work: string; hours: string };
-  const [rows, setRows] = useState<Row[]>(() =>
-    contractors.map((c) => {
-      const e = existing.get(c.id);
-      return {
-        contractorId: c.id,
-        present: e?.present ?? true,
-        workers: e?.workers_count != null ? String(e.workers_count) : "",
-        work: e?.work_done ?? "",
-        hours: e?.hours_on_site != null ? String(e.hours_on_site) : "",
-      };
-    }),
-  );
-  // Stage of newly added contractors so they appear in form immediately
-  const [extra, setExtra] = useState<Contractor[]>([]);
-  const [newName, setNewName] = useState(""); const [newCat, setNewCat] = useState("");
+  // Seed from today's existing rows if any, else from memory, else default trades
+  const seed: TradeEntry[] = useMemo(() => {
+    if (existingToday.length > 0) {
+      const map = new Map<string, TradeEntry>();
+      for (const a of existingToday) {
+        const bd = decodeBreakdown(a.work_done);
+        if (!bd) continue;
+        const c = contractors.find((x) => x.id === a.contractor_id);
+        const trade = c?.category || "Other";
+        const existing = map.get(trade);
+        const types = bd.types?.length ? bd.types : [{ name: "Worker", count: a.workers_count || 0 }];
+        if (existing) {
+          for (const t of types) {
+            const ex = existing.types.find((y) => y.name === t.name);
+            if (ex) ex.count += t.count; else existing.types.push({ ...t });
+          }
+        } else {
+          map.set(trade, { trade, contractor: bd.contractor || "", open: true, types });
+        }
+      }
+      if (map.size > 0) return Array.from(map.values());
+    }
+    const trades = mem.trades.length ? mem.trades : DEFAULT_TRADES.slice(0, 4);
+    return trades.map((trade) => ({
+      trade,
+      contractor: "",
+      open: false,
+      types: (mem.typesByTrade[trade] && mem.typesByTrade[trade].length
+        ? mem.typesByTrade[trade]
+        : ["Labour", "Supervisor"]
+      ).map((name) => ({ name, count: 0 })),
+    }));
+  }, [existingToday, contractors, mem]);
 
-  const addContractor = useMutation({
+  const [entries, setEntries] = useState<TradeEntry[]>(seed);
+  const [notes, setNotes] = useState<string>(() => {
+    const first = existingToday.find((a) => decodeBreakdown(a.work_done)?.notes);
+    return first ? (decodeBreakdown(first.work_done)?.notes || "") : "";
+  });
+  const [addingTrade, setAddingTrade] = useState(false);
+  const [newTrade, setNewTrade] = useState("");
+
+  const updateEntry = (i: number, patch: Partial<TradeEntry>) =>
+    setEntries((es) => es.map((e, idx) => (idx === i ? { ...e, ...patch } : e)));
+  const updateCount = (i: number, ti: number, delta: number | null, abs?: number) =>
+    setEntries((es) => es.map((e, idx) => {
+      if (idx !== i) return e;
+      const types = e.types.map((t, j) => j === ti
+        ? { ...t, count: Math.max(0, abs != null ? abs : t.count + (delta || 0)) }
+        : t);
+      return { ...e, types };
+    }));
+  const addType = (i: number, name: string) => {
+    const trimmed = name.trim(); if (!trimmed) return;
+    setEntries((es) => es.map((e, idx) => idx === i
+      ? (e.types.some((t) => t.name.toLowerCase() === trimmed.toLowerCase()) ? e : { ...e, types: [...e.types, { name: trimmed, count: 1 }] })
+      : e));
+  };
+  const removeType = (i: number, ti: number) =>
+    setEntries((es) => es.map((e, idx) => idx === i ? { ...e, types: e.types.filter((_, j) => j !== ti) } : e));
+  const addTrade = (name: string) => {
+    const trimmed = name.trim(); if (!trimmed) return;
+    setEntries((es) => es.some((e) => e.trade.toLowerCase() === trimmed.toLowerCase())
+      ? es
+      : [...es, { trade: trimmed, contractor: "", open: true, types: [{ name: "Worker", count: 0 }] }]);
+    setNewTrade(""); setAddingTrade(false);
+  };
+  const removeTrade = (i: number) => setEntries((es) => es.filter((_, idx) => idx !== i));
+
+  const tradeTotal = (e: TradeEntry) => e.types.reduce((s, t) => s + (t.count || 0), 0);
+  const grandTotal = entries.reduce((s, e) => s + tradeTotal(e), 0);
+  const activeTrades = entries.filter((e) => tradeTotal(e) > 0);
+
+  const sameAsYesterday = useMutation({
     mutationFn: async () => {
-      const trimmed = newName.trim();
-      if (!trimmed) throw new Error("Name required");
-      const { data, error } = await supabase.from("project_contractors").insert({
-        user_id: user!.id, project_id: projectId, name: trimmed, category: newCat.trim() || null, expected_days: 20,
-      }).select("*").single();
+      const { data, error } = await supabase
+        .from("site_attendance").select("*")
+        .eq("project_id", projectId).lt("attendance_date", today)
+        .order("attendance_date", { ascending: false }).limit(50);
       if (error) throw error;
-      return data as Contractor;
+      const rows = (data ?? []) as Attendance[];
+      if (rows.length === 0) throw new Error("No previous attendance found");
+      const lastDate = rows[0].attendance_date;
+      const last = rows.filter((r) => r.attendance_date === lastDate && r.present);
+      const map = new Map<string, TradeEntry>();
+      for (const a of last) {
+        const bd = decodeBreakdown(a.work_done);
+        const c = contractors.find((x) => x.id === a.contractor_id);
+        const trade = c?.category || "Other";
+        const types = bd?.types?.length ? bd.types : [{ name: "Worker", count: a.workers_count || 0 }];
+        const ex = map.get(trade);
+        if (ex) {
+          for (const t of types) {
+            const found = ex.types.find((y) => y.name === t.name);
+            if (found) found.count += t.count; else ex.types.push({ ...t });
+          }
+        } else {
+          map.set(trade, { trade, contractor: bd?.contractor || "", open: true, types: types.map((t) => ({ ...t })) });
+        }
+      }
+      return { date: lastDate, entries: Array.from(map.values()) };
     },
-    onSuccess: (c) => {
-      setExtra((x) => [...x, c]);
-      setRows((r) => [...r, { contractorId: c.id, present: true, workers: "", work: "", hours: "" }]);
-      setNewName(""); setNewCat("");
-      qc.invalidateQueries({ queryKey: ["project_contractors", projectId] });
+    onSuccess: (res) => {
+      setEntries(res.entries);
+      toast.success(`Pre-filled from ${res.date}`);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
   const submit = useMutation({
     mutationFn: async () => {
-      const payload = rows.map((r) => ({
-        user_id: user!.id, project_id: projectId, contractor_id: r.contractorId,
-        attendance_date: today,
-        present: r.present,
-        workers_count: r.present ? (parseInt(r.workers, 10) || 0) : 0,
-        work_done: r.work.trim() || null,
-        hours_on_site: r.present && r.hours.trim() !== "" ? Number(r.hours) : null,
-      }));
-      if (payload.length === 0) return;
-      const { error } = await supabase.from("site_attendance").upsert(payload, { onConflict: "contractor_id,attendance_date" });
+      if (activeTrades.length === 0) throw new Error("Enter at least one worker count");
+      // Resolve / create a contractor per active trade
+      const payloads: Array<{
+        user_id: string; project_id: string; contractor_id: string;
+        attendance_date: string; present: boolean; workers_count: number; work_done: string;
+      }> = [];
+      let tradeCount = 0;
+      for (const e of activeTrades) {
+        tradeCount++;
+        const desired = (e.contractor.trim() || e.trade).trim();
+        let contractor = contractors.find(
+          (c) => (c.category || "").toLowerCase() === e.trade.toLowerCase() && c.name.toLowerCase() === desired.toLowerCase(),
+        );
+        if (!contractor) {
+          const { data, error } = await supabase.from("project_contractors").insert({
+            user_id: user!.id, project_id: projectId, name: desired, category: e.trade, expected_days: 20,
+          }).select("*").single();
+          if (error) throw error;
+          contractor = data as Contractor;
+        }
+        const total = tradeTotal(e);
+        const work = `MB:${JSON.stringify({
+          types: e.types.filter((t) => t.count > 0),
+          contractor: e.contractor.trim(),
+          notes: notes.trim(),
+        })}`;
+        payloads.push({
+          user_id: user!.id, project_id: projectId, contractor_id: contractor.id,
+          attendance_date: today, present: true, workers_count: total,
+          work_done: work,
+        });
+      }
+      const { error } = await supabase.from("site_attendance").upsert(payloads, { onConflict: "contractor_id,attendance_date" });
       if (error) throw error;
+      // Persist memory
+      const newMem = {
+        trades: Array.from(new Set([...entries.map((e) => e.trade), ...mem.trades])).slice(0, 20),
+        typesByTrade: { ...mem.typesByTrade } as Record<string, string[]>,
+      };
+      for (const e of entries) {
+        newMem.typesByTrade[e.trade] = Array.from(new Set([
+          ...e.types.map((t) => t.name),
+          ...(mem.typesByTrade[e.trade] || []),
+        ])).slice(0, 12);
+      }
+      writeMem(projectId, newMem);
+      return { workers: grandTotal, trades: tradeCount };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["site_attendance", projectId] });
-      toast.success("Attendance saved");
+      qc.invalidateQueries({ queryKey: ["project_contractors", projectId] });
+      toast.success(`Attendance saved — ${res.workers} workers across ${res.trades} trade${res.trades === 1 ? "" : "s"}`);
       onClose();
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
-  // Dedupe in case the refetched contractors list now includes the staged extras
-  const seenIds = new Set<string>();
-  const all = [...contractors, ...extra].filter((c) => (seenIds.has(c.id) ? false : (seenIds.add(c.id), true)));
-
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-card rounded-t-[20px] sm:rounded-[16px] w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-          <div>
+      <div className="bg-card rounded-t-[20px] sm:rounded-[16px] w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <h2 className="font-display text-2xl">Mark Attendance</h2>
-            <p className="text-[11px] text-muted-foreground">{today} · {projectName}{projectLocation ? ` · ${projectLocation}` : ""}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{today} · {projectName}{projectLocation ? ` · ${projectLocation}` : ""}</p>
           </div>
           <button onClick={onClose} className="h-8 w-8 rounded-full hover:bg-muted flex items-center justify-center"><X className="h-4 w-4" /></button>
         </div>
+
+        {/* Sticky summary bar */}
+        <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Total workers today</div>
+            <div className="font-display text-2xl tabular-nums">{grandTotal}</div>
+          </div>
+          <div className="flex-1 min-w-0 text-[11px] text-muted-foreground">
+            {activeTrades.length === 0
+              ? <span className="italic">No counts entered yet</span>
+              : activeTrades.map((e) => `${e.trade}: ${tradeTotal(e)}`).join(" · ")}
+          </div>
+          <button onClick={() => sameAsYesterday.mutate()} disabled={sameAsYesterday.isPending}
+            className="h-8 px-3 rounded-[6px] border border-border text-[11px] font-medium hover:bg-muted inline-flex items-center gap-1.5 disabled:opacity-60">
+            {sameAsYesterday.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <CalendarIcon className="h-3 w-3" />} Same as yesterday
+          </button>
+        </div>
+
         <div className="p-5 overflow-y-auto space-y-3 flex-1">
-          {all.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No contractors yet — add one below.</p>}
-          {all.map((c, idx) => {
-            const r = rows[idx]; if (!r) return null;
+          {entries.map((e, i) => {
+            const total = tradeTotal(e);
             return (
-              <div key={c.id} className="rounded-[10px] border border-border p-3 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="font-medium text-sm truncate">{c.name}</div>
-                    <div className="text-[11px] text-muted-foreground">{c.category || "—"}</div>
+              <div key={`${e.trade}-${i}`} className="rounded-[10px] border border-border overflow-hidden">
+                <button
+                  onClick={() => updateEntry(i, { open: !e.open })}
+                  className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-muted/40"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-mono text-muted-foreground">{e.open ? "▼" : "▶"}</span>
+                    <span className="font-medium text-sm uppercase tracking-wide">{e.trade}</span>
+                    {total > 0 && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#7a9e8a]/20 text-[#3d6f5a] font-medium tabular-nums">
+                        {total} worker{total === 1 ? "" : "s"}
+                      </span>
+                    )}
                   </div>
-                  <div className="inline-flex rounded-[6px] border border-border overflow-hidden">
-                    <button onClick={() => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, present: true } : x))}
-                      className={`px-3 py-1.5 text-xs font-medium ${r.present ? "bg-[#7a9e8a]/20 text-[#3d6f5a]" : "text-muted-foreground"}`}>Present</button>
-                    <button onClick={() => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, present: false } : x))}
-                      className={`px-3 py-1.5 text-xs font-medium ${!r.present ? "bg-[#c4685a]/20 text-[#c4685a]" : "text-muted-foreground"}`}>Absent</button>
-                  </div>
-                </div>
-                {r.present && (
-                  <div className="grid grid-cols-4 gap-2">
-                    <input type="number" min={0} inputMode="numeric" value={r.workers}
-                      onChange={(e) => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, workers: e.target.value } : x))}
-                      placeholder="Workers" className={ic} />
-                    <input type="number" min={0} step="0.5" inputMode="decimal" value={r.hours}
-                      onChange={(e) => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, hours: e.target.value } : x))}
-                      placeholder="Hours" className={ic} />
-                    <input value={r.work}
-                      onChange={(e) => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, work: e.target.value } : x))}
-                      placeholder="Work done today" className={`${ic} col-span-2`} />
+                  <button onClick={(ev) => { ev.stopPropagation(); removeTrade(i); }} className="text-muted-foreground hover:text-[#c4685a]">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </button>
+
+                {e.open && (
+                  <div className="p-3 pt-2 space-y-2 border-t border-border bg-muted/10">
+                    <input
+                      value={e.contractor}
+                      onChange={(ev) => updateEntry(i, { contractor: ev.target.value })}
+                      placeholder="Contractor name (optional)"
+                      className={`${ic} w-full`}
+                    />
+                    {e.types.map((t, ti) => (
+                      <div key={`${t.name}-${ti}`} className="flex items-center gap-2">
+                        <div className="flex-1 text-sm">{t.name}</div>
+                        <div className="inline-flex items-center rounded-[6px] border border-border overflow-hidden">
+                          <button onClick={() => updateCount(i, ti, -1)} className="h-9 w-9 hover:bg-muted text-base font-medium">−</button>
+                          <input
+                            type="number" min={0} inputMode="numeric"
+                            value={t.count || ""}
+                            onChange={(ev) => updateCount(i, ti, null, parseInt(ev.target.value || "0", 10))}
+                            className="h-9 w-14 text-center bg-transparent border-x border-border tabular-nums text-sm focus:outline-none"
+                          />
+                          <button onClick={() => updateCount(i, ti, 1)} className="h-9 w-9 hover:bg-muted text-base font-medium">+</button>
+                        </div>
+                        <button onClick={() => removeType(i, ti)} className="text-muted-foreground hover:text-[#c4685a]" aria-label="Remove worker type">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    <AddWorkerTypeInline
+                      existing={e.types.map((t) => t.name)}
+                      suggestions={[...(mem.typesByTrade[e.trade] || []), ...DEFAULT_WORKER_TYPES]}
+                      onAdd={(name) => addType(i, name)}
+                    />
                   </div>
                 )}
               </div>
             );
           })}
-          <div className="rounded-[10px] border border-dashed border-border p-3 space-y-2">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Add contractor on the spot</div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Name" className={ic} />
-              <input value={newCat} onChange={(e) => setNewCat(e.target.value)} placeholder="Category" className={ic} />
-              <button onClick={() => addContractor.mutate()} disabled={!newName.trim() || addContractor.isPending}
-                className="h-10 rounded-[6px] border border-border text-sm font-medium hover:bg-muted disabled:opacity-60 inline-flex items-center justify-center gap-1.5">
-                <Plus className="h-3.5 w-3.5" /> Add
-              </button>
+
+          {addingTrade ? (
+            <div className="rounded-[10px] border border-dashed border-border p-3 space-y-2">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Add trade category</div>
+              <div className="flex flex-wrap gap-1.5">
+                {DEFAULT_TRADES.filter((t) => !entries.some((e) => e.trade.toLowerCase() === t.toLowerCase())).map((t) => (
+                  <button key={t} onClick={() => addTrade(t)} className="h-8 px-3 rounded-[6px] border border-border text-xs hover:bg-muted">{t}</button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input value={newTrade} onChange={(ev) => setNewTrade(ev.target.value)}
+                  placeholder="Custom trade name" className={`${ic} flex-1`}
+                  onKeyDown={(ev) => { if (ev.key === "Enter") addTrade(newTrade); }} />
+                <button onClick={() => addTrade(newTrade)} disabled={!newTrade.trim()}
+                  className="h-10 px-4 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium disabled:opacity-60">Add</button>
+                <button onClick={() => { setAddingTrade(false); setNewTrade(""); }}
+                  className="h-10 px-3 rounded-[6px] border border-border text-sm hover:bg-muted">Cancel</button>
+              </div>
             </div>
+          ) : (
+            <button onClick={() => setAddingTrade(true)}
+              className="w-full h-11 rounded-[10px] border border-dashed border-border text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground inline-flex items-center justify-center gap-1.5">
+              <Plus className="h-3.5 w-3.5" /> Add trade category
+            </button>
+          )}
+
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Notes (optional)</label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
+              placeholder="Civil team started late today…"
+              className={`${ic} w-full mt-1 py-2 h-auto`} />
           </div>
         </div>
+
         <div className="px-5 py-4 border-t border-border flex justify-end gap-2">
           <button onClick={onClose} className="h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">Cancel</button>
-          <button onClick={() => submit.mutate()} disabled={all.length === 0 || submit.isPending}
+          <button onClick={() => submit.mutate()} disabled={grandTotal === 0 || submit.isPending}
             className="h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 inline-flex items-center gap-2 disabled:opacity-60">
             {submit.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Save Attendance
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function AddWorkerTypeInline({ existing, suggestions, onAdd }: { existing: string[]; suggestions: string[]; onAdd: (name: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [val, setVal] = useState("");
+  const lowered = new Set(existing.map((s) => s.toLowerCase()));
+  const filtered = Array.from(new Set(suggestions)).filter((s) => !lowered.has(s.toLowerCase())).slice(0, 8);
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)}
+        className="text-[11px] text-[#c17f5a] hover:underline inline-flex items-center gap-1">
+        <Plus className="h-3 w-3" /> Add worker type
+      </button>
+    );
+  }
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-1">
+        {filtered.map((s) => (
+          <button key={s} onClick={() => { onAdd(s); setOpen(false); }}
+            className="h-7 px-2 rounded-[6px] border border-border text-[11px] hover:bg-muted">{s}</button>
+        ))}
+      </div>
+      <div className="flex gap-1.5">
+        <input value={val} onChange={(e) => setVal(e.target.value)} placeholder="Custom type"
+          className={`${ic} flex-1 h-9`}
+          onKeyDown={(e) => { if (e.key === "Enter" && val.trim()) { onAdd(val); setVal(""); setOpen(false); } }} />
+        <button onClick={() => { if (val.trim()) { onAdd(val); setVal(""); setOpen(false); } }}
+          className="h-9 px-3 rounded-[6px] bg-primary text-primary-foreground text-xs font-medium">Add</button>
+        <button onClick={() => { setOpen(false); setVal(""); }}
+          className="h-9 px-2 rounded-[6px] border border-border text-xs hover:bg-muted">Cancel</button>
       </div>
     </div>
   );
