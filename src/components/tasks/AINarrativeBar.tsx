@@ -73,6 +73,10 @@ export function AINarrativeBar({ projectId, teamMembers = [] }: { projectId: str
         </button>
       </div>
 
+      {text.trim() && looksLikeSnag(text) && !preview && (
+        <SnagFromNarrativeButton projectId={projectId} text={text.trim()} onDismiss={() => { /* dismissed */ }} />
+      )}
+
       {preview && (
         <div className="mt-4 rounded-[12px] bg-white border border-[#e8d9c9] p-4">
           <div className="flex items-start justify-between gap-3 mb-3">
