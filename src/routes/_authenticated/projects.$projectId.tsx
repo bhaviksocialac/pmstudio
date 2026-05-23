@@ -185,6 +185,7 @@ function ProjectDetailView({ project }: { project: Project }) {
         </div>
 
         {tab === "overview" && <OverviewTab project={project} />}
+        {tab === "milestones" && <MilestonesTab projectId={project.id} />}
         {tab === "timeline" && <TimelineTab project={project} />}
         {tab === "tasks" && <ProjectTasksTab projectId={project.id} projectName={project.name} />}
         {tab === "phases" && <PhaseChecklistTab projectId={project.id} projectBudget={project.budget} />}
