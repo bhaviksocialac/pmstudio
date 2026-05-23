@@ -29,6 +29,7 @@ import { BoqUploadButton } from "@/components/BoqUploadButton";
 import { SnagsTab } from "@/components/SnagsTab";
 import { ChangeOrdersTab } from "@/components/ChangeOrdersTab";
 import { AttendanceTab } from "@/components/AttendanceTab";
+import { MilestonesTab } from "@/components/milestones/MilestonesTab";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
