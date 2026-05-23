@@ -332,10 +332,17 @@ const WT_GROUP: Record<string, string> = {
   Handover: "Handover", Other: "Execution",
 };
 
+export type ConfirmResult = {
+  created: number;
+  updated: number;
+  groupUpdates: { group: string; delta: number; pct: number }[];
+  firedMilestones: { id: string; name: string; invoice_amount: number }[];
+};
+
 export const confirmNarrative = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => confirmSchema.parse(input))
-  .handler(async ({ data, context }): Promise<{ created: number; updated: number; groupUpdates: { group: string; delta: number; pct: number }[] }> => {
+  .handler(async ({ data, context }): Promise<ConfirmResult> => {
     const { supabase, userId } = context;
 
     // Snapshot before
