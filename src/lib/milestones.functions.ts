@@ -173,7 +173,7 @@ export const evaluateMilestones = createServerFn({ method: "POST" })
         project_id: data.projectId,
         recipient_kind: "client",
         recipient_id: project?.client_id ?? null,
-        kind: "client_update",
+        kind: "event_notification",
         subject: `${m.name} — milestone complete`,
         body: template,
         status: "pending",
