@@ -1,83 +1,94 @@
+# Milestones System — Implementation Plan
 
-## Goal
+A Milestone is a task-driven achievement. Designer never marks it done — the system fires it when its trigger tasks are all `done`.
 
-Make tasks the single source of truth. Every AI-bar entry updates the Tasks table, Phases checklist (per room × work type), Timeline Gantt, and Overview progress in one shot. All phases run in parallel.
+## 1. Database (new migration)
 
-## 1. Data model
+**Table `milestones`** (RLS: own-row, like other tables):
+- `id`, `user_id`, `project_id`
+- `name` (text), `description` (text)
+- `kind` — `room` | `phase` | `work_type` | `custom`
+- `trigger` (jsonb) — `{ room?: string, phase?: string, work_type?: string, task_ids?: string[] }`
+- `invoice_amount` (numeric), `client_message_template` (text)
+- `status` — `pending` | `triggered` | `invoice_sent` | `paid`
+- `triggered_at` (timestamptz), `triggered_on_time` (bool)
+- `invoice_id` (uuid, nullable), `approval_id` (uuid, nullable)
+- `order_index` (int), timestamps
 
-New migration:
-- Add `room` (text, nullable) to `tasks` — per-room granularity for partial completion.
-- Add `completion_pct` (int, 0–100, default 0) to `tasks` — for "1 wall pending" style partials.
-- Add `phase` (text, nullable) to `tasks` — denormalised from work_type, auto-filled, so phase grouping is O(1).
-- Create `work_type_phase_map` constant in code (no table) mapping every WORK_TYPE → phase bucket: Civil Work, Electrical Work, Plumbing Work, Flooring Work, Painting Work, Furniture Installation.
-- Drop the sequential-lock behaviour in `PhaseChecklistTab` (no schema change — code only).
+## 2. Server functions (`src/lib/milestones.functions.ts`)
 
-## 2. Phase sync layer (`src/lib/phase-sync.ts`, new)
+- `suggestMilestones({ projectId })` — Reads tasks + BOQ subcategories, calls Lovable AI (`google/gemini-3-flash-preview`) with tool-calling to return room/phase/work-type milestone suggestions with amounts derived from budget_lines.
+- `createMilestones({ projectId, milestones[] })` — bulk insert after designer confirms.
+- `listMilestones({ projectId })` — returns milestones + computed `{ done, total, pct, blocking }` against current tasks.
+- `evaluateMilestones({ projectId })` — central trigger fn: for each `pending` milestone, compute trigger task set; if all `done`, set `status='triggered'`, create draft `invoices` row + draft `ai_drafts` (kind=`client_update`) row, link IDs, return summary. Called after any task mutation.
+- `updateMilestone`, `deleteMilestone`.
 
-Pure helpers:
-- `phaseGroupOfWorkType(wt)` → one of the 6 execution phase groups.
-- `computePhaseRollup(tasks)` → per phase group: `{ total, done, partialPct, perWorkType: { perRoom: {status, pct, note} } }`.
-- `overallProjectPct(tasks)` → weighted by task count + completion_pct.
-- `canSignOff(phaseGroup, rollup)` → boolean + blocker message.
+## 3. Trigger hook-in
 
-Used by Tasks tab, Phases tab, Timeline, Overview, Dashboard — one function, four readers.
+In `task-narrative.functions.ts` `confirmNarrative` and anywhere tasks toggle done (TaskTable, TaskEditSheet), invoke `evaluateMilestones` after the write. Return fired milestone names so the AINarrativeBar can toast `"◆ Milestone reached — Living Room Complete. Invoice ₹50,000 drafted."`
 
-## 3. AI narrative upgrade (`src/lib/task-narrative.functions.ts`)
+## 4. Trigger matching logic (`src/lib/milestone-eval.ts`)
 
-Extend the extracted-task schema with `room`, `completion_pct`, and explicit fan-out:
-- "Plaster done in Living Room, Kitchen, Bedroom" → 3 tasks (one per room), each work_type=Civil, status=done.
-- "Plaster done except Mandir" → N done tasks for known rooms + 1 wip task for Mandir.
-- "1 wall remaining" → completion_pct=80, notes="1 wall pending".
-- AI prompt receives the project's room list so it can fan out "all rooms except X".
+```ts
+function tasksForTrigger(milestone, allTasks) {
+  switch (milestone.kind) {
+    case "room": return tasks.filter(t => roomsOf(t).includes(trigger.room));
+    case "phase": return tasks.filter(t => phaseOfTask(t) === trigger.phase);
+    case "work_type": return tasks.filter(t => workTypesOf(t).includes(trigger.work_type));
+    case "custom": return tasks.filter(t => trigger.task_ids.includes(t.id));
+  }
+}
+// fires when set non-empty AND every task isDone
+```
 
-Also auto-fill `phase` server-side from work_type before insert.
+Re-uses `phase-sync.ts` helpers (`isDone`, `roomsOf`, `workTypesOf`, `phaseOfTask`).
 
-## 4. Phases tab rewrite (`PhaseChecklistTab.tsx`)
+## 5. UI
 
-- Remove sequential lock — every phase header expandable from day one, no "Lock" icon, no dependency on previous sign-off.
-- Replace the static `checklist: [{text,done}]` model with a live render driven by tasks:
-  - For each phase group, list its work types (Plaster, Demolition, Wiring…) inferred from tasks.
-  - Under each work type, render a room-wise grid: Living Room ✅, Bedroom ✅, Mandir ⏳ 80% "1 wall pending".
-- Phase header shows progress bar = `computePhaseRollup` percentage.
-- Sign Off button enabled only when `canSignOff` returns true; otherwise shows blocker text.
+**New tab `MilestonesTab.tsx`** (between Overview and Timeline in `projects.$projectId.tsx`):
+- Header with "AI-suggest milestones" button (calls `suggestMilestones`, opens review modal).
+- "Add custom milestone" button → modal.
+- Vertical list of milestone cards: name, kind badge, trigger summary, progress bar (`done/total`), status pill, ◆ badge when triggered, amber warning if any trigger task is delayed, linked invoice status, "View invoice" / "Review client message" buttons.
 
-## 5. Timeline sync (`GanttTimeline.tsx`)
+**Overview tab additions** (`ProjectProgressPanels` or new `MilestonesOverview`):
+- "Completed milestones: X of Y"
+- "Next milestone: [name] — N tasks remaining"
+- "Revenue triggered: ₹X of ₹Y"
 
-- Bar colour driven by task status: not_started → grey, wip → amber, done → sage, delayed (`actual_end > planned_end` or overdue) → terracotta.
-- Group headers already exist by phase + work type; pipe in the new `phase` column for instant grouping.
+**Timeline integration** (`GanttTimeline.tsx`):
+- Render ◆ markers at `triggered_at` x-position; green if on time, red if `triggered_at > planned_end of last trigger task`. Tooltip with name + amount + delay.
 
-## 6. Overview tab (`ProjectProgressPanels.tsx`)
+**Dashboard notification**: hook into existing activity feed — `milestone_triggered` event.
 
-- Phase Progress section now uses the 6 execution-phase groups (not the high-level Survey/Design/… phases). Each bar clickable → navigates to that phase in the Phases tab via a query param.
-- Reuses `computePhaseRollup`.
+## 6. Auto-generated artifacts
 
-## 7. Dashboard card
+- Invoice: `invoices` insert with `milestone` = name, `amount`, `due_at` = trigger_date + 7d, `status='draft'`. Link `milestone.invoice_id`.
+- Client message: `ai_drafts` insert with `kind='client_update'`, body from template + photo URLs from `photos` table filtered by room/phase. Link `milestone.approval_id`.
 
-- Project card completion % switches from `projects.completion` (manual) to `overallProjectPct(tasks)` fetched alongside the project list.
+## 7. Files
 
-## 8. Cross-tab notification
+**New:**
+- `supabase/migrations/<ts>_milestones.sql`
+- `src/lib/milestones.functions.ts`
+- `src/lib/milestone-eval.ts`
+- `src/components/milestones/MilestonesTab.tsx`
+- `src/components/milestones/MilestoneCard.tsx`
+- `src/components/milestones/SuggestMilestonesModal.tsx`
+- `src/components/milestones/CustomMilestoneModal.tsx`
+- `src/components/milestones/MilestonesOverview.tsx`
 
-- After `confirmNarrative` saves tasks, emit a `sonner` toast: "Civil Work updated — 85%. Plaster complete in 4 of 5 rooms." Computed from before/after rollup diff returned by the server fn.
+**Edited:**
+- `src/routes/_authenticated/projects.$projectId.tsx` — add Milestones tab, wire overview block.
+- `src/lib/task-narrative.functions.ts` — call `evaluateMilestones` after confirm, return fired list.
+- `src/components/tasks/AINarrativeBar.tsx` — toast fired milestones.
+- `src/components/tasks/TaskTable.tsx` / `TaskEditSheet.tsx` — call evaluate after status toggle.
+- `src/components/tasks/GanttTimeline.tsx` — render ◆ markers.
+- `src/components/BoqUploadButton.tsx` — after BOQ parse, auto-call `suggestMilestones` and open modal.
 
-## 9. Files touched
+## 8. Test (your spec)
 
-New
-- `supabase/migrations/<ts>_tasks_room_completion_phase.sql`
-- `src/lib/phase-sync.ts`
+After implementation I'll seed the 3 milestones via the UI and walk through marking Mandir tiling Done → expect Milestone 3 fires, ₹3,40,000 invoice draft appears in Finance, client update draft in Pending Approvals, green ◆ on Gantt.
 
-Edited
-- `src/lib/task-narrative.functions.ts` (room + completion + fan-out + phase auto-fill + diff in response)
-- `src/lib/task-flow.ts` (WORK_TYPE → phase-group map exported)
-- `src/components/PhaseChecklistTab.tsx` (parallel phases, room-wise grid, dynamic from tasks)
-- `src/components/tasks/AINarrativeBar.tsx` (show toast diff)
-- `src/components/tasks/GanttTimeline.tsx` (status-driven bar colours)
-- `src/components/tasks/ProjectProgressPanels.tsx` (new phase grouping)
-- `src/components/tasks/TaskTable.tsx` + `TaskEditSheet.tsx` (room column/field)
-- `src/routes/_authenticated/projects.index.tsx` (dashboard pct from tasks)
+---
 
-## 10. Out of scope (call out)
-
-- No changes to auth, billing, vendors, messages.
-- Existing `phase_subcategories` rows kept for back-compat but no longer the source of truth for checklists.
-
-Once approved I'll ship the migration first, then code.
+Approve and I'll start with the migration, then server functions, then UI in that order.
