@@ -107,9 +107,10 @@ function ProjectDetail() {
   return <ProjectDetailView project={project} />;
 }
 
-type Tab = "overview" | "timeline" | "tasks" | "phases" | "snags" | "attendance" | "change-orders" | "reports" | "photos" | "vendors" | "finance" | "documents";
+type Tab = "overview" | "milestones" | "timeline" | "tasks" | "phases" | "snags" | "attendance" | "change-orders" | "reports" | "photos" | "vendors" | "finance" | "documents";
 const tabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "milestones", label: "Milestones" },
   { id: "timeline", label: "Timeline" },
   { id: "tasks", label: "Tasks" },
   { id: "phases", label: "Phases" },
