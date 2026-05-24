@@ -139,22 +139,34 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
     ];
   }, [rows, extraRooms, extraStatuses, extraWorkTypes]);
 
-  const filtered = useMemo(() => rows.filter((t) => {
-    const areas = Array.isArray(t.areas) && (t.areas as string[]).length ? (t.areas as string[]) : (t.area ? [t.area] : []);
-    if (filters.rooms.size && !areas.some((a) => filters.rooms.has(a))) return false;
-    const c = t.agency || t.contractor || t.assignee || "";
-    if (filters.contractors.size && !filters.contractors.has(c)) return false;
-    if (filters.statuses.size && !filters.statuses.has(t.status ?? "not_started")) return false;
-    if (filters.priorities.size) {
-      const p = t.priority ?? "None";
-      if (!filters.priorities.has(p)) return false;
-    }
-    if (filters.workTypes.size) {
-      const wts = Array.isArray(t.work_types) && (t.work_types as string[]).length ? (t.work_types as string[]) : (t.work_type ? [t.work_type] : []);
-      if (!wts.some((w) => filters.workTypes.has(w))) return false;
-    }
-    return true;
-  }), [rows, filters]);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((t) => {
+      const areas = Array.isArray(t.areas) && (t.areas as string[]).length ? (t.areas as string[]) : (t.area ? [t.area] : []);
+      if (filters.rooms.size && !areas.some((a) => filters.rooms.has(a))) return false;
+      const c = t.agency || t.contractor || t.assignee || "";
+      if (filters.contractors.size && !filters.contractors.has(c)) return false;
+      if (filters.statuses.size && !filters.statuses.has(t.status ?? "not_started")) return false;
+      if (filters.priorities.size) {
+        const p = t.priority ?? "None";
+        if (!filters.priorities.has(p)) return false;
+      }
+      if (filters.workTypes.size) {
+        const wts = Array.isArray(t.work_types) && (t.work_types as string[]).length ? (t.work_types as string[]) : (t.work_type ? [t.work_type] : []);
+        if (!wts.some((w) => filters.workTypes.has(w))) return false;
+      }
+      if (q) {
+        const wts = Array.isArray(t.work_types) && (t.work_types as string[]).length ? (t.work_types as string[]) : (t.work_type ? [t.work_type] : []);
+        const hay = [
+          t.title, t.description, t.notes, t.agency, t.contractor, t.assignee,
+          ...areas, ...wts,
+        ].filter(Boolean).join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [rows, filters, search]);
+
 
   const parents = filtered.filter((t) => !t.parent_task_id);
 
