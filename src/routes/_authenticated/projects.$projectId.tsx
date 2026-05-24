@@ -229,7 +229,7 @@ const Card: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = "", 
 );
 
 /* ---------------- Overview ---------------- */
-function OverviewTab({ project }: { project: Project }) {
+function OverviewTab({ project, onGoTo }: { project: Project; onGoTo: (t: Tab) => void }) {
   const budgetPct = Math.round((project.spent / project.budget) * 100);
   const qc = useQueryClient();
   const [addTaskFor, setAddTaskFor] = useState<string | null>(null);
