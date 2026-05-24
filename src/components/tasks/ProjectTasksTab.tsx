@@ -181,10 +181,6 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-2xl">Tasks</h2>
-        <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
-          Smart Task Intelligence — every site update becomes structured tasks. AI extracts events from English, हिन्दी, or Hinglish,
-          detects duplicates, links dependencies, and tracks planned vs actual.
-        </p>
       </div>
 
       <AINarrativeBar projectId={projectId} teamMembers={teamMembers} />
