@@ -35,6 +35,49 @@ function VendorsPage() {
       return (data ?? []) as DbVendor[];
     },
   });
+
+  const { data: perfMap = {} } = useQuery({
+    queryKey: ["vendor-performance"],
+    queryFn: async () => {
+      const [pvRes, snagRes] = await Promise.all([
+        supabase.from("project_vendors").select("vendor_id,project_id,po_amount,status,expected_delivery"),
+        supabase.from("snags").select("vendor_id,status"),
+      ]);
+      const map: Record<string, { projects: number; poTotal: number; onTimePct: number | null; openSnags: number; totalSnags: number }> = {};
+      const byVendor: Record<string, { projects: Set<string>; po: number; delivered: number; onTime: number }> = {};
+      for (const r of pvRes.data ?? []) {
+        const k = r.vendor_id as string;
+        if (!byVendor[k]) byVendor[k] = { projects: new Set(), po: 0, delivered: 0, onTime: 0 };
+        byVendor[k].projects.add(r.project_id as string);
+        byVendor[k].po += Number(r.po_amount ?? 0);
+        if (r.status === "completed") {
+          byVendor[k].delivered += 1;
+          if (r.expected_delivery && new Date(r.expected_delivery) >= new Date(new Date().toDateString())) byVendor[k].onTime += 1;
+        }
+      }
+      const snagsByVendor: Record<string, { open: number; total: number }> = {};
+      for (const s of snagRes.data ?? []) {
+        if (!s.vendor_id) continue;
+        const k = s.vendor_id as string;
+        if (!snagsByVendor[k]) snagsByVendor[k] = { open: 0, total: 0 };
+        snagsByVendor[k].total += 1;
+        if (s.status !== "closed" && s.status !== "verified") snagsByVendor[k].open += 1;
+      }
+      const allIds = new Set([...Object.keys(byVendor), ...Object.keys(snagsByVendor)]);
+      for (const id of allIds) {
+        const v = byVendor[id];
+        const s = snagsByVendor[id];
+        map[id] = {
+          projects: v ? v.projects.size : 0,
+          poTotal: v ? v.po : 0,
+          onTimePct: v && v.delivered > 0 ? Math.round((v.onTime / v.delivered) * 100) : null,
+          openSnags: s ? s.open : 0,
+          totalSnags: s ? s.total : 0,
+        };
+      }
+      return map;
+    },
+  });
   const filtered = vendors.filter((v) => v.name.toLowerCase().includes(q.toLowerCase()) || (v.company_name ?? "").toLowerCase().includes(q.toLowerCase()));
 
   const del = useMutation({
@@ -106,6 +149,18 @@ function VendorsPage() {
                   </div>
                 </div>
                 {v.notes && <p className="mt-3 text-xs text-muted-foreground">{v.notes}</p>}
+                {(() => {
+                  const p = perfMap[v.id];
+                  if (!p || (p.projects === 0 && p.totalSnags === 0)) return null;
+                  return (
+                    <div className="mt-4 pt-3 border-t border-border grid grid-cols-4 gap-2 text-center">
+                      <div><div className="font-display text-lg tabular-nums">{p.projects}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Projects</div></div>
+                      <div><div className="font-display text-lg tabular-nums">₹{(p.poTotal / 100000).toFixed(1)}L</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">PO Value</div></div>
+                      <div><div className="font-display text-lg tabular-nums" style={{ color: p.onTimePct == null ? undefined : p.onTimePct >= 80 ? "#7a9e8a" : "#d4882a" }}>{p.onTimePct == null ? "—" : `${p.onTimePct}%`}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">On-time</div></div>
+                      <div><div className="font-display text-lg tabular-nums" style={{ color: p.openSnags > 0 ? "#c4685a" : undefined }}>{p.openSnags}/{p.totalSnags}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Open Snags</div></div>
+                    </div>
+                  );
+                })()}
               </article>
             ))}
           </section>
