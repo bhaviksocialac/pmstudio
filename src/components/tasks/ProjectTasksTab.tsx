@@ -179,13 +179,8 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-display text-2xl">Tasks</h2>
-      </div>
-
-      <AINarrativeBar projectId={projectId} teamMembers={teamMembers} />
-
       <div className="rounded-[16px] bg-card border border-border p-5 md:p-6" style={{ boxShadow: "var(--shadow-card)" }}>
+
         <TaskFilters groups={filterGroups} state={filters} setState={setFilters} />
         <div className="mt-5 pt-5 border-t border-border flex items-center gap-3 flex-wrap">
           <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-medium">Group by</span>
