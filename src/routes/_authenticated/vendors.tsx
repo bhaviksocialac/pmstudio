@@ -149,6 +149,18 @@ function VendorsPage() {
                   </div>
                 </div>
                 {v.notes && <p className="mt-3 text-xs text-muted-foreground">{v.notes}</p>}
+                {(() => {
+                  const p = perfMap[v.id];
+                  if (!p || (p.projects === 0 && p.totalSnags === 0)) return null;
+                  return (
+                    <div className="mt-4 pt-3 border-t border-border grid grid-cols-4 gap-2 text-center">
+                      <div><div className="font-display text-lg tabular-nums">{p.projects}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Projects</div></div>
+                      <div><div className="font-display text-lg tabular-nums">₹{(p.poTotal / 100000).toFixed(1)}L</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">PO Value</div></div>
+                      <div><div className="font-display text-lg tabular-nums" style={{ color: p.onTimePct == null ? undefined : p.onTimePct >= 80 ? "#7a9e8a" : "#d4882a" }}>{p.onTimePct == null ? "—" : `${p.onTimePct}%`}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">On-time</div></div>
+                      <div><div className="font-display text-lg tabular-nums" style={{ color: p.openSnags > 0 ? "#c4685a" : undefined }}>{p.openSnags}/{p.totalSnags}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Open Snags</div></div>
+                    </div>
+                  );
+                })()}
               </article>
             ))}
           </section>
