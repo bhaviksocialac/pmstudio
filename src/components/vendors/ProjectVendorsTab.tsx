@@ -35,6 +35,7 @@ const STATUS = {
 export function ProjectVendorsTab({ projectId }: { projectId: string }) {
   const [picking, setPicking] = useState(false);
   const [editing, setEditing] = useState<Joined | null>(null);
+  const [uploadingFor, setUploadingFor] = useState<DbVendor | null>(null);
   const qc = useQueryClient();
 
   const { data: rows = [], isLoading } = useQuery({
