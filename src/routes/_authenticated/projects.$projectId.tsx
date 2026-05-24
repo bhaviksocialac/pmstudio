@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Send, Check, Phone, Mail, Plus, Upload, Image as ImageIcon,
-  FileText, MessageCircle, FilePlus, Loader2, Pencil, ClipboardList,
+  FileText, MessageCircle, FilePlus, Loader2, Pencil,
 } from "lucide-react";
 import { ProjectProgressPanels } from "@/components/tasks/ProjectProgressPanels";
 import { computeRollup, EXECUTION_PHASE_GROUPS, isDone, overallProjectPct, phaseOfTask, type ExecutionPhaseGroup, type GroupRollup, type TaskLite } from "@/lib/phase-sync";
@@ -19,7 +19,7 @@ import { SharePortalButton } from "@/components/SharePortalButton";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { AddTaskPanel } from "@/components/AddTaskPanel";
 import { AIPhaseBar } from "@/components/AIPhaseBar";
-import { DailyReportModal } from "@/components/DailyReportModal";
+
 import { SiteReportsList } from "@/components/SiteReportsList";
 import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
 import { ProjectActivityFeed } from "@/components/ProjectActivityFeed";
@@ -128,7 +128,7 @@ const tabs: { id: Tab; label: string }[] = [
 function ProjectDetailView({ project }: { project: Project }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
-  const [dailyReport, setDailyReport] = useState(false);
+  
   const h = healthMap[project.health as keyof typeof healthMap];
 
   return (
@@ -159,9 +159,7 @@ function ProjectDetailView({ project }: { project: Project }) {
             <button onClick={() => setEditing(true)} className="h-10 px-3 inline-flex items-center gap-1.5 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">
               <Pencil className="h-3.5 w-3.5" /> Edit Project
             </button>
-            <button onClick={() => setDailyReport(true)} className="h-10 px-3 inline-flex items-center gap-1.5 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">
-              <ClipboardList className="h-3.5 w-3.5" /> Daily Report
-            </button>
+            
             <button onClick={() => openModal("draft-update")} className="h-10 px-4 inline-flex items-center gap-1.5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
               <Send className="h-3.5 w-3.5" /> Send Update
             </button>
@@ -203,14 +201,9 @@ function ProjectDetailView({ project }: { project: Project }) {
         {tab === "change-orders" && <ChangeOrdersTab projectId={project.id} />}
         {tab === "reports" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-display text-2xl">Daily Site Reports</h2>
-                <p className="text-sm text-muted-foreground mt-1">Photos, work done, attendance — logged each day.</p>
-              </div>
-              <button onClick={() => setDailyReport(true)} className="h-10 px-4 inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
-                <ClipboardList className="h-4 w-4" /> New Daily Report
-              </button>
+            <div>
+              <h2 className="font-display text-2xl">Daily Site Reports</h2>
+              <p className="text-sm text-muted-foreground mt-1">Auto-compiled every evening from today's tasks, attendance, photos and snags.</p>
             </div>
             <SiteReportsList projectId={project.id} />
           </div>
@@ -221,7 +214,7 @@ function ProjectDetailView({ project }: { project: Project }) {
         {tab === "documents" && <DocumentsTab project={project} />}
       </main>
       {editing && <NewProjectWizard onClose={() => setEditing(false)} editProjectId={project.id} />}
-      {dailyReport && <DailyReportModal projectId={project.id} defaultLocation={project.location} onClose={() => setDailyReport(false)} />}
+      
     </AppShell>
   );
 }

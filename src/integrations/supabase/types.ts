@@ -1087,39 +1087,51 @@ export type Database = {
       }
       site_reports: {
         Row: {
+          auto_generated: boolean
           created_at: string
           id: string
           issues: string | null
           location: string | null
+          pdf_url: string | null
           photo_urls: Json
           project_id: string
           report_date: string
+          sent_to_client_at: string | null
+          summary: Json
           updated_at: string
           user_id: string
           work_done: string | null
           workers_present: number | null
         }
         Insert: {
+          auto_generated?: boolean
           created_at?: string
           id?: string
           issues?: string | null
           location?: string | null
+          pdf_url?: string | null
           photo_urls?: Json
           project_id: string
           report_date?: string
+          sent_to_client_at?: string | null
+          summary?: Json
           updated_at?: string
           user_id: string
           work_done?: string | null
           workers_present?: number | null
         }
         Update: {
+          auto_generated?: boolean
           created_at?: string
           id?: string
           issues?: string | null
           location?: string | null
+          pdf_url?: string | null
           photo_urls?: Json
           project_id?: string
           report_date?: string
+          sent_to_client_at?: string | null
+          summary?: Json
           updated_at?: string
           user_id?: string
           work_done?: string | null
@@ -1608,7 +1620,12 @@ export type Database = {
         | "approved"
         | "rejected"
         | "active"
-      email_kind: "welcome" | "invoice" | "milestone" | "weekly_summary"
+      email_kind:
+        | "welcome"
+        | "invoice"
+        | "milestone"
+        | "weekly_summary"
+        | "daily_report"
       email_status:
         | "queued"
         | "sent"
@@ -1785,7 +1802,13 @@ export const Constants = {
         "rejected",
         "active",
       ],
-      email_kind: ["welcome", "invoice", "milestone", "weekly_summary"],
+      email_kind: [
+        "welcome",
+        "invoice",
+        "milestone",
+        "weekly_summary",
+        "daily_report",
+      ],
       email_status: [
         "queued",
         "sent",
