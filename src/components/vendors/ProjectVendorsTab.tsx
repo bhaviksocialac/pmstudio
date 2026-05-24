@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, X, MessageCircle, ExternalLink, Pencil, Trash2, Loader2, Phone } from "lucide-react";
+import { Plus, X, MessageCircle, ExternalLink, Pencil, Trash2, Loader2, Phone, FileUp } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,8 @@ import { formatINR } from "@/lib/studio-data";
 import type { DbVendor } from "@/lib/db-types";
 import { VendorAutocomplete } from "@/components/VendorAutocomplete";
 import { VendorModal } from "@/routes/_authenticated/vendors";
+import { InvoiceUploadDialog } from "@/components/vendors/InvoiceUploadDialog";
+import { VendorInvoiceList } from "@/components/vendors/VendorInvoiceList";
 
 type ProjectVendorRow = {
   id: string;
