@@ -201,14 +201,9 @@ function ProjectDetailView({ project }: { project: Project }) {
         {tab === "change-orders" && <ChangeOrdersTab projectId={project.id} />}
         {tab === "reports" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-display text-2xl">Daily Site Reports</h2>
-                <p className="text-sm text-muted-foreground mt-1">Photos, work done, attendance — logged each day.</p>
-              </div>
-              <button onClick={() => setDailyReport(true)} className="h-10 px-4 inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
-                <ClipboardList className="h-4 w-4" /> New Daily Report
-              </button>
+            <div>
+              <h2 className="font-display text-2xl">Daily Site Reports</h2>
+              <p className="text-sm text-muted-foreground mt-1">Auto-compiled every evening from today's tasks, attendance, photos and snags.</p>
             </div>
             <SiteReportsList projectId={project.id} />
           </div>
