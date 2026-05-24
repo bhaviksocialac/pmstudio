@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, Send, Loader2, X, AlertTriangle, ArrowRight, Check, AlertCircle } from "lucide-react";
+import { Sparkles, Send, Loader2, X, AlertTriangle, ArrowRight, Check } from "lucide-react";
 import { toast } from "sonner";
 import { processNarrative, confirmNarrative, type ProcessResult } from "@/lib/task-narrative.functions";
+import { parsePhaseUpdate } from "@/lib/phase-ai.functions";
+import { parseSiteEvent } from "@/lib/site-event.functions";
 import { looksLikeSnag } from "@/lib/snags-shared";
 import { SnagFromNarrativeButton } from "@/components/snags/SnagFromNarrativeButton";
 
@@ -12,11 +14,26 @@ export function AINarrativeBar({ projectId, teamMembers = [] }: { projectId: str
   const [preview, setPreview] = useState<ProcessResult | null>(null);
   const processFn = useServerFn(processNarrative);
   const confirmFn = useServerFn(confirmNarrative);
+  const phaseFn = useServerFn(parsePhaseUpdate);
+  const eventFn = useServerFn(parseSiteEvent);
   const qc = useQueryClient();
 
   const process = useMutation({
-    mutationFn: (msg: string) => processFn({ data: { projectId, text: msg, teamMembers } }),
-    onSuccess: (res) => setPreview(res),
+    mutationFn: async (msg: string) => {
+      const [res] = await Promise.all([
+        processFn({ data: { projectId, text: msg, teamMembers } }),
+        phaseFn({ data: { projectId, message: msg } }).catch(() => null),
+        eventFn({ data: { projectId, message: msg } }).catch(() => null),
+      ]);
+      return res;
+    },
+    onSuccess: (res) => {
+      setPreview(res);
+      qc.invalidateQueries({ queryKey: ["project", projectId] });
+      qc.invalidateQueries({ queryKey: ["phase-subs", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-phases", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-activity", projectId] });
+    },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
@@ -49,11 +66,12 @@ export function AINarrativeBar({ projectId, teamMembers = [] }: { projectId: str
 
   return (
     <div className="rounded-[16px] bg-[#fff7eb] border border-[#e8d9c9] p-4 mb-6" style={{ boxShadow: "var(--shadow-card)" }}>
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-1">
         <Sparkles className="h-4 w-4 text-[#c17f5a]" />
-        <span className="text-[11px] uppercase tracking-[0.18em] text-[#c17f5a] font-medium">AI Task Intelligence</span>
+        <span className="text-[11px] uppercase tracking-[0.18em] text-[#c17f5a] font-medium">AI Update</span>
         <span className="text-[10px] text-muted-foreground ml-2">English · हिन्दी · Hinglish</span>
       </div>
+      <p className="text-[11px] text-muted-foreground mb-3">Updates Tasks, Timeline, Phases, and Overview automatically</p>
 
       <div className="flex gap-2">
         <textarea

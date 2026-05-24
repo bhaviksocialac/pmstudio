@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { SharePortalButton } from "@/components/SharePortalButton";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { AddTaskPanel } from "@/components/AddTaskPanel";
-import { AIPhaseBar } from "@/components/AIPhaseBar";
+
 
 import { SiteReportsList } from "@/components/SiteReportsList";
 import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
@@ -168,7 +168,7 @@ function ProjectDetailView({ project }: { project: Project }) {
           </div>
         </header>
 
-        {tab !== "tasks" && <AIPhaseBar projectId={project.id} />}
+        
 
 
         {/* Tabs */}
@@ -597,7 +597,7 @@ function TimelineTab({ project }: { project: Project }) {
         </div>
 
         {bars.length === 0 && (
-          <div className="py-12 text-center text-sm text-muted-foreground">No timeline items yet. Use the AI Site Update bar above to add some.</div>
+          <div className="py-12 text-center text-sm text-muted-foreground">No timeline items yet. Use the AI Update bar in the Tasks tab to add some.</div>
         )}
 
         <div className="relative">
