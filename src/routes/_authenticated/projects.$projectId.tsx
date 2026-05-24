@@ -159,9 +159,7 @@ function ProjectDetailView({ project }: { project: Project }) {
             <button onClick={() => setEditing(true)} className="h-10 px-3 inline-flex items-center gap-1.5 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">
               <Pencil className="h-3.5 w-3.5" /> Edit Project
             </button>
-            <button onClick={() => setDailyReport(true)} className="h-10 px-3 inline-flex items-center gap-1.5 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">
-              <ClipboardList className="h-3.5 w-3.5" /> Daily Report
-            </button>
+            
             <button onClick={() => openModal("draft-update")} className="h-10 px-4 inline-flex items-center gap-1.5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
               <Send className="h-3.5 w-3.5" /> Send Update
             </button>
