@@ -4,7 +4,7 @@ import { Loader2, Table as TableIcon, GanttChart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { TaskTable, type TaskRow } from "@/components/tasks/TaskTable";
 import { TaskFilters, emptyFilters, type FilterState } from "@/components/tasks/TaskFilters";
-import { AINarrativeBar } from "@/components/tasks/AINarrativeBar";
+
 import { GanttTimeline } from "@/components/tasks/GanttTimeline";
 import { STATUS_META, WORK_TYPES, deriveActionRequired } from "@/lib/task-flow";
 
