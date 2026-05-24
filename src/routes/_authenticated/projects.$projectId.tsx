@@ -381,7 +381,7 @@ function OverviewTab({ project }: { project: Project }) {
             <QA icon={Upload} label="Upload Photos" onClick={() => openModal("upload-photos", { projectId: project.id })} />
             <QA icon={Plus} label="Add Task" onClick={() => setAddTaskFor(project.phase)} />
             <QA icon={FileText} label="Send Invoice" onClick={() => openModal("new-invoice")} />
-            <QA icon={Plus} label="Add Vendor" onClick={() => openModal("add-vendor")} />
+            <QA icon={Plus} label="Add Vendor" onClick={() => setTab("vendors")} />
           </div>
         </Card>
 
