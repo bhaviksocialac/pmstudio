@@ -14,11 +14,26 @@ export function AINarrativeBar({ projectId, teamMembers = [] }: { projectId: str
   const [preview, setPreview] = useState<ProcessResult | null>(null);
   const processFn = useServerFn(processNarrative);
   const confirmFn = useServerFn(confirmNarrative);
+  const phaseFn = useServerFn(parsePhaseUpdate);
+  const eventFn = useServerFn(parseSiteEvent);
   const qc = useQueryClient();
 
   const process = useMutation({
-    mutationFn: (msg: string) => processFn({ data: { projectId, text: msg, teamMembers } }),
-    onSuccess: (res) => setPreview(res),
+    mutationFn: async (msg: string) => {
+      const [res] = await Promise.all([
+        processFn({ data: { projectId, text: msg, teamMembers } }),
+        phaseFn({ data: { projectId, message: msg } }).catch(() => null),
+        eventFn({ data: { projectId, message: msg } }).catch(() => null),
+      ]);
+      return res;
+    },
+    onSuccess: (res) => {
+      setPreview(res);
+      qc.invalidateQueries({ queryKey: ["project", projectId] });
+      qc.invalidateQueries({ queryKey: ["phase-subs", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-phases", projectId] });
+      qc.invalidateQueries({ queryKey: ["project-activity", projectId] });
+    },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
