@@ -119,6 +119,11 @@ export function ProjectVendorsTab({ projectId }: { projectId: string }) {
                     <div><div className="text-muted-foreground text-[10px] uppercase">Expected Delivery</div><div className="font-mono">{r.expected_delivery ?? "—"}</div></div>
                   </div>
                   <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+                    {v && (
+                      <button onClick={() => setUploadingFor(v)} className="h-8 px-2.5 rounded-[6px] bg-[#c17f5a] text-white text-[11px] font-medium inline-flex items-center gap-1 hover:brightness-110">
+                        <FileUp className="h-3 w-3" /> Upload Invoice
+                      </button>
+                    )}
                     {v?.whatsapp || v?.phone ? (
                       <a href={`https://wa.me/${(v.whatsapp || v.phone || "").replace(/\D/g, "")}`} target="_blank" rel="noreferrer"
                         className="h-8 px-2.5 rounded-[6px] border border-border text-[11px] hover:bg-muted inline-flex items-center gap-1 text-[#25D366]">
@@ -135,6 +140,11 @@ export function ProjectVendorsTab({ projectId }: { projectId: string }) {
                       <Trash2 className="h-3 w-3" />
                     </button>
                   </div>
+                  {v && (
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <VendorInvoiceList projectId={projectId} vendorId={v.id} />
+                    </div>
+                  )}
                 </article>
               );
             })}
