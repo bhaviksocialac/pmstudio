@@ -903,6 +903,48 @@ export type Database = {
         }
         Relationships: []
       }
+      project_vendors: {
+        Row: {
+          created_at: string
+          expected_delivery: string | null
+          id: string
+          notes: string | null
+          po_amount: number
+          project_id: string
+          scope: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          expected_delivery?: string | null
+          id?: string
+          notes?: string | null
+          po_amount?: number
+          project_id: string
+          scope?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          expected_delivery?: string | null
+          id?: string
+          notes?: string | null
+          po_amount?: number
+          project_id?: string
+          scope?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           budget: number
