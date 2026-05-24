@@ -214,7 +214,7 @@ function ProjectDetailView({ project }: { project: Project }) {
         {tab === "documents" && <DocumentsTab project={project} />}
       </main>
       {editing && <NewProjectWizard onClose={() => setEditing(false)} editProjectId={project.id} />}
-      {dailyReport && <DailyReportModal projectId={project.id} defaultLocation={project.location} onClose={() => setDailyReport(false)} />}
+      
     </AppShell>
   );
 }
