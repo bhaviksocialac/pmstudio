@@ -122,7 +122,7 @@ export function InvoiceUploadDialog({ projectId, vendor, onClose }: Props) {
       }
 
       if (updateMaster) {
-        const patch: Record<string, string | null> = {};
+        const patch: { bank_account?: string; ifsc?: string; gst?: string } = {};
         if (form.bank_account) patch.bank_account = form.bank_account;
         if (form.ifsc) patch.ifsc = form.ifsc;
         if (form.gst) patch.gst = form.gst;
