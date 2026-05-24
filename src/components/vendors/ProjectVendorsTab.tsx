@@ -169,6 +169,8 @@ export function ProjectVendorsTab({ projectId }: { projectId: string }) {
           onClose={() => setEditing(null)}
           onSaved={() => qc.invalidateQueries({ queryKey: ["project_vendors", projectId] })}
         />
+      {uploadingFor && (
+        <InvoiceUploadDialog projectId={projectId} vendor={uploadingFor} onClose={() => setUploadingFor(null)} />
       )}
     </div>
   );
