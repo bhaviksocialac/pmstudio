@@ -25,6 +25,8 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
   const [groupBy, setGroupBy] = useState<GroupBy>("status");
   const [view, setView] = useState<View>("table");
   const [filters, setFilters] = useState<FilterState>(emptyFilters());
+  const [search, setSearch] = useState("");
+
 
   const [extraRooms, setExtraRooms] = useState<string[]>([]);
   const [extraStatuses, setExtraStatuses] = useState<string[]>([]);
