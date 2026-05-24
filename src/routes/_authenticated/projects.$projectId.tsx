@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { SharePortalButton } from "@/components/SharePortalButton";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { AddTaskPanel } from "@/components/AddTaskPanel";
-import { AIPhaseBar } from "@/components/AIPhaseBar";
+
 
 import { SiteReportsList } from "@/components/SiteReportsList";
 import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
