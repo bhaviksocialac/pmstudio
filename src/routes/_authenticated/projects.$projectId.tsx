@@ -774,54 +774,8 @@ function PhotosTab({ project }: { project: Project }) {
   );
 }
 
-/* ---------------- Vendors ---------------- */
-const vendorStatus: Record<string, { bg: string; color: string; label: string }> = {
-  confirmed: { bg: "rgba(122,158,138,0.18)", color: "#7a9e8a", label: "Ordered" },
-  pending: { bg: "rgba(107,95,88,0.12)", color: "#6b5f58", label: "Pending" },
-  delayed: { bg: "rgba(196,104,90,0.18)", color: "#c4685a", label: "Delayed" },
-  completed: { bg: "rgba(122,158,138,0.18)", color: "#7a9e8a", label: "Delivered" },
-};
+/* Vendors tab now provided by ProjectVendorsTab */
 
-function VendorsTab({ project }: { project: Project }) {
-  return (
-    <Card className="overflow-hidden">
-      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-        <h2 className="font-display text-xl">Project Vendors</h2>
-        <button onClick={() => openModal("add-vendor")} className="h-9 px-3 rounded-[6px] bg-primary text-primary-foreground text-xs font-medium hover:brightness-95 inline-flex items-center gap-1.5">
-          <Plus className="h-3.5 w-3.5" /> Add Vendor
-        </button>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            <tr>{["Vendor","Category","Item","Quote","PO Raised","Delivery","Status","Actions"].map((h) => <th key={h} className="text-left px-4 py-3 font-medium">{h}</th>)}</tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {project.vendors.map((v, i) => {
-              const s = vendorStatus[v.status];
-              return (
-                <tr key={i} className="hover:bg-muted/40">
-                  <td className="px-4 py-3 font-medium">{v.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{v.scope.split(" ")[0]}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{v.scope}</td>
-                  <td className="px-4 py-3 font-mono">{formatINR(120000 + i * 50000)}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground font-mono">PO-{200 + i}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground font-mono">{18 + i} May</td>
-                  <td className="px-4 py-3"><span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-[6px]" style={{ background: s.bg, color: s.color }}>{s.label}</span></td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => toast.success(`WhatsApp draft to ${v.name}`)} className="h-8 w-8 rounded-[6px] border border-border flex items-center justify-center hover:bg-muted text-[#7a9e8a]">
-                      <MessageCircle className="h-3.5 w-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </Card>
-  );
-}
 
 /* ---------------- Finance ---------------- */
 function FinanceTab({ project }: { project: Project }) {
