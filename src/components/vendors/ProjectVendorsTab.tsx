@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, X, MessageCircle, ExternalLink, Pencil, Trash2, Loader2, Phone } from "lucide-react";
+import { Plus, X, MessageCircle, ExternalLink, Pencil, Trash2, Loader2, Phone, FileUp } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,8 @@ import { formatINR } from "@/lib/studio-data";
 import type { DbVendor } from "@/lib/db-types";
 import { VendorAutocomplete } from "@/components/VendorAutocomplete";
 import { VendorModal } from "@/routes/_authenticated/vendors";
+import { InvoiceUploadDialog } from "@/components/vendors/InvoiceUploadDialog";
+import { VendorInvoiceList } from "@/components/vendors/VendorInvoiceList";
 
 type ProjectVendorRow = {
   id: string;
@@ -33,6 +35,7 @@ const STATUS = {
 export function ProjectVendorsTab({ projectId }: { projectId: string }) {
   const [picking, setPicking] = useState(false);
   const [editing, setEditing] = useState<Joined | null>(null);
+  const [uploadingFor, setUploadingFor] = useState<DbVendor | null>(null);
   const qc = useQueryClient();
 
   const { data: rows = [], isLoading } = useQuery({
@@ -116,6 +119,11 @@ export function ProjectVendorsTab({ projectId }: { projectId: string }) {
                     <div><div className="text-muted-foreground text-[10px] uppercase">Expected Delivery</div><div className="font-mono">{r.expected_delivery ?? "—"}</div></div>
                   </div>
                   <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+                    {v && (
+                      <button onClick={() => setUploadingFor(v)} className="h-8 px-2.5 rounded-[6px] bg-[#c17f5a] text-white text-[11px] font-medium inline-flex items-center gap-1 hover:brightness-110">
+                        <FileUp className="h-3 w-3" /> Upload Invoice
+                      </button>
+                    )}
                     {v?.whatsapp || v?.phone ? (
                       <a href={`https://wa.me/${(v.whatsapp || v.phone || "").replace(/\D/g, "")}`} target="_blank" rel="noreferrer"
                         className="h-8 px-2.5 rounded-[6px] border border-border text-[11px] hover:bg-muted inline-flex items-center gap-1 text-[#25D366]">
@@ -132,6 +140,11 @@ export function ProjectVendorsTab({ projectId }: { projectId: string }) {
                       <Trash2 className="h-3 w-3" />
                     </button>
                   </div>
+                  {v && (
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <VendorInvoiceList projectId={projectId} vendorId={v.id} />
+                    </div>
+                  )}
                 </article>
               );
             })}
@@ -156,6 +169,9 @@ export function ProjectVendorsTab({ projectId }: { projectId: string }) {
           onClose={() => setEditing(null)}
           onSaved={() => qc.invalidateQueries({ queryKey: ["project_vendors", projectId] })}
         />
+      )}
+      {uploadingFor && (
+        <InvoiceUploadDialog projectId={projectId} vendor={uploadingFor} onClose={() => setUploadingFor(null)} />
       )}
     </div>
   );

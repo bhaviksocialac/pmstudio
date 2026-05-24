@@ -1522,6 +1522,184 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_invoice_lines: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          order_index: number
+          quantity: number
+          rate: number
+          unit: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id: string
+          order_index?: number
+          quantity?: number
+          rate?: number
+          unit?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          order_index?: number
+          quantity?: number
+          rate?: number
+          unit?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_invoice_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_invoice_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          invoice_id: string
+          method: string
+          notes: string | null
+          paid_on: string
+          reference: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          invoice_id: string
+          method?: string
+          notes?: string | null
+          paid_on?: string
+          reference?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          method?: string
+          notes?: string | null
+          paid_on?: string
+          reference?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_invoices: {
+        Row: {
+          amount_paid: number
+          bank_account_snapshot: string | null
+          bank_name_snapshot: string | null
+          company_name_snapshot: string | null
+          created_at: string
+          due_date: string | null
+          gst_amount: number
+          gst_percent: number
+          gst_snapshot: string | null
+          id: string
+          ifsc_snapshot: string | null
+          invoice_date: string | null
+          invoice_number: string | null
+          mime_type: string | null
+          notes: string | null
+          original_filename: string | null
+          pdf_storage_path: string | null
+          pdf_url: string | null
+          project_id: string
+          status: string
+          subtotal: number
+          terms: string | null
+          total_amount: number
+          updated_at: string
+          user_id: string
+          vendor_id: string
+        }
+        Insert: {
+          amount_paid?: number
+          bank_account_snapshot?: string | null
+          bank_name_snapshot?: string | null
+          company_name_snapshot?: string | null
+          created_at?: string
+          due_date?: string | null
+          gst_amount?: number
+          gst_percent?: number
+          gst_snapshot?: string | null
+          id?: string
+          ifsc_snapshot?: string | null
+          invoice_date?: string | null
+          invoice_number?: string | null
+          mime_type?: string | null
+          notes?: string | null
+          original_filename?: string | null
+          pdf_storage_path?: string | null
+          pdf_url?: string | null
+          project_id: string
+          status?: string
+          subtotal?: number
+          terms?: string | null
+          total_amount?: number
+          updated_at?: string
+          user_id: string
+          vendor_id: string
+        }
+        Update: {
+          amount_paid?: number
+          bank_account_snapshot?: string | null
+          bank_name_snapshot?: string | null
+          company_name_snapshot?: string | null
+          created_at?: string
+          due_date?: string | null
+          gst_amount?: number
+          gst_percent?: number
+          gst_snapshot?: string | null
+          id?: string
+          ifsc_snapshot?: string | null
+          invoice_date?: string | null
+          invoice_number?: string | null
+          mime_type?: string | null
+          notes?: string | null
+          original_filename?: string | null
+          pdf_storage_path?: string | null
+          pdf_url?: string | null
+          project_id?: string
+          status?: string
+          subtotal?: number
+          terms?: string | null
+          total_amount?: number
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string
+        }
+        Relationships: []
+      }
       vendors: {
         Row: {
           bank_account: string | null
