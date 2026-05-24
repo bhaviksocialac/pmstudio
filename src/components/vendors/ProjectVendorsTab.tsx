@@ -330,7 +330,7 @@ function ProjectVendorDetailsModal({
           invoice_number: extract.invoice_number,
           invoice_date: extract.invoice_date,
           due_date: extract.due_date,
-          subtotal, gst_percent: Number(extract.gst_percent) || null, gst_amount, total_amount,
+          subtotal, gst_percent: Number(extract.gst_percent) || undefined, gst_amount, total_amount,
           company_name_snapshot: extract.company_name,
           gst_snapshot: extract.gst,
           bank_account_snapshot: extract.bank_account,
