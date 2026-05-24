@@ -21,6 +21,7 @@ import { AddTaskPanel } from "@/components/AddTaskPanel";
 
 
 import { SiteReportsList } from "@/components/SiteReportsList";
+import { AINarrativeBar } from "@/components/tasks/AINarrativeBar";
 import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
 import { ProjectActivityFeed } from "@/components/ProjectActivityFeed";
 import { RoomProgressGrid } from "@/components/tasks/RoomProgressGrid";
@@ -168,8 +169,9 @@ function ProjectDetailView({ project }: { project: Project }) {
           </div>
         </header>
 
-        
-
+        <div className="mb-6">
+          <AINarrativeBar projectId={project.id} />
+        </div>
 
         {/* Tabs */}
         <div className="border-b border-border mb-8 overflow-x-auto">
@@ -182,6 +184,7 @@ function ProjectDetailView({ project }: { project: Project }) {
             ))}
           </div>
         </div>
+
 
         {tab === "overview" && <OverviewTab project={project} onGoTo={setTab} />}
         {tab === "milestones" && <MilestonesTab projectId={project.id} />}
