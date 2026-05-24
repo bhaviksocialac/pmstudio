@@ -195,8 +195,23 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
   return (
     <div className="space-y-6">
       <div className="rounded-[16px] bg-card border border-border p-5 md:p-6" style={{ boxShadow: "var(--shadow-card)" }}>
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search tasks by description, agency, area, work type, notes…"
+            className="w-full h-10 pl-9 pr-9 rounded-[10px] bg-white border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 rounded-md hover:bg-muted flex items-center justify-center">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
 
         <TaskFilters groups={filterGroups} state={filters} setState={setFilters} />
+
         <div className="mt-5 pt-5 border-t border-border flex items-center gap-3 flex-wrap">
           <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-medium">Group by</span>
           {([
