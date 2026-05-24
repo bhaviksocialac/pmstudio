@@ -234,7 +234,7 @@ export function TaskTable({
 
               return (
                 <Fragment key={t.id}>
-                  <tr className={`border-b border-border last:border-b-0 hover:bg-muted/10 transition-colors ${tint}`}>
+                  <tr className={`border-b border-border last:border-b-0 hover:bg-muted/10 transition-colors ${t.done ? "bg-[#7a9e8a14]" : tint}`}>
                     <Td>
                       {hasDetail ? (
                         <button onClick={() => toggleExpand(t.id)} className="h-7 w-7 rounded-[6px] hover:bg-muted flex items-center justify-center">
@@ -253,11 +253,15 @@ export function TaskTable({
                       </button>
                     </Td>
                     <Td>
-                      <div className="py-3 min-w-[220px]">
-                        <div className={`font-medium ${t.done ? "line-through text-muted-foreground" : ""}`}>{t.title}</div>
+                      <div className={`py-3 min-w-[220px] ${t.done ? "opacity-50" : ""}`}>
+                        <div className="font-medium flex items-center gap-1.5">
+                          {t.done && <Check className="h-3.5 w-3.5 text-[#5e8a76] flex-shrink-0" />}
+                          <span>{t.title}</span>
+                        </div>
                         {projName && <div className="text-[11px] text-muted-foreground mt-1">{projName}</div>}
                       </div>
                     </Td>
+
                     <Td>
                       <div className="min-w-[140px]">
                         <AgencyPicker

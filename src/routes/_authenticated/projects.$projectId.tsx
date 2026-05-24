@@ -844,18 +844,89 @@ function MiniCard({ label, value, tone }: { label: string; value: string; tone?:
 }
 
 /* ---------------- Documents ---------------- */
+const DOC_CATEGORIES = ["Contracts","Floor Plans","Invoices","Drawings","Site Reports","Warranties","BOQ","Other"];
+
+function formatBytes(n: number | null | undefined) {
+  if (!n) return "—";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function DocumentsTab({ project }: { project: Project }) {
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [cat, setCat] = useState("All");
-  const cats = ["All","Contracts","Floor Plans","Invoices","Site Reports","Warranties"];
-  const docs = [
-    { name: "Design Contract.pdf", type: "PDF", category: "Contracts", date: "12 Jan 2026", by: "Bhavik" },
-    { name: "Floor Plan v3.pdf", type: "PDF", category: "Floor Plans", date: "28 Feb 2026", by: "Riya" },
-    { name: "INV-002.pdf", type: "PDF", category: "Invoices", date: "01 May 2026", by: "Bhavik" },
-    { name: "Site Visit Apr 28.jpg", type: "Image", category: "Site Reports", date: "28 Apr 2026", by: "Aditya" },
-    { name: "Warranty - Stone.pdf", type: "PDF", category: "Warranties", date: "10 Mar 2026", by: "Vendor" },
-    { name: "Client Approval - Lime Wash.pdf", type: "PDF", category: "Contracts", date: "12 May 2026", by: "Bhavik" },
-  ];
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [uploadCat, setUploadCat] = useState("Other");
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const { data: docs = [] } = useQuery({
+    queryKey: ["project-documents", project.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("project_documents")
+        .select("*")
+        .eq("project_id", project.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const cats = ["All", ...DOC_CATEGORIES];
   const visible = cat === "All" ? docs : docs.filter((d) => d.category === cat);
+
+  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.size > 25 * 1024 * 1024) { toast.error("Max 25MB"); return; }
+    setPendingFile(f);
+  };
+
+  const doUpload = async () => {
+    if (!pendingFile) return;
+    setUploading(true); setProgress(10);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const userId = u.user?.id;
+      if (!userId) throw new Error("Not signed in");
+      const ext = pendingFile.name.split(".").pop() ?? "bin";
+      const path = `${userId}/${project.id}/${crypto.randomUUID()}.${ext}`;
+      setProgress(30);
+      const up = await supabase.storage.from("project-documents").upload(path, pendingFile, {
+        contentType: pendingFile.type, upsert: false,
+      });
+      if (up.error) throw up.error;
+      setProgress(70);
+      const { data: pub } = supabase.storage.from("project-documents").getPublicUrl(path);
+      const { data: prof } = await supabase.from("profiles").select("full_name").maybeSingle();
+      const { error } = await supabase.from("project_documents").insert({
+        user_id: userId,
+        project_id: project.id,
+        name: pendingFile.name,
+        category: uploadCat,
+        file_url: pub.publicUrl,
+        storage_path: path,
+        mime_type: pendingFile.type,
+        file_size: pendingFile.size,
+        uploaded_by_name: prof?.full_name ?? null,
+      });
+      if (error) throw error;
+      setProgress(100);
+      toast.success("Document uploaded");
+      setPendingFile(null);
+      setUploadCat("Other");
+      qc.invalidateQueries({ queryKey: ["project-documents", project.id] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      setProgress(0);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -870,25 +941,67 @@ function DocumentsTab({ project }: { project: Project }) {
         </div>
         <div className="flex items-center gap-2">
           <BoqUploadButton projectId={project.id} />
-          <button onClick={() => toast.success("Document uploaded")} className="h-9 px-3 rounded-[6px] bg-primary text-primary-foreground text-xs font-medium hover:brightness-95 inline-flex items-center gap-1.5">
+          <input ref={fileRef} type="file" hidden onChange={onPick}
+            accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.dwg,.dxf,.zip,application/pdf,image/*" />
+          <button onClick={() => fileRef.current?.click()}
+            className="h-9 px-3 rounded-[6px] bg-primary text-primary-foreground text-xs font-medium hover:brightness-95 inline-flex items-center gap-1.5">
             <FilePlus className="h-3.5 w-3.5" /> Upload Document
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {visible.map((d, i) => (
-          <Card key={i} className="p-5 hover:-translate-y-[2px] transition-transform cursor-pointer">
-            <div className="h-12 w-12 rounded-[10px] bg-[#fff7eb] flex items-center justify-center mb-3">
-              {d.type === "PDF" ? <FileText className="h-5 w-5 text-[#c17f5a]" /> : <ImageIcon className="h-5 w-5 text-[#c17f5a]" />}
+
+      {pendingFile && (
+        <Card className="p-4 flex flex-wrap items-center gap-3">
+          <FileText className="h-5 w-5 text-[#c17f5a]" />
+          <div className="flex-1 min-w-[180px]">
+            <div className="text-sm font-medium truncate">{pendingFile.name}</div>
+            <div className="text-[11px] text-muted-foreground">{formatBytes(pendingFile.size)}</div>
+          </div>
+          <select value={uploadCat} onChange={(e) => setUploadCat(e.target.value)}
+            className="h-9 px-2 rounded-[6px] border border-border bg-card text-xs">
+            {DOC_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          {uploading ? (
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-32 rounded-full bg-muted overflow-hidden">
+                <div className="h-full bg-[#c17f5a] transition-all" style={{ width: `${progress}%` }} />
+              </div>
+              <Loader2 className="h-4 w-4 animate-spin text-[#c17f5a]" />
             </div>
-            <div className="text-sm font-medium truncate">{d.name}</div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{d.category}</div>
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-border text-[11px] text-muted-foreground font-mono">
-              <span>{d.by}</span><span>{d.date}</span>
-            </div>
-          </Card>
-        ))}
-      </div>
+          ) : (
+            <>
+              <button onClick={doUpload} className="h-9 px-4 rounded-[6px] bg-primary text-primary-foreground text-xs font-medium">Upload</button>
+              <button onClick={() => setPendingFile(null)} className="h-9 px-3 rounded-[6px] border border-border text-xs">Cancel</button>
+            </>
+          )}
+        </Card>
+      )}
+
+      {docs.length === 0 ? (
+        <div className="text-center py-12 text-sm text-muted-foreground">No documents yet. Click Upload Document to get started.</div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {visible.map((d) => {
+            const isImage = (d.mime_type ?? "").startsWith("image/");
+            return (
+              <a key={d.id} href={d.file_url} target="_blank" rel="noreferrer">
+                <Card className="p-5 hover:-translate-y-[2px] transition-transform cursor-pointer">
+                  <div className="h-12 w-12 rounded-[10px] bg-[#fff7eb] flex items-center justify-center mb-3">
+                    {isImage ? <ImageIcon className="h-5 w-5 text-[#c17f5a]" /> : <FileText className="h-5 w-5 text-[#c17f5a]" />}
+                  </div>
+                  <div className="text-sm font-medium truncate">{d.name}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{d.category} · {formatBytes(d.file_size)}</div>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border text-[11px] text-muted-foreground font-mono">
+                    <span className="truncate">{d.uploaded_by_name ?? "—"}</span>
+                    <span>{new Date(d.created_at).toLocaleDateString()}</span>
+                  </div>
+                </Card>
+              </a>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
+

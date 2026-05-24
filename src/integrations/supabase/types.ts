@@ -828,6 +828,51 @@ export type Database = {
         }
         Relationships: []
       }
+      project_documents: {
+        Row: {
+          category: string
+          created_at: string
+          file_size: number | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          name: string
+          project_id: string
+          storage_path: string
+          updated_at: string
+          uploaded_by_name: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          name: string
+          project_id: string
+          storage_path: string
+          updated_at?: string
+          uploaded_by_name?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          name?: string
+          project_id?: string
+          storage_path?: string
+          updated_at?: string
+          uploaded_by_name?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       project_phases: {
         Row: {
           completion: number
