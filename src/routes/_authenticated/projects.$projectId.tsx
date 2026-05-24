@@ -210,7 +210,7 @@ function ProjectDetailView({ project }: { project: Project }) {
           </div>
         )}
         {tab === "photos" && <PhotosTab project={project} />}
-        {tab === "vendors" && <VendorsTab project={project} />}
+        {tab === "vendors" && <ProjectVendorsTab projectId={project.id} />}
         {tab === "finance" && <FinanceTab project={project} />}
         {tab === "documents" && <DocumentsTab project={project} />}
       </main>
