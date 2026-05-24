@@ -168,7 +168,7 @@ function ProjectDetailView({ project }: { project: Project }) {
           </div>
         </header>
 
-        {tab !== "tasks" && <AIPhaseBar projectId={project.id} />}
+        
 
 
         {/* Tabs */}
