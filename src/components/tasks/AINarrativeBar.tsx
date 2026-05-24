@@ -66,11 +66,12 @@ export function AINarrativeBar({ projectId, teamMembers = [] }: { projectId: str
 
   return (
     <div className="rounded-[16px] bg-[#fff7eb] border border-[#e8d9c9] p-4 mb-6" style={{ boxShadow: "var(--shadow-card)" }}>
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-1">
         <Sparkles className="h-4 w-4 text-[#c17f5a]" />
-        <span className="text-[11px] uppercase tracking-[0.18em] text-[#c17f5a] font-medium">AI Task Intelligence</span>
+        <span className="text-[11px] uppercase tracking-[0.18em] text-[#c17f5a] font-medium">AI Update</span>
         <span className="text-[10px] text-muted-foreground ml-2">English · हिन्दी · Hinglish</span>
       </div>
+      <p className="text-[11px] text-muted-foreground mb-3">Updates Tasks, Timeline, Phases, and Overview automatically</p>
 
       <div className="flex gap-2">
         <textarea
