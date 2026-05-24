@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Table as TableIcon, GanttChart } from "lucide-react";
+import { Loader2, Table as TableIcon, GanttChart, Search, X } from "lucide-react";
+
 import { supabase } from "@/integrations/supabase/client";
 import { TaskTable, type TaskRow } from "@/components/tasks/TaskTable";
 import { TaskFilters, emptyFilters, type FilterState } from "@/components/tasks/TaskFilters";
