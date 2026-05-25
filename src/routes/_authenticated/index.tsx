@@ -184,6 +184,8 @@ function Dashboard() {
           </p>
         </div>
 
+        <MorningBriefing projects={projects} tasks={tasks} firstName={firstName} />
+
         <section className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 mb-10">
           <StatCard icon={Clipboard} label="Active Projects" value={`${projects.length}`} accent="#c17f5a" />
           <StatCard icon={ListChecks} label="Open Tasks" value={`${openTasks.length}`} accent="#7a9e8a" />
