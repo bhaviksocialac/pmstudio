@@ -145,13 +145,32 @@ export function TaskTable({
     return true;
   };
 
-  const updateStatus = async (t: TaskRow, status: string) => {
-    const ok = await updateField(t, { status, done: status === "done" });
-    if (ok && t.project_id && (status === "done" || status === "material_delivered")) {
-      try {
-        const res = await cascade({ data: { taskId: t.id, projectId: t.project_id } });
-        if (res.unblocked) toast.success(`${res.unblocked} dependent task${res.unblocked === 1 ? "" : "s"} unblocked`);
-      } catch { /* swallow */ }
+  const updateStatus = (t: TaskRow, status: string) => {
+    if ((t.status ?? "not_started") === status) return;
+    setPendingStatus({ task: t, status });
+  };
+
+  const applyStatusChange = async (payload: StatusChangePayload) => {
+    if (!pendingStatus) return;
+    const { task: t, status } = pendingStatus;
+    try {
+      await changeTaskStatus({
+        taskId: t.id,
+        newStatus: status,
+        effectiveDate: payload.effectiveDate,
+        note: payload.note,
+      });
+      refresh();
+      if (t.project_id && (status === "done" || status === "material_delivered")) {
+        try {
+          const res = await cascade({ data: { taskId: t.id, projectId: t.project_id } });
+          if (res.unblocked) toast.success(`${res.unblocked} dependent task${res.unblocked === 1 ? "" : "s"} unblocked`);
+        } catch { /* swallow */ }
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to change status");
+    } finally {
+      setPendingStatus(null);
     }
   };
 
