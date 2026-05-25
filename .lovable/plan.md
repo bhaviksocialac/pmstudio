@@ -1,47 +1,44 @@
-# Task Audit Trail & Delay Attribution
+This is a large system. I'll ship it in 4 phases so each is testable before moving on. Reply `go` to start Phase 1, or `all` to run all phases back-to-back.
 
-This is a large system (5 interlocking features). Building it all in one turn would be shallow and buggy. I'll ship it in 4 sequenced phases, each independently usable and testable. Confirm the order, or tell me to start at phase 1.
+## Phase 1 — Morning Briefing card + Fasttrack Score (core shell)
 
----
+On the dashboard (`/`), add a charcoal card at the top:
+- "Good morning {first name}" in Cormorant Garamond + today's date
+- **Fasttrack Score** (top-right): 0–100, green/amber/red, week-over-week arrow
+- Three sections: **Do Today** (max 5), **Watch This Week** (max 3), **Order Now** (max 3)
+- Each item: one-line summary + one-tap action button
 
-## Phase 1 — Timestamp foundation + audit log (the backbone)
+Computed client-side from existing data (tasks, snags, vendor_deliveries, invoices, payment_requests, task_status_history). No new tables needed for v1.
 
-Everything else depends on this. Without it, nothing can be measured.
+Rules:
+- Do Today: approvals pending >3d (IFA stale), invoices due today, overdue snags, IFC not issued after approval >2d, payments due today
+- Watch This Week: idle-contractor risk (next task starts in ≤7d with undelivered material), vendor with prior delays + delivery this week, handover ≤7d with open snags
+- Order Now: tasks starting in ≤ (vendor lead time + buffer) without a placed PO
+- Fasttrack: weighted score from avg approval response, on-time deliveries, idle days, overdue payments
 
-**Database (new migration):**
-- Add columns to `tasks`: `assigned_at`, `response_at`, `started_at`, `completed_at` (`created_at`, `ifr_date`, `ifa_date`, `ifc_date`, `planned_end`, `actual_end` already exist).
-- New table `task_status_history`: `id`, `task_id`, `project_id`, `user_id`, `from_status`, `to_status`, `changed_at`, `effective_date` (the user-confirmed date), `changed_by_name`, `notes`. RLS owner-scoped.
-- Trigger on `tasks` UPDATE: when `status` changes, insert a history row and auto-stamp the matching column (`wip` → `started_at`, `done` → `completed_at` + `actual_end`, etc.). Designer-supplied `effective_date` overrides `now()`.
+Action buttons (Phase 1): open relevant existing flow (message composer, invoice form, vendor PO). Pre-filled drafts come in Phase 2.
 
-**UI:**
-- Wrap every status change (TaskTable inline, TaskEditSheet, AI bar) in a "When did this happen?" mini-prompt → Today / pick date. Default Today, one click to confirm.
-- Server fn `changeTaskStatus({ taskId, newStatus, effectiveDate, note })` that writes both the task and the history row.
+## Phase 2 — Action drafting + one-tap apply
+- AI-drafted follow-up messages (uses existing `task-narrative` / `ai-drafts` pipeline) shown in a small confirm sheet
+- "Create PO" pre-fills vendor + scope + quantity from the linked task
+- Parallel-work suggestions ("Start Now — No Blockers") appear in Do Today
 
-## Phase 2 — Task timeline view + AI duplicate detection
+## Phase 3 — Project Health row + Evening Summary
+- One card per active project under the briefing (completion %, days left, score, top risk, action)
+- 6pm evening card variant: today's tasks done, approvals received, delays, tomorrow's critical, "good work" vs "X pending"
+- Time-of-day toggle drives which card shows
 
-**Timeline panel** inside TaskEditSheet: vertical list of history rows with computed gaps ("7 days"), stages above the project average tinted amber.
-
-**Duplicate-aware AI bar:** before `interpretTaskUpdate` creates anything, it fetches candidate tasks matching {room, work_type, item keywords} and asks the model to pick "update existing" vs "create new" vs "ambiguous → ask". On update, it calls the same `changeTaskStatus` fn with today's date and returns a confirmation string ("Updated — previously Pending for 5 days").
-
-## Phase 3 — Delay attribution + Overview Delays section
-
-**Pure helper** `attributeDelay(task, history)` → returns `{ party: 'client'|'vendor'|'designer'|'contractor'|'external', days }` based on which stage's gap exceeded plan.
-
-**Overview tab — Delays card:** total delay days, per-party breakdown list, donut chart (recharts is already in the project). Auto-computes from tasks + history; no manual input.
-
-## Phase 4 — Accountability dashboard + notifications
-
-- Per-client / per-vendor / per-designer metric aggregator (server fn over `task_status_history`).
-- Studio-level insights card (only shown after 3+ projects): hard-coded thresholds vs industry benchmarks.
-- Dashboard reminders: scan tasks with `status='approval_pending' AND now() - status_changed_at > 5d` → toast/badge. Same for overdue vendor deliveries and IFC-not-issued.
+## Phase 4 — Learning + Weekly Report
+- Monday-morning weekly report card (last week vs this week + 1 insight)
+- After 3 completed projects, learn per-client approval avg, per-vendor delay avg, work-type duration; persist to a new `studio_insights` table and apply as buffers to new task estimates
+- "Based on your last N projects…" insight strip
 
 ---
 
-## What I'd build first if you say "go"
+Tech notes:
+- New file `src/components/dashboard/MorningBriefing.tsx` mounted at top of `src/routes/_authenticated/index.tsx`
+- New `src/lib/briefing.ts` (pure helpers, computes the 3 sections + score from already-cached query data)
+- Phase 4 adds one migration (`studio_insights`) and a `compute_fasttrack` SQL view for cross-project trends
+- No edge functions; AI drafting reuses existing `task-narrative.functions.ts`
 
-Phase 1 only, in this turn. It's the prerequisite for every other piece and is itself shippable (every status change becomes auditable, with the "when did this happen?" prompt). Phases 2–4 in subsequent turns.
-
-**Reply with:**
-- `go` — I start Phase 1 now.
-- `all at once` — I'll build all four but expect rough edges; you'll need to iterate.
-- Or pick a different starting phase.
+Reply `go` for Phase 1, `all` to run straight through, or call out changes.
