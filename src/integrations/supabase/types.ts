@@ -2031,7 +2031,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      change_task_status: {
+        Args: {
+          p_changed_by_name?: string
+          p_effective_date?: string
+          p_note?: string
+          p_status: string
+          p_task_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       ai_draft_kind:
