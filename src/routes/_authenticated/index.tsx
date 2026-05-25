@@ -174,15 +174,6 @@ function Dashboard() {
   return (
     <AppShell>
       <main className="px-4 md:px-8 py-8 md:py-10 max-w-[1400px] w-full pb-24 md:pb-10">
-        <div className="mb-10">
-          <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Dashboard</div>
-          <h1 className="text-4xl md:text-5xl font-display">{greeting()}, {firstName}.</h1>
-          <p className="text-muted-foreground mt-2 max-w-xl">
-            {projects.length === 0
-              ? "Your studio is set up. Create your first project to get started."
-              : `${projects.length} project${projects.length === 1 ? "" : "s"} in motion.`}
-          </p>
-        </div>
 
         <MorningBriefing projects={projects} tasks={tasks} firstName={firstName} />
 
