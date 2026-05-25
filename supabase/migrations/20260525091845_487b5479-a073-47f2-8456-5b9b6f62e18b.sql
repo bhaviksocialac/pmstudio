@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.tasks_audit_status_change() FROM PUBLIC, anon, authenticated;
