@@ -51,7 +51,12 @@ export function MorningBriefing({
     [tasks, invoicesQuery.data],
   );
 
-  const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  const now = new Date();
+  const today = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  const hour = now.getHours();
+  const partOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+  const greetingLabel = `Good ${partOfDay}`;
+  const sectionLabel = partOfDay === "morning" ? "Morning Briefing" : partOfDay === "afternoon" ? "Afternoon Briefing" : "Evening Briefing";
 
   return (
     <section
@@ -64,10 +69,10 @@ export function MorningBriefing({
       <div className="flex items-start justify-between gap-4 mb-5">
         <div>
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-[#c17f5a] mb-2">
-            <Sparkles className="h-3.5 w-3.5" /> Morning Briefing
+            <Sparkles className="h-3.5 w-3.5" /> {sectionLabel}
           </div>
           <h2 className="font-display text-3xl md:text-4xl text-[#f5ecdf]" style={{ fontFamily: "var(--font-display, 'Cormorant Garamond', serif)" }}>
-            Good morning, {firstName}.
+            {greetingLabel}, {firstName}.
           </h2>
           <div className="text-xs text-[#c9b8a4] mt-1">{today}</div>
         </div>
@@ -76,7 +81,7 @@ export function MorningBriefing({
 
       <div className="h-px bg-[#3a302a] mb-5" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <Section
           title="Do Today"
           accent="#c4685a"

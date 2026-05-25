@@ -363,6 +363,36 @@ export type Database = {
         }
         Relationships: []
       }
+      document_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          path: string
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          path: string
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          path?: string
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_log: {
         Row: {
           client_id: string | null
@@ -944,6 +974,7 @@ export type Database = {
           created_at: string
           file_size: number | null
           file_url: string
+          folder_path: string
           id: string
           mime_type: string | null
           name: string
@@ -958,6 +989,7 @@ export type Database = {
           created_at?: string
           file_size?: number | null
           file_url: string
+          folder_path?: string
           id?: string
           mime_type?: string | null
           name: string
@@ -972,6 +1004,7 @@ export type Database = {
           created_at?: string
           file_size?: number | null
           file_url?: string
+          folder_path?: string
           id?: string
           mime_type?: string | null
           name?: string
