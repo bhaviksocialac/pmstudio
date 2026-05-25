@@ -190,21 +190,93 @@ export type Database = {
         }
         Relationships: []
       }
+      client_contacts: {
+        Row: {
+          client_id: string
+          created_at: string
+          designation: string | null
+          email: string | null
+          id: string
+          name: string
+          order_index: number
+          phone: string | null
+          tag: string
+          updated_at: string
+          user_id: string
+          whatsapp: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          designation?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          order_index?: number
+          phone?: string | null
+          tag?: string
+          updated_at?: string
+          user_id: string
+          whatsapp?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          designation?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          order_index?: number
+          phone?: string | null
+          tag?: string
+          updated_at?: string
+          user_id?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_contacts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
           city: string | null
+          client_type: string
+          communication_pref: string
+          contact_person: string | null
           country: string | null
           created_at: string
+          currency_code: string
+          designation: string | null
           email: string | null
           flat_number: string | null
+          gst: string | null
           id: string
+          language_pref: string
           latitude: number | null
           longitude: number | null
           name: string
           notes: string | null
+          pan: string | null
           phone: string | null
+          phone_country_code: string
           pincode: string | null
+          referred_by: string | null
+          relationship: string | null
+          rera: string | null
+          site_city: string | null
+          site_country: string | null
+          site_flat_number: string | null
+          site_pincode: string | null
+          site_same_as_registered: boolean
+          site_state: string | null
+          site_street: string | null
           state: string | null
           street: string | null
           updated_at: string
@@ -214,17 +286,36 @@ export type Database = {
         Insert: {
           address?: string | null
           city?: string | null
+          client_type?: string
+          communication_pref?: string
+          contact_person?: string | null
           country?: string | null
           created_at?: string
+          currency_code?: string
+          designation?: string | null
           email?: string | null
           flat_number?: string | null
+          gst?: string | null
           id?: string
+          language_pref?: string
           latitude?: number | null
           longitude?: number | null
           name: string
           notes?: string | null
+          pan?: string | null
           phone?: string | null
+          phone_country_code?: string
           pincode?: string | null
+          referred_by?: string | null
+          relationship?: string | null
+          rera?: string | null
+          site_city?: string | null
+          site_country?: string | null
+          site_flat_number?: string | null
+          site_pincode?: string | null
+          site_same_as_registered?: boolean
+          site_state?: string | null
+          site_street?: string | null
           state?: string | null
           street?: string | null
           updated_at?: string
@@ -234,17 +325,36 @@ export type Database = {
         Update: {
           address?: string | null
           city?: string | null
+          client_type?: string
+          communication_pref?: string
+          contact_person?: string | null
           country?: string | null
           created_at?: string
+          currency_code?: string
+          designation?: string | null
           email?: string | null
           flat_number?: string | null
+          gst?: string | null
           id?: string
+          language_pref?: string
           latitude?: number | null
           longitude?: number | null
           name?: string
           notes?: string | null
+          pan?: string | null
           phone?: string | null
+          phone_country_code?: string
           pincode?: string | null
+          referred_by?: string | null
+          relationship?: string | null
+          rera?: string | null
+          site_city?: string | null
+          site_country?: string | null
+          site_flat_number?: string | null
+          site_pincode?: string | null
+          site_same_as_registered?: boolean
+          site_state?: string | null
+          site_street?: string | null
           state?: string | null
           street?: string | null
           updated_at?: string
