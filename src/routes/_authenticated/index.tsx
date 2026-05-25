@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth";
 import { PendingApprovals } from "@/components/PendingApprovals";
 import { PhotoStaging } from "@/components/PhotoStaging";
 import { TodayFocus } from "@/components/tasks/TodayFocus";
+import { MorningBriefing } from "@/components/dashboard/MorningBriefing";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
