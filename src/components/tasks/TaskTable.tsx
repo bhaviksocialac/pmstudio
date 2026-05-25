@@ -555,6 +555,15 @@ export function TaskTable({
         rooms={rooms}
         onAddRoom={onAddRoom ?? (() => {})}
       />
+
+      <StatusChangeDialog
+        open={!!pendingStatus}
+        fromStatus={pendingStatus?.task.status ?? null}
+        toStatus={pendingStatus?.status ?? ""}
+        taskTitle={pendingStatus?.task.title ?? ""}
+        onCancel={() => setPendingStatus(null)}
+        onConfirm={applyStatusChange}
+      />
     </div>
   );
 }
