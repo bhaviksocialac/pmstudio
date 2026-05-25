@@ -91,6 +91,7 @@ export function TaskTable({
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editSheet, setEditSheet] = useState<TaskRow | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<{ task: TaskRow; status: string } | null>(null);
   const cascade = useServerFn(cascadeDependents);
   const splitFn = useServerFn(splitTaskPerRoom);
 
