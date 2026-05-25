@@ -1456,6 +1456,48 @@ export type Database = {
         }
         Relationships: []
       }
+      task_status_history: {
+        Row: {
+          changed_at: string
+          changed_by_name: string | null
+          created_at: string
+          effective_date: string
+          from_status: string | null
+          id: string
+          note: string | null
+          project_id: string | null
+          task_id: string
+          to_status: string
+          user_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by_name?: string | null
+          created_at?: string
+          effective_date?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          project_id?: string | null
+          task_id: string
+          to_status: string
+          user_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by_name?: string | null
+          created_at?: string
+          effective_date?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          project_id?: string | null
+          task_id?: string
+          to_status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           action_label: string | null
@@ -1465,8 +1507,10 @@ export type Database = {
           agency: string | null
           area: string | null
           areas: Json
+          assigned_at: string | null
           assignee: string | null
           attachments: Json
+          completed_at: string | null
           completion_pct: number
           contractor: string | null
           created_at: string
@@ -1488,8 +1532,10 @@ export type Database = {
           planned_start: string | null
           priority: string
           project_id: string | null
+          response_at: string | null
           room: string | null
           start_date: string | null
+          started_at: string | null
           status: string
           title: string
           updated_at: string
@@ -1506,8 +1552,10 @@ export type Database = {
           agency?: string | null
           area?: string | null
           areas?: Json
+          assigned_at?: string | null
           assignee?: string | null
           attachments?: Json
+          completed_at?: string | null
           completion_pct?: number
           contractor?: string | null
           created_at?: string
@@ -1529,8 +1577,10 @@ export type Database = {
           planned_start?: string | null
           priority?: string
           project_id?: string | null
+          response_at?: string | null
           room?: string | null
           start_date?: string | null
+          started_at?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -1547,8 +1597,10 @@ export type Database = {
           agency?: string | null
           area?: string | null
           areas?: Json
+          assigned_at?: string | null
           assignee?: string | null
           attachments?: Json
+          completed_at?: string | null
           completion_pct?: number
           contractor?: string | null
           created_at?: string
@@ -1570,8 +1622,10 @@ export type Database = {
           planned_start?: string | null
           priority?: string
           project_id?: string | null
+          response_at?: string | null
           room?: string | null
           start_date?: string | null
+          started_at?: string | null
           status?: string
           title?: string
           updated_at?: string
