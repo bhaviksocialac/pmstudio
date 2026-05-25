@@ -15,6 +15,8 @@ import {
   AgencyPicker, AreaPicker, DateField, DependencyPicker, PillPicker, WorkTypePicker,
 } from "./TaskInlineEditors";
 import { TaskEditSheet } from "./TaskEditSheet";
+import { StatusChangeDialog, type StatusChangePayload } from "./StatusChangeDialog";
+import { changeTaskStatus } from "@/lib/task-status";
 
 export type TaskRow = {
   id: string;
