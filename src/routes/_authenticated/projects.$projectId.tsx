@@ -26,7 +26,7 @@ import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
 import { ProjectActivityFeed } from "@/components/ProjectActivityFeed";
 import { RoomProgressGrid } from "@/components/tasks/RoomProgressGrid";
 import { ProjectTasksTab } from "@/components/tasks/ProjectTasksTab";
-import { BoqUploadButton } from "@/components/BoqUploadButton";
+
 import { SnagsTab } from "@/components/SnagsTab";
 import { ChangeOrdersTab } from "@/components/ChangeOrdersTab";
 import { AttendanceTab } from "@/components/AttendanceTab";
