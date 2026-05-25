@@ -28,6 +28,7 @@ function SettingsPage() {
           <BillingPanel />
           <TeamMembersSettings />
           <WhatsAppGroupsSettings />
+          <ClearTestDataPanel />
         </div>
       </main>
     </AppShell>
