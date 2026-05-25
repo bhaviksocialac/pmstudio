@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth";
 import { PendingApprovals } from "@/components/PendingApprovals";
 import { PhotoStaging } from "@/components/PhotoStaging";
 import { TodayFocus } from "@/components/tasks/TodayFocus";
+import { MorningBriefing } from "@/components/dashboard/MorningBriefing";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -182,6 +183,8 @@ function Dashboard() {
               : `${projects.length} project${projects.length === 1 ? "" : "s"} in motion.`}
           </p>
         </div>
+
+        <MorningBriefing projects={projects} tasks={tasks} firstName={firstName} />
 
         <section className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 mb-10">
           <StatCard icon={Clipboard} label="Active Projects" value={`${projects.length}`} accent="#c17f5a" />
