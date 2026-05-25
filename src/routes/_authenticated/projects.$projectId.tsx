@@ -32,6 +32,7 @@ import { ChangeOrdersTab } from "@/components/ChangeOrdersTab";
 import { AttendanceTab } from "@/components/AttendanceTab";
 import { MilestonesTab } from "@/components/milestones/MilestonesTab";
 import { ProjectVendorsTab } from "@/components/vendors/ProjectVendorsTab";
+import { DocumentsTab } from "@/components/documents/DocumentsTab";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
