@@ -383,25 +383,20 @@ function OverviewTab({ project, onGoTo }: { project: Project; onGoTo: (t: Tab) =
           </div>
         </Card>
 
-        <Card className="p-6">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-3">Quick Actions</div>
-          <div className="grid grid-cols-2 gap-2">
-            <QA icon={Upload} label="Upload Photos" onClick={() => openModal("upload-photos", { projectId: project.id })} />
-            <QA icon={Plus} label="Add Task" onClick={() => setAddTaskFor(project.phase)} />
-            <QA icon={FileText} label="Send Invoice" onClick={() => openModal("new-invoice")} />
-            <QA icon={Plus} label="Add Vendor" onClick={() => onGoTo("vendors")} />
-          </div>
-        </Card>
-
-        <Card className="p-6 bg-[#1a1612] text-white border-[#1a1612]">
-          <div className="text-[10px] uppercase tracking-[0.18em] text-[#c17f5a] mb-2">Client Contact</div>
-          <div className="font-display text-xl">{project.client}</div>
-          <div className="text-xs text-white/60 font-mono mt-1">{project.location}</div>
-          <div className="grid grid-cols-2 gap-2 mt-4">
-            <button onClick={() => toast("Calling…")} className="h-9 rounded-[6px] bg-white/10 hover:bg-white/15 text-xs font-medium inline-flex items-center justify-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Call</button>
-            <button onClick={() => toast("Email opened")} className="h-9 rounded-[6px] bg-[#c17f5a] hover:brightness-95 text-xs font-medium inline-flex items-center justify-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Email</button>
-          </div>
-        </Card>
+        <ShareProjectCard
+          project={{
+            id: project.id,
+            name: project.name,
+            type: labelForProjectType(project.type),
+            phase: project.phase,
+            flatNumber: project.flatNumber ?? null,
+            street: project.street ?? null,
+            city: project.city ?? null,
+            pincode: project.pincode ?? null,
+            location: project.location ?? null,
+          }}
+          client={clientData}
+        />
 
         <RoomProgressGrid projectId={project.id} />
         <ProjectProgressPanels projectId={project.id} />
