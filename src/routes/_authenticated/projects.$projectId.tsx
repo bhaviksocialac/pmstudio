@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Send, Check, Pencil,
+  ArrowLeft, Send, Check, Pencil, Upload, Plus, Image as ImageIcon, Loader2,
 } from "lucide-react";
 import { ProjectProgressPanels } from "@/components/tasks/ProjectProgressPanels";
 import { computeRollup, EXECUTION_PHASE_GROUPS, isDone, overallProjectPct, phaseOfTask, type ExecutionPhaseGroup, type GroupRollup, type TaskLite } from "@/lib/phase-sync";
