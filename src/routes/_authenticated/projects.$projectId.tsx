@@ -486,14 +486,6 @@ function AutoPhaseCompleter({
   return null;
 }
 
-function QA({ icon: Icon, label, onClick }: { icon: React.ComponentType<{ className?: string }>; label: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="h-20 rounded-[10px] border border-border hover:border-[#c17f5a] hover:bg-[#fff7eb] flex flex-col items-center justify-center gap-1.5 text-xs font-medium transition-colors">
-      <Icon className="h-4 w-4 text-[#c17f5a]" />
-      {label}
-    </button>
-  );
-}
 
 /* ---------------- Timeline (Gantt) ---------------- */
 type TimelineBar = {
