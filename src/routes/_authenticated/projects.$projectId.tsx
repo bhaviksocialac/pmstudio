@@ -271,6 +271,23 @@ function OverviewTab({ project, onGoTo }: { project: Project; onGoTo: (t: Tab) =
   const rollupByPhase = useMemo(() => new Map(overviewRollups.map((r) => [r.group, r])), [overviewRollups]);
   const taskDrivenOverall = overallProjectPct(overviewTasks);
 
+  const { data: clientRow } = useQuery({
+    queryKey: ["project-client", project.id, project.clientId],
+    queryFn: async () => {
+      if (!project.clientId) return null;
+      const { data } = await supabase
+        .from("clients")
+        .select("name,phone,email")
+        .eq("id", project.clientId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!project.clientId,
+  });
+  const clientData = clientRow
+    ? { name: clientRow.name ?? "", phone: clientRow.phone ?? null, email: clientRow.email ?? null }
+    : null;
+
   const signOffPhase = async (phase: ExecutionPhaseGroup) => {
     const today = new Date().toISOString().slice(0, 10);
     const { error } = await supabase
