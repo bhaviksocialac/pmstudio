@@ -2,8 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Send, Check, Phone, Mail, Plus, Upload, Image as ImageIcon,
-  FileText, MessageCircle, Loader2, Pencil,
+  ArrowLeft, Send, Check, Pencil, Upload, Plus, Image as ImageIcon, Loader2,
 } from "lucide-react";
 import { ProjectProgressPanels } from "@/components/tasks/ProjectProgressPanels";
 import { computeRollup, EXECUTION_PHASE_GROUPS, isDone, overallProjectPct, phaseOfTask, type ExecutionPhaseGroup, type GroupRollup, type TaskLite } from "@/lib/phase-sync";
@@ -18,7 +17,7 @@ import { toast } from "sonner";
 import { SharePortalButton } from "@/components/SharePortalButton";
 import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { AddTaskPanel } from "@/components/AddTaskPanel";
-
+import { ShareProjectCard } from "@/components/ShareProjectCard";
 
 import { SiteReportsList } from "@/components/SiteReportsList";
 import { AINarrativeBar } from "@/components/tasks/AINarrativeBar";
@@ -48,7 +47,12 @@ function adaptProject(row: DbProject): Project {
     id: row.id,
     name: row.name,
     client: "—",
+    clientId: row.client_id ?? null,
     location: row.location ?? "",
+    flatNumber: row.flat_number ?? null,
+    street: row.street ?? null,
+    city: row.city ?? null,
+    pincode: row.pincode ?? null,
     phase: (row.phase as Project["phase"]) ?? "Survey",
     completion: row.completion ?? 0,
     spent: Number(row.spent ?? 0),
@@ -267,6 +271,23 @@ function OverviewTab({ project, onGoTo }: { project: Project; onGoTo: (t: Tab) =
   const rollupByPhase = useMemo(() => new Map(overviewRollups.map((r) => [r.group, r])), [overviewRollups]);
   const taskDrivenOverall = overallProjectPct(overviewTasks);
 
+  const { data: clientRow } = useQuery({
+    queryKey: ["project-client", project.id, project.clientId],
+    queryFn: async () => {
+      if (!project.clientId) return null;
+      const { data } = await supabase
+        .from("clients")
+        .select("name,phone,email")
+        .eq("id", project.clientId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!project.clientId,
+  });
+  const clientData = clientRow
+    ? { name: clientRow.name ?? "", phone: clientRow.phone ?? null, email: clientRow.email ?? null }
+    : null;
+
   const signOffPhase = async (phase: ExecutionPhaseGroup) => {
     const today = new Date().toISOString().slice(0, 10);
     const { error } = await supabase
@@ -379,25 +400,20 @@ function OverviewTab({ project, onGoTo }: { project: Project; onGoTo: (t: Tab) =
           </div>
         </Card>
 
-        <Card className="p-6">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-3">Quick Actions</div>
-          <div className="grid grid-cols-2 gap-2">
-            <QA icon={Upload} label="Upload Photos" onClick={() => openModal("upload-photos", { projectId: project.id })} />
-            <QA icon={Plus} label="Add Task" onClick={() => setAddTaskFor(project.phase)} />
-            <QA icon={FileText} label="Send Invoice" onClick={() => openModal("new-invoice")} />
-            <QA icon={Plus} label="Add Vendor" onClick={() => onGoTo("vendors")} />
-          </div>
-        </Card>
-
-        <Card className="p-6 bg-[#1a1612] text-white border-[#1a1612]">
-          <div className="text-[10px] uppercase tracking-[0.18em] text-[#c17f5a] mb-2">Client Contact</div>
-          <div className="font-display text-xl">{project.client}</div>
-          <div className="text-xs text-white/60 font-mono mt-1">{project.location}</div>
-          <div className="grid grid-cols-2 gap-2 mt-4">
-            <button onClick={() => toast("Calling…")} className="h-9 rounded-[6px] bg-white/10 hover:bg-white/15 text-xs font-medium inline-flex items-center justify-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Call</button>
-            <button onClick={() => toast("Email opened")} className="h-9 rounded-[6px] bg-[#c17f5a] hover:brightness-95 text-xs font-medium inline-flex items-center justify-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Email</button>
-          </div>
-        </Card>
+        <ShareProjectCard
+          project={{
+            id: project.id,
+            name: project.name,
+            type: labelForProjectType(project.type),
+            phase: project.phase,
+            flatNumber: project.flatNumber ?? null,
+            street: project.street ?? null,
+            city: project.city ?? null,
+            pincode: project.pincode ?? null,
+            location: project.location ?? null,
+          }}
+          client={clientData}
+        />
 
         <RoomProgressGrid projectId={project.id} />
         <ProjectProgressPanels projectId={project.id} />
@@ -470,14 +486,6 @@ function AutoPhaseCompleter({
   return null;
 }
 
-function QA({ icon: Icon, label, onClick }: { icon: React.ComponentType<{ className?: string }>; label: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="h-20 rounded-[10px] border border-border hover:border-[#c17f5a] hover:bg-[#fff7eb] flex flex-col items-center justify-center gap-1.5 text-xs font-medium transition-colors">
-      <Icon className="h-4 w-4 text-[#c17f5a]" />
-      {label}
-    </button>
-  );
-}
 
 /* ---------------- Timeline (Gantt) ---------------- */
 type TimelineBar = {

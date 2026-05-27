@@ -8,7 +8,12 @@ export type Project = {
   id: string;
   name: string;
   client: string;
+  clientId?: string | null;
   location: string;
+  flatNumber?: string | null;
+  street?: string | null;
+  city?: string | null;
+  pincode?: string | null;
   phase: Phase;
   completion: number;
   spent: number;
