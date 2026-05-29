@@ -100,7 +100,8 @@ function Sidebar({ pathname }: { pathname: string }) {
       </div>
       <nav className="px-3 space-y-1 flex-1">
         {navItems.map((n) => {
-          const active = pathname === n.to || pathname.startsWith(n.to + "/");
+          const p = pathname as string;
+          const active = p === n.to || p.startsWith(n.to + "/");
           return (
             <Link
               key={n.label}
@@ -312,7 +313,8 @@ function MobileBottomNav({ pathname }: { pathname: string }) {
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-sidebar border-t border-sidebar-border px-2 py-2 flex justify-around">
       {[navItems[0], navItems[1], navItems[2], navItems[5], navItems[6]].map((n) => {
-        const active = pathname === n.to || pathname.startsWith(n.to + "/");
+        const p = pathname as string;
+        const active = p === n.to || p.startsWith(n.to + "/");
         return (
           <Link key={n.label} to={n.to}
             className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-[10px] text-[10px] ${active ? "text-[#c17f5a]" : "text-white/60"}`}>
