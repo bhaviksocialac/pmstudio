@@ -17,7 +17,7 @@ import { PhotoStaging } from "@/components/PhotoStaging";
 import { TodayFocus } from "@/components/tasks/TodayFocus";
 import { MorningBriefing } from "@/components/dashboard/MorningBriefing";
 
-export const Route = createFileRoute("/_authenticated/")({
+export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
       { title: "Dashboard — PMStudio" },

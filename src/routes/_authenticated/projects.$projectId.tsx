@@ -102,7 +102,7 @@ function ProjectDetail() {
           <div className="text-center max-w-md">
             <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-3">404</div>
             <h1 className="font-display text-4xl mb-3">Project not found</h1>
-            <Link to="/" className="inline-flex items-center gap-2 h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
+            <Link to="/dashboard" className="inline-flex items-center gap-2 h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
               <ArrowLeft className="h-4 w-4" /> Back to Dashboard
             </Link>
           </div>
@@ -141,7 +141,7 @@ function ProjectDetailView({ project }: { project: Project }) {
   return (
     <AppShell>
       <main className="px-4 md:px-8 py-6 md:py-8 max-w-[1400px] w-full pb-24 md:pb-10">
-        <Link to="/" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground mb-6 font-mono uppercase tracking-wider">
+        <Link to="/dashboard" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground mb-6 font-mono uppercase tracking-wider">
           <ArrowLeft className="h-3.5 w-3.5" /> Dashboard
         </Link>
 

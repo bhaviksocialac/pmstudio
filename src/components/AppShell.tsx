@@ -19,7 +19,7 @@ import { NewProjectWizard } from "@/components/NewProjectWizard";
 import { AICopilot } from "@/components/AICopilot";
 
 const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, to: "/" as const },
+  { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" as const },
   { label: "Projects", icon: FolderKanban, to: "/projects" as const },
   
   { label: "Clients", icon: Users, to: "/clients" as const },
@@ -93,14 +93,14 @@ function Sidebar({ pathname }: { pathname: string }) {
   return (
     <aside className="hidden md:flex w-64 shrink-0 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border sticky top-0 h-screen">
       <div className="px-6 pt-8 pb-10">
-        <Link to="/" className="font-display text-3xl leading-none">
+        <Link to="/dashboard" className="font-display text-3xl leading-none">
           <span className="text-white">PM</span><span className="text-[#c17f5a]">Studio</span>
         </Link>
         <div className="text-[10px] uppercase tracking-[0.22em] text-white/35 mt-2">Design Command Centre</div>
       </div>
       <nav className="px-3 space-y-1 flex-1">
         {navItems.map((n) => {
-          const active = n.to === "/" ? pathname === "/" : pathname.startsWith(n.to);
+          const active = pathname === n.to || pathname.startsWith(n.to + "/");
           return (
             <Link
               key={n.label}
@@ -312,7 +312,7 @@ function MobileBottomNav({ pathname }: { pathname: string }) {
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-sidebar border-t border-sidebar-border px-2 py-2 flex justify-around">
       {[navItems[0], navItems[1], navItems[2], navItems[5], navItems[6]].map((n) => {
-        const active = n.to === "/" ? pathname === "/" : pathname.startsWith(n.to);
+        const active = pathname === n.to || pathname.startsWith(n.to + "/");
         return (
           <Link key={n.label} to={n.to}
             className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-[10px] text-[10px] ${active ? "text-[#c17f5a]" : "text-white/60"}`}>
