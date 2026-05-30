@@ -222,11 +222,39 @@
 }
 .link-underline:hover::after { transform: scaleX(1); transform-origin: left; }
 
+/* Workflow line draw */
+@keyframes draw-line { to { stroke-dashoffset: 0; } }
+.draw-line .line-path {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: draw-line 1.8s ease-out forwards;
+}
+@keyframes step-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.step-pop { opacity: 0; animation: step-pop 500ms ease-out forwards; }
+
+/* Slide-in for alternating features */
+@keyframes slide-in-l {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slide-in-r {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.slide-in-l { opacity: 0; animation: slide-in-l 600ms ease-out forwards; }
+.slide-in-r { opacity: 0; animation: slide-in-r 600ms ease-out forwards; }
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up, .pulse-fast, .pulse-slow, .float-y, .pulse-glow,
-  .drift-a, .drift-b, .float-soft, .float-soft-2, .word-rise { animation: none !important; opacity: 1 !important; }
+  .drift-a, .drift-b, .float-soft, .float-soft-2, .word-rise,
+  .step-pop, .slide-in-l, .slide-in-r { animation: none !important; opacity: 1 !important; transform: none !important; }
   .btn-premium, .card-lift { transition: none !important; }
   .btn-premium:hover, .card-lift:hover { transform: none !important; }
   .btn-premium::after { display: none; }
+  .draw-line .line-path { stroke-dashoffset: 0 !important; animation: none !important; }
 }
+
 
