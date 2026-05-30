@@ -148,9 +148,10 @@ function Hero() {
             <img
               src={heroImage}
               alt="PMStudio dashboard on a laptop"
-              className="relative rounded-xl shadow-2xl w-full"
+              className="relative rounded-xl shadow-2xl w-full float-y"
               loading="eager"
             />
+
           </div>
         </div>
       </div>
