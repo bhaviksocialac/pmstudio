@@ -78,7 +78,7 @@ function Nav() {
             to="/signup"
             className="inline-flex items-center h-10 px-5 rounded-md bg-[#c17f5a] text-white font-medium hover:bg-[#a86a48] transition shadow-sm"
           >
-            Start Free
+            Get Started
           </Link>
         </div>
         <button className="md:hidden p-2" onClick={() => setOpen((o) => !o)} aria-label="Menu">
@@ -93,7 +93,7 @@ function Nav() {
             </a>
           ))}
           <Link to="/signup" className="block w-full text-center h-10 leading-10 rounded-md bg-[#c17f5a] text-white font-medium">
-            Start Free
+            Get Started
           </Link>
         </div>
       )}
