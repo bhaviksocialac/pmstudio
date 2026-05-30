@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
+import { PLANS, formatINR } from "@/lib/plans";
 
 const emailSchema = z.string().trim().email("Enter a valid email").max(255);
 const passwordSchema = z.string().min(8, "Password must be at least 8 characters").max(128);
@@ -13,8 +14,10 @@ type Mode = "login" | "signup";
 
 export function AuthScreen({ mode }: { mode: Mode }) {
   const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as { redirect?: string };
-  const redirect = search.redirect || "/";
+  const search = useSearch({ strict: false }) as { redirect?: string; plan?: string };
+  const redirect = search.redirect || (mode === "signup" ? "/dashboard" : "/");
+  const selectedPlan = mode === "signup" ? PLANS.find((p) => p.key === search.plan) : undefined;
+
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
