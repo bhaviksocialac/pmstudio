@@ -335,7 +335,7 @@ function HowItWorks() {
 }
 
 /* -------------------- PRICING -------------------- */
-import { PLANS, FEATURE_ROWS, ADDONS, priceFor, formatINR, type BillingCycle } from "@/lib/plans";
+
 
 function Pricing() {
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
