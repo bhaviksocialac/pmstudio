@@ -731,12 +731,12 @@ function Footer() {
           PMStudio
         </div>
         <div className="flex items-center gap-6">
-          <a href="#" className="hover:text-[#c17f5a] transition">Privacy</a>
-          <a href="#" className="hover:text-[#c17f5a] transition">Terms</a>
+          <Link to="/privacy" className="hover:text-[#c17f5a] transition">Privacy</Link>
+          <Link to="/terms" className="hover:text-[#c17f5a] transition">Terms</Link>
           <a href="#waitlist" className="hover:text-[#c17f5a] transition">Contact</a>
         </div>
         <div className="flex items-center gap-1.5">
-          Made with <Heart className="h-3.5 w-3.5 fill-[#c17f5a] text-[#c17f5a]" /> in Mumbai · © 2026
+          Made with <Heart className="h-3.5 w-3.5 fill-[#c17f5a] text-[#c17f5a]" /> in India · © 2026
         </div>
       </div>
     </footer>
