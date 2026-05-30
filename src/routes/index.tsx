@@ -126,7 +126,7 @@ type DemoTask = {
 
 const DEMO_TASKS: DemoTask[] = [
   { desc: "Tile delivery", agency: "Ramesh", status: "Material Delivered", statusColor: "#2f4a3d", statusBg: "#cfe3d6", room: "Living Room", date: "19 Jan" },
-  { desc: "Flooring started", agency: "Jangir", status: "WIP", statusColor: "#7a4a32", statusBg: "#f1d9c6", room: "Living Room", date: "19 Jan" },
+  { desc: "Flooring started", agency: "Civil", status: "WIP", statusColor: "#7a4a32", statusBg: "#f1d9c6", room: "Living Room", date: "19 Jan" },
   { desc: "Wardrobe veneer approval", agency: "Client", status: "Approved", statusColor: "#2f4a3d", statusBg: "#cfe3d6", room: "Master Bedroom", date: "Today" },
   { desc: "Electrical conduit", agency: "Electrician", status: "Blocked", statusColor: "#8a2a1f", statusBg: "#f3d2cd", room: "Mandir", date: "Pending" },
 ];
