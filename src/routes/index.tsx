@@ -732,6 +732,7 @@ function Pricing() {
                   </ul>
                   <Link
                     to="/signup"
+                    search={{ plan: p.key, redirect: "/dashboard" }}
                     className={`text-center h-12 inline-flex items-center justify-center rounded-md font-medium btn-premium ${
                       p.highlight
                         ? "bg-[#c17f5a] text-white"
@@ -740,6 +741,7 @@ function Pricing() {
                   >
                     {p.cta}
                   </Link>
+
                 </div>
               </Reveal>
             );

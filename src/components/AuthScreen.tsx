@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
+import { PLANS, formatINR } from "@/lib/plans";
 
 const emailSchema = z.string().trim().email("Enter a valid email").max(255);
 const passwordSchema = z.string().min(8, "Password must be at least 8 characters").max(128);
@@ -13,8 +14,10 @@ type Mode = "login" | "signup";
 
 export function AuthScreen({ mode }: { mode: Mode }) {
   const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as { redirect?: string };
-  const redirect = search.redirect || "/";
+  const search = useSearch({ strict: false }) as { redirect?: string; plan?: string };
+  const redirect = search.redirect || (mode === "signup" ? "/dashboard" : "/");
+  const selectedPlan = mode === "signup" ? PLANS.find((p) => p.key === search.plan) : undefined;
+
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -120,6 +123,15 @@ export function AuthScreen({ mode }: { mode: Mode }) {
           <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-3">
             {mode === "login" ? "Welcome back" : "Get started"}
           </div>
+          {selectedPlan && (
+            <div className="mb-4 rounded-[10px] border border-[#c17f5a]/30 bg-[#c17f5a]/10 px-4 py-3">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-[#c17f5a] font-medium">Selected plan</div>
+              <div className="mt-1 text-sm text-foreground">
+                You are signing up for <span className="font-semibold">{selectedPlan.name}</span> — {formatINR(selectedPlan.monthly)}/month
+              </div>
+            </div>
+          )}
+
           <h2 className="font-display text-4xl">
             {mode === "login" ? "Sign in to your studio" : "Create your studio"}
           </h2>
