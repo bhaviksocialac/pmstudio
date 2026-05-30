@@ -28,22 +28,24 @@ async function rzpFetch(path: string, init: RequestInit = {}) {
 
 // ============ PLAN definitions ============
 const PLANS = {
-  solo: { amountPaise: 199900, label: "Solo Plan" },
-  studio: { amountPaise: 499900, label: "Studio Plan" },
+  freelancer:   { monthly: 29900,   yearly: null,     label: "Freelancer" },
+  starter:      { monthly: 199900,  yearly: 1999900,  label: "Studio Starter" },
+  pro:          { monthly: 499900,  yearly: 4999900,  label: "Studio Pro" },
+  design_house: { monthly: 799900,  yearly: 7999900,  label: "Design House" },
 } as const;
 type PlanKey = keyof typeof PLANS;
+type Cycle = "monthly" | "yearly";
 
-async function ensurePlan(plan: PlanKey): Promise<string> {
-  // Create plan on-the-fly (idempotent enough for test mode; cache id in env for live)
-  const envKey = plan === "solo" ? process.env.RAZORPAY_PLAN_ID_SOLO : process.env.RAZORPAY_PLAN_ID_STUDIO;
-  if (envKey) return envKey;
+async function ensurePlan(plan: PlanKey, cycle: Cycle): Promise<string> {
   const p = PLANS[plan];
+  const amount = cycle === "yearly" ? p.yearly : p.monthly;
+  if (!amount) throw new Error(`${p.label} has no ${cycle} option`);
   const created = await rzpFetch("/plans", {
     method: "POST",
     body: JSON.stringify({
-      period: "monthly",
+      period: cycle === "yearly" ? "yearly" : "monthly",
       interval: 1,
-      item: { name: p.label, amount: p.amountPaise, currency: "INR" },
+      item: { name: `${p.label} (${cycle})`, amount, currency: "INR" },
     }),
   });
   return created.id as string;
@@ -52,17 +54,22 @@ async function ensurePlan(plan: PlanKey): Promise<string> {
 // ============ 1. SUBSCRIPTIONS ============
 export const createSubscription = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ plan: z.enum(["solo", "studio"]) }).parse(input))
+  .inputValidator((input) =>
+    z.object({
+      plan: z.enum(["freelancer", "starter", "pro", "design_house"]),
+      cycle: z.enum(["monthly", "yearly"]).default("monthly"),
+    }).parse(input)
+  )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const planId = await ensurePlan(data.plan);
+    const planId = await ensurePlan(data.plan as PlanKey, data.cycle);
     const sub = await rzpFetch("/subscriptions", {
       method: "POST",
       body: JSON.stringify({
         plan_id: planId,
-        total_count: 12,
+        total_count: data.cycle === "yearly" ? 5 : 12,
         customer_notify: 1,
-        notes: { user_id: userId, plan: data.plan },
+        notes: { user_id: userId, plan: data.plan, cycle: data.cycle },
       }),
     });
     const { error } = await supabase.from("subscriptions").insert({
@@ -80,6 +87,7 @@ export const createSubscription = createServerFn({ method: "POST" })
       keyId: process.env.RAZORPAY_KEY_ID!,
     };
   });
+
 
 // ============ 2. INVOICE PAY-NOW ORDER ============
 export const createInvoiceOrder = createServerFn({ method: "POST" })
@@ -117,13 +125,18 @@ export const createInvoiceOrder = createServerFn({ method: "POST" })
 
 // ============ 3. ONE-TIME ADD-ON ORDER ============
 const ADDONS = {
-  legal_templates: { amountPaise: 299900, label: "Legal Templates Pack" },
+  extra_project:   { amountPaise: 49900,  label: "Extra project slot" },
+  extra_member:    { amountPaise: 29900,  label: "Extra team member" },
+  legal_templates: { amountPaise: 299900, label: "Legal contract templates" },
+  portfolio_site:  { amountPaise: 99900,  label: "Portfolio website" },
 } as const;
 type AddonKey = keyof typeof ADDONS;
 
 export const createAddonOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ item: z.enum(["legal_templates"]) }).parse(input))
+  .inputValidator((input) => z.object({
+    item: z.enum(["extra_project", "extra_member", "legal_templates", "portfolio_site"]),
+  }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const addon = ADDONS[data.item as AddonKey];

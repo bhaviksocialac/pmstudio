@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/landing-hero.jpg";
+import { PLANS, FEATURE_ROWS, ADDONS, priceFor, formatINR, type BillingCycle } from "@/lib/plans";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -117,7 +119,7 @@ function Hero() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               to="/signup"
-              className="inline-flex items-center gap-2 h-12 px-6 rounded-md bg-[#c17f5a] text-white font-medium hover:bg-[#a86a48] transition shadow-lg shadow-[#c17f5a]/20"
+              className="inline-flex items-center gap-2 h-12 px-6 rounded-md bg-[#c17f5a] text-white font-medium btn-premium shadow-lg shadow-[#c17f5a]/20"
             >
               Start Free — No credit card <ArrowRight className="h-4 w-4" />
             </Link>
@@ -146,9 +148,10 @@ function Hero() {
             <img
               src={heroImage}
               alt="PMStudio dashboard on a laptop"
-              className="relative rounded-xl shadow-2xl w-full"
+              className="relative rounded-xl shadow-2xl w-full float-y"
               loading="eager"
             />
+
           </div>
         </div>
       </div>
@@ -333,35 +336,10 @@ function HowItWorks() {
 }
 
 /* -------------------- PRICING -------------------- */
+
+
 function Pricing() {
-  const plans = [
-    {
-      name: "Free",
-      price: "₹0",
-      period: "forever",
-      features: ["1 project", "Basic features", "Watermarked client portal"],
-      cta: "Start Free",
-      highlight: false,
-    },
-    {
-      name: "Solo",
-      price: "₹1,999",
-      period: "/month",
-      yearly: "or ₹19,999/year",
-      features: ["5 projects", "AI task intelligence", "Branded client portal", "Vendor tracking"],
-      cta: "Start Solo",
-      highlight: true,
-    },
-    {
-      name: "Studio",
-      price: "₹4,999",
-      period: "/month",
-      yearly: "or ₹49,999/year",
-      features: ["Unlimited projects", "Team access", "Priority support", "All AI features"],
-      cta: "Start Studio",
-      highlight: false,
-    },
-  ];
+  const [cycle, setCycle] = useState<BillingCycle>("monthly");
   return (
     <section id="pricing" className="py-20 md:py-28">
       <div className="max-w-6xl mx-auto px-5 md:px-8">
@@ -371,62 +349,160 @@ function Pricing() {
         >
           Simple pricing. No surprises.
         </h2>
-        <p className="text-center text-[#5a4f48] mb-14">All plans include AI updates, client portal, and vendor tracking.</p>
-        <div className="grid md:grid-cols-3 gap-6 items-stretch">
-          {plans.map((p) => (
-            <div
-              key={p.name}
-              className={`relative rounded-2xl p-8 flex flex-col transition-all duration-300 ${
-                p.highlight
-                  ? "bg-[#1a1612] text-[#faf8f5] shadow-2xl md:-translate-y-3"
-                  : "bg-[#faf8f5] text-[#1a1612] border border-[#e8e2d8] hover:shadow-xl"
-              }`}
-            >
-              {p.highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#c17f5a] text-white text-xs uppercase tracking-wider px-3 py-1 rounded-full">
-                  Most popular
-                </span>
-              )}
-              <div className="text-sm uppercase tracking-[0.18em] opacity-70 mb-2">{p.name}</div>
-              <div className="flex items-baseline gap-1 mb-1">
-                <span
-                  className="font-display text-5xl"
-                  style={{ fontFamily: "'Cormorant Garamond', serif" }}
-                >
-                  {p.price}
-                </span>
-                <span className="opacity-70">{p.period}</span>
-              </div>
-              {p.yearly && <div className="text-sm opacity-60 mb-6">{p.yearly}</div>}
-              {!p.yearly && <div className="mb-6" />}
-              <ul className="space-y-3 mb-8 flex-1">
-                {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm">
-                    <Check className={`h-4 w-4 mt-0.5 shrink-0 ${p.highlight ? "text-[#c17f5a]" : "text-[#7a9e8a]"}`} />
-                    <span className={p.highlight ? "text-[#f3ede3]" : "text-[#3d3530]"}>{f}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link
-                to="/signup"
-                className={`text-center h-12 inline-flex items-center justify-center rounded-md font-medium transition ${
-                  p.highlight
-                    ? "bg-[#c17f5a] text-white hover:bg-[#a86a48]"
-                    : "border border-[#1a1612]/15 text-[#1a1612] hover:bg-[#1a1612]/5"
-                }`}
-              >
-                {p.cta}
-              </Link>
-            </div>
-          ))}
+        <p className="text-center text-[#5a4f48] mb-8">Same features in the same order across every plan — pick the size that fits.</p>
+
+        {/* Offer banner */}
+        <Reveal>
+          <div className="mx-auto mb-10 max-w-3xl rounded-xl border border-[#c17f5a]/30 bg-[#c17f5a]/10 px-6 py-3 text-center text-[#5a4034]">
+            <span className="font-medium">Early access</span> — first 3 months at 50% off. Limited to first 100 designers.
+          </div>
+        </Reveal>
+
+        {/* Cycle toggle */}
+        <div className="flex justify-center mb-10">
+          <PricingCycleToggle cycle={cycle} onChange={setCycle} />
         </div>
-        <div className="mt-10 max-w-2xl mx-auto rounded-xl border border-[#c17f5a]/30 bg-[#c17f5a]/10 px-6 py-4 text-center text-[#5a4034]">
-          <span className="font-medium">First 50 designers get ₹999/month locked forever.</span>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 items-stretch">
+          {PLANS.map((p, i) => {
+            const effCycle: BillingCycle = cycle === "yearly" && !p.yearly ? "monthly" : cycle;
+            const price = priceFor(p, effCycle)!;
+            return (
+              <Reveal key={p.key} delay={i * 0.1}>
+                <div
+                  className={`relative rounded-2xl p-7 flex flex-col h-full card-lift ${
+                    p.highlight
+                      ? "bg-[#1a1612] text-[#faf8f5] border border-[#c17f5a]/40 pulse-glow md:-translate-y-3"
+                      : "bg-[#faf8f5] text-[#1a1612] border border-[#e8e2d8]"
+                  }`}
+                >
+                  {p.highlight && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#c17f5a] text-white text-xs uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
+                      Most popular
+                    </span>
+                  )}
+                  <div className="text-xs uppercase tracking-[0.18em] opacity-70 mb-1">{p.name}</div>
+                  <div className={`text-xs mb-4 ${p.highlight ? "text-[#c9b8a4]" : "text-[#6b5f58]"}`}>{p.tagline}</div>
+                  <PriceDisplay amount={price} cycle={effCycle} />
+                  <div className={`text-xs min-h-[18px] mb-5 ${p.highlight ? "text-[#c9b8a4]" : "text-[#6b5f58]"}`}>
+                    {cycle === "yearly" && p.yearly ? "2 months free" : cycle === "yearly" && !p.yearly ? "Monthly only" : "\u00A0"}
+                  </div>
+                  <ul className="space-y-2 mb-7 flex-1">
+                    {FEATURE_ROWS.map((row, idx) => {
+                      const v = row.values[p.key];
+                      return (
+                        <li
+                          key={row.label}
+                          className="flex items-start gap-2 text-[13px] leading-snug min-h-[20px] opacity-0"
+                          style={{ animation: `fade-up 350ms ease-out ${0.15 + idx * 0.035}s forwards` }}
+                        >
+                          <span className="mt-0.5 shrink-0">
+                            {v === true ? (
+                              <Check className={`h-4 w-4 ${p.highlight ? "text-[#c17f5a]" : "text-[#7a9e8a]"}`} />
+                            ) : v === false ? (
+                              <X className={`h-4 w-4 ${p.highlight ? "text-[#3a302a]" : "text-[#cbc4ba]"}`} />
+                            ) : (
+                              <Check className={`h-4 w-4 ${p.highlight ? "text-[#c17f5a]" : "text-[#7a9e8a]"}`} />
+                            )}
+                          </span>
+                          <span className={p.highlight ? "text-[#e8dcc9]" : "text-[#3d3530]"}>
+                            <span className={p.highlight ? "text-[#c9b8a4]" : "text-[#6b5f58]"}>{row.label}:</span>{" "}
+                            {typeof v === "string" ? v : v === true ? "Included" : "—"}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <Link
+                    to="/signup"
+                    className={`text-center h-12 inline-flex items-center justify-center rounded-md font-medium btn-premium ${
+                      p.highlight
+                        ? "bg-[#c17f5a] text-white"
+                        : "bg-[#1a1612] text-[#faf8f5] hover:bg-[#2a2520]"
+                    }`}
+                  >
+                    {p.cta}
+                  </Link>
+                </div>
+              </Reveal>
+            );
+          })}
+        </div>
+
+        {/* Add-ons */}
+        <div className="mt-16">
+          <h3
+            className="font-display text-2xl md:text-3xl text-center text-[#1a1612] mb-8"
+            style={{ fontFamily: "'Cormorant Garamond', serif" }}
+          >
+            Add-ons
+          </h3>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {ADDONS.map((a, i) => (
+              <Reveal key={a.key} delay={i * 0.08}>
+                <div className="rounded-xl border border-[#e8e2d8] bg-[#faf8f5] p-5 card-lift h-full">
+                  <div
+                    className="font-display text-lg text-[#1a1612]"
+                    style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                  >
+                    {a.label}
+                  </div>
+                  <div className="mt-2 text-[#c17f5a] font-medium">
+                    {formatINR(a.price)}
+                    <span className="text-[#6b5f58] font-normal text-sm">{a.unit}</span>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </div>
     </section>
   );
 }
+
+function PricingCycleToggle({ cycle, onChange }: { cycle: BillingCycle; onChange: (c: BillingCycle) => void }) {
+  return (
+    <div className="relative inline-flex items-center bg-[#f1ece4] rounded-full p-1 text-sm border border-[#e8e2d8]">
+      <span
+        className="absolute top-1 bottom-1 rounded-full bg-[#1a1612] shadow-md transition-all duration-300 ease-out"
+        style={{ left: cycle === "monthly" ? 4 : "50%", width: "calc(50% - 4px)" }}
+      />
+      <button
+        type="button"
+        onClick={() => onChange("monthly")}
+        className={`relative z-10 px-5 h-9 rounded-full transition-colors ${cycle === "monthly" ? "text-[#faf8f5]" : "text-[#5a4f48]"}`}
+      >
+        Monthly
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("yearly")}
+        className={`relative z-10 px-5 h-9 rounded-full transition-colors inline-flex items-center gap-1.5 ${cycle === "yearly" ? "text-[#faf8f5]" : "text-[#5a4f48]"}`}
+      >
+        Yearly <span className={`text-[10px] ${cycle === "yearly" ? "text-[#e8a87c]" : "text-[#c17f5a]"}`}>2 mo free</span>
+      </button>
+    </div>
+  );
+}
+
+function PriceDisplay({ amount, cycle }: { amount: number; cycle: BillingCycle }) {
+  // Cross-fade when value changes
+  const key = `${amount}-${cycle}`;
+  return (
+    <div className="flex items-baseline gap-1 mb-1 min-h-[56px]">
+      <span
+        key={key}
+        className="font-display text-5xl tabular-nums animate-fade-up"
+        style={{ fontFamily: "'Cormorant Garamond', serif", animationDuration: "320ms" }}
+      >
+        {formatINR(amount)}
+      </span>
+      <span className="opacity-70 text-sm">/{cycle === "yearly" ? "yr" : "mo"}</span>
+    </div>
+  );
+}
+
 
 /* -------------------- WAITLIST -------------------- */
 const emailSchema = z.string().trim().email("Enter a valid email").max(255);
