@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   Menu, X, Phone, Truck, IndianRupee, Sparkles, Smartphone,
   FileText, Bell, Star, ArrowRight, Check, Heart, CheckCircle2, Receipt,
+  FolderPlus, ScanLine, ListChecks, UserCheck, Package, Home,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/landing-hero.jpg";
