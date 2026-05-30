@@ -45,14 +45,17 @@ function LandingPage() {
       <Nav />
       <Hero />
       <Problem />
-      <Solution />
-      <HowItWorks />
+      <Workflow />
+      <Features />
+      <SocialProof />
       <Pricing />
+      <CTASection />
       <Waitlist />
       <Footer />
     </div>
   );
 }
+
 
 /* -------------------- NAV -------------------- */
 function Nav() {
