@@ -123,6 +123,15 @@ export function AuthScreen({ mode }: { mode: Mode }) {
           <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-3">
             {mode === "login" ? "Welcome back" : "Get started"}
           </div>
+          {selectedPlan && (
+            <div className="mb-4 rounded-[10px] border border-[#c17f5a]/30 bg-[#c17f5a]/10 px-4 py-3">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-[#c17f5a] font-medium">Selected plan</div>
+              <div className="mt-1 text-sm text-foreground">
+                You are signing up for <span className="font-semibold">{selectedPlan.name}</span> — {formatINR(selectedPlan.monthly)}/month
+              </div>
+            </div>
+          )}
+
           <h2 className="font-display text-4xl">
             {mode === "login" ? "Sign in to your studio" : "Create your studio"}
           </h2>
