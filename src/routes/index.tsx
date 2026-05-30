@@ -45,14 +45,17 @@ function LandingPage() {
       <Nav />
       <Hero />
       <Problem />
-      <Solution />
-      <HowItWorks />
+      <Workflow />
+      <Features />
+      <SocialProof />
       <Pricing />
+      <CTASection />
       <Waitlist />
       <Footer />
     </div>
   );
 }
+
 
 /* -------------------- NAV -------------------- */
 function Nav() {
@@ -277,113 +280,43 @@ function Hero() {
   );
 }
 
-/* -------------------- PROBLEM -------------------- */
+/* -------------------- PROBLEM (dark dramatic) -------------------- */
 function Problem() {
-  const items = [
-    {
-      icon: Phone,
-      title: "Chasing clients on WhatsApp",
-      body: "Approvals, updates, invoices — all buried in chat. Nothing is tracked.",
-    },
-    {
-      icon: Truck,
-      title: "Vendors never on time",
-      body: "Deliveries delayed. Payments forgotten. Projects stuck.",
-    },
-    {
-      icon: IndianRupee,
-      title: "No idea where the money went",
-      body: "Budget overruns discovered too late. Client disputes with no paper trail.",
-    },
+  const pains = [
+    { icon: Phone, title: "WhatsApp chaos", body: "Approvals buried in 14 chats. Nothing tracked." },
+    { icon: Truck, title: "Vendors stall", body: "Deliveries slip. Payments forgotten. Projects stuck." },
+    { icon: IndianRupee, title: "Budget blind spots", body: "Overruns surface too late. Disputes with no paper trail." },
   ];
   return (
-    <section className="bg-[#f1ece4] py-20 md:py-28">
-      <div className="max-w-6xl mx-auto px-5 md:px-8">
-        <h2
-          className="font-display text-center text-4xl md:text-5xl text-[#1a1612] mb-14"
-          style={{ fontFamily: "'Cormorant Garamond', serif" }}
-        >
-          Sound familiar?
-        </h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {items.map((it, i) => (
-            <Reveal key={it.title} delay={i * 0.1}>
-              <div className="bg-[#faf8f5] rounded-2xl p-8 h-full border border-[#e8e2d8] hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                <div className="h-12 w-12 rounded-xl bg-[#c17f5a]/12 text-[#c17f5a] flex items-center justify-center mb-5">
-                  <it.icon className="h-6 w-6" />
-                </div>
-                <h3
-                  className="font-display text-2xl mb-3 text-[#1a1612]"
-                  style={{ fontFamily: "'Cormorant Garamond', serif" }}
-                >
-                  {it.title}
-                </h3>
-                <p className="text-[#5a4f48] leading-relaxed">{it.body}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* -------------------- SOLUTION -------------------- */
-function Solution() {
-  const blocks = [
-    {
-      icon: Sparkles,
-      title: "AI Task Intelligence",
-      body: "Type a site update in plain English or Hindi. AI creates every task automatically with timelines and assignees.",
-    },
-    {
-      icon: Smartphone,
-      title: "Branded Client Portal",
-      body: "Clients track progress, approve designs, and view invoices — on their phone. Your studio name, your brand.",
-    },
-    {
-      icon: FileText,
-      title: "Smart Vendor Tracking",
-      body: "Upload a vendor invoice. AI reads it, matches the PO, and tracks payments automatically.",
-    },
-    {
-      icon: Bell,
-      title: "Proactive Alerts",
-      body: "PMStudio tells you exactly what to do today to keep every project on track. No more surprises.",
-    },
-  ];
-  return (
-    <section id="solution" className="py-20 md:py-28">
-      <div className="max-w-6xl mx-auto px-5 md:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-16">
+    <section className="relative bg-[#1a1612] text-[#f5ecdf] py-24 md:py-36 overflow-hidden">
+      <div aria-hidden className="absolute inset-0 grain-overlay opacity-[0.10] pointer-events-none" />
+      <div aria-hidden className="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full blur-3xl opacity-30"
+        style={{ background: "radial-gradient(circle, rgba(193,127,90,0.55) 0%, transparent 65%)" }} />
+      <div className="relative max-w-5xl mx-auto px-5 md:px-8 text-center">
+        <Reveal>
+          <p className="text-xs uppercase tracking-[0.28em] text-[#c17f5a] mb-8">The reality</p>
+        </Reveal>
+        <Reveal delay={0.1}>
           <h2
-            className="font-display text-4xl md:text-5xl text-[#1a1612]"
-            style={{ fontFamily: "'Cormorant Garamond', serif" }}
+            className="font-display text-3xl sm:text-5xl md:text-6xl leading-[1.1] text-[#f5ecdf] max-w-4xl mx-auto"
+            style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 500 }}
           >
-            PMStudio handles it all
+            Every approval. Every vendor. Every invoice.
+            <br />
+            <span className="text-[#c17f5a] italic">You're the one chasing it.</span>
           </h2>
-          <p className="mt-5 text-lg text-[#5a4f48] leading-relaxed">
-            Tell AI what happened on site. PMStudio creates tasks, updates timelines, drafts client messages — automatically.
-          </p>
-        </div>
-        <div className="grid md:grid-cols-2 gap-6">
-          {blocks.map((b, i) => (
-            <Reveal key={b.title} delay={i * 0.08}>
-              <div className="group relative rounded-2xl p-8 bg-[#faf8f5] border border-[#e8e2d8] hover:border-[#c17f5a]/40 hover:shadow-xl transition-all duration-300">
-                <div className="flex items-start gap-5">
-                  <div className="h-14 w-14 shrink-0 rounded-xl bg-gradient-to-br from-[#c17f5a] to-[#a86a48] text-white flex items-center justify-center shadow-lg shadow-[#c17f5a]/25">
-                    <b.icon className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3
-                      className="font-display text-2xl text-[#1a1612] mb-2"
-                      style={{ fontFamily: "'Cormorant Garamond', serif" }}
-                    >
-                      {b.title}
-                    </h3>
-                    <p className="text-[#5a4f48] leading-relaxed">{b.body}</p>
-                  </div>
+        </Reveal>
+        <div className="mt-20 grid md:grid-cols-3 gap-5">
+          {pains.map((p, i) => (
+            <Reveal key={p.title} delay={0.2 + i * 0.12}>
+              <div className="rounded-2xl bg-[#26201b] border border-[#3a302a] p-7 text-left h-full hover:border-[#c17f5a]/40 transition-colors">
+                <div className="h-11 w-11 rounded-xl bg-[#c17f5a]/15 text-[#c17f5a] flex items-center justify-center mb-5">
+                  <p.icon className="h-5 w-5" />
                 </div>
+                <h3 className="font-display text-2xl text-[#f5ecdf] mb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                  {p.title}
+                </h3>
+                <p className="text-[#c9b8a4] leading-relaxed text-[15px]">{p.body}</p>
               </div>
             </Reveal>
           ))}
@@ -393,61 +326,252 @@ function Solution() {
   );
 }
 
-/* -------------------- HOW IT WORKS -------------------- */
-function HowItWorks() {
-  const steps = [
-    {
-      n: "01",
-      title: "Create your project",
-      meta: "8 minutes",
-      body: "Upload your BOQ. AI sets up the timeline, phases, and budget automatically.",
-    },
-    {
-      n: "02",
-      title: "Tell AI what's happening",
-      meta: "Plain English or Hindi",
-      body: "Type site updates the way you talk. Tasks, snags, and follow-ups get created automatically.",
-    },
-    {
-      n: "03",
-      title: "Share with clients",
-      meta: "One link",
-      body: "Branded portal — clients approve designs, track progress, and pay invoices in one place.",
-    },
-  ];
+/* -------------------- WORKFLOW (animated line) -------------------- */
+function Workflow() {
+  const steps = ["Create Project", "AI Reads BOQ", "Tasks Created", "Client Approves", "Vendors Tracked", "Project Delivered"];
+  const [active, setActive] = useState(false);
   return (
-    <section id="how" className="bg-[#f1ece4] py-20 md:py-28">
+    <section className="py-24 md:py-32 bg-[#faf8f5]">
       <div className="max-w-6xl mx-auto px-5 md:px-8">
-        <h2
-          className="font-display text-center text-4xl md:text-5xl text-[#1a1612] mb-16"
-          style={{ fontFamily: "'Cormorant Garamond', serif" }}
+        <Reveal>
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <p className="text-xs uppercase tracking-[0.22em] text-[#c17f5a] mb-3">How it flows</p>
+            <h2 className="font-display text-4xl md:text-5xl text-[#1a1612]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+              One workflow, end to end.
+            </h2>
+          </div>
+        </Reveal>
+        <div
+          ref={(el) => {
+            if (!el || active) return;
+            const io = new IntersectionObserver(
+              (entries) => entries.forEach((e) => { if (e.isIntersecting) { setActive(true); io.disconnect(); } }),
+              { threshold: 0.25 },
+            );
+            io.observe(el);
+          }}
+          className={`relative ${active ? "draw-line" : ""}`}
         >
-          From chaos to control in 3 steps
-        </h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {steps.map((s, i) => (
-            <Reveal key={s.n} delay={i * 0.12}>
-              <div className="bg-[#faf8f5] rounded-2xl p-8 h-full border border-[#e8e2d8] relative">
-                <div
-                  className="absolute -top-5 left-8 font-display text-5xl text-[#c17f5a]"
-                  style={{ fontFamily: "'Cormorant Garamond', serif" }}
-                >
-                  {s.n}
+          <svg className="hidden md:block absolute left-0 right-0 top-6 w-full h-6 pointer-events-none" viewBox="0 0 1000 24" preserveAspectRatio="none">
+            <path className="line-path" d="M 20 12 L 980 12" stroke="#c17f5a" strokeWidth="2" fill="none" strokeLinecap="round" strokeDasharray="6 6" />
+          </svg>
+          <div className="relative grid grid-cols-2 md:grid-cols-6 gap-6 md:gap-2">
+            {steps.map((s, i) => (
+              <div
+                key={s}
+                className={`relative flex flex-col items-center gap-3 ${active ? "step-pop" : "opacity-0"}`}
+                style={{ animationDelay: `${0.3 + i * 0.18}s` }}
+              >
+                <div className="h-12 w-12 shrink-0 rounded-full bg-white border-2 border-[#c17f5a] text-[#c17f5a] flex items-center justify-center font-display text-lg shadow-md relative z-10" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                  {i + 1}
                 </div>
-                <div className="mt-6">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[#c17f5a] mb-2">{s.meta}</div>
-                  <h3
-                    className="font-display text-2xl mb-3 text-[#1a1612]"
-                    style={{ fontFamily: "'Cormorant Garamond', serif" }}
-                  >
-                    {s.title}
-                  </h3>
-                  <p className="text-[#5a4f48] leading-relaxed">{s.body}</p>
+                <div className="px-3 py-2 rounded-full bg-white border border-[#e8e2d8] text-[12px] font-medium text-[#1a1612] text-center shadow-sm">
+                  {s}
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* -------------------- FEATURES (alternating) -------------------- */
+function Features() {
+  const features = [
+    { dark: true, title: "AI Task Intelligence", kicker: "Site updates → tasks", body: "Type what happened on site in plain English or Hindi. AI creates every task automatically — with assignees, deadlines, and the right phase.", mock: <AiTaskMock /> },
+    { dark: false, title: "Client Portal", kicker: "Your brand. Their phone.", body: "Your client tracks everything on their phone. Approvals, photos, invoices — in one branded portal. No WhatsApp chaos.", mock: <PortalMock /> },
+    { dark: true, title: "Vendor Tracking", kicker: "Invoice in. Payment tracked.", body: "Upload their invoice. AI reads it, matches the PO, and tracks every payment automatically.", mock: <InvoiceMock /> },
+    { dark: false, title: "Morning Briefing", kicker: "Start the day, sorted.", body: "Every morning PMStudio tells you exactly what to do to keep every project on track. No more surprises.", mock: <BriefingMock /> },
+  ];
+  return (
+    <div id="solution">
+      {features.map((f, i) => {
+        const textLeft = i % 2 === 0;
+        return (
+          <section key={f.title} className={`py-24 md:py-32 ${f.dark ? "bg-[#1a1612] text-[#f5ecdf]" : "bg-[#f6efe6] text-[#1a1612]"}`}>
+            <div className="max-w-6xl mx-auto px-5 md:px-8 grid md:grid-cols-2 gap-12 md:gap-16 items-center">
+              <RevealClass animation={textLeft ? "slide-in-l" : "slide-in-r"} className={textLeft ? "md:order-1" : "md:order-2"}>
+                <p className="text-xs uppercase tracking-[0.22em] mb-4 text-[#c17f5a]">{f.kicker}</p>
+                <h3 className={`font-display text-3xl md:text-5xl leading-[1.1] mb-5 ${f.dark ? "text-[#f5ecdf]" : "text-[#1a1612]"}`} style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                  {f.title}
+                </h3>
+                <p className={`text-lg leading-relaxed max-w-md ${f.dark ? "text-[#c9b8a4]" : "text-[#5a4f48]"}`}>{f.body}</p>
+              </RevealClass>
+              <RevealClass animation={textLeft ? "slide-in-r" : "slide-in-l"} className={textLeft ? "md:order-2" : "md:order-1"}>
+                <div className="relative">{f.mock}</div>
+              </RevealClass>
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function AiTaskMock() {
+  return (
+    <div className="rounded-2xl bg-[#26201b] border border-[#3a302a] p-5 shadow-2xl">
+      <div className="flex items-center gap-2 mb-4">
+        <Sparkles className="h-4 w-4 text-[#c17f5a]" />
+        <span className="text-[11px] uppercase tracking-[0.18em] text-[#c17f5a]">AI Site Update</span>
+      </div>
+      <div className="rounded-lg bg-[#1a1612] border border-[#3a302a] px-3 py-2 text-[13px] text-[#c9b8a4] mb-4">
+        "Saini delivered plywood today, Joinery boys started false ceiling Master B."
+      </div>
+      <div className="space-y-2">
+        {["✓ Plywood marked delivered — Saini Ply", "✓ Task created — False ceiling Master B", "✓ Payment due flagged — ₹48,200"].map((t, i) => (
+          <div key={i} className="text-[13px] text-[#f5ecdf] rounded-md bg-[#1a1612] border border-[#3a302a] px-3 py-2 opacity-0"
+            style={{ animation: `fade-up 500ms ease-out ${0.3 + i * 0.18}s forwards` }}>
+            {t}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PortalMock() {
+  return (
+    <div className="relative mx-auto w-[260px] h-[520px] rounded-[36px] bg-[#1a1612] p-3 shadow-2xl float-soft">
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-5 bg-[#1a1612] rounded-b-2xl z-10" />
+      <div className="rounded-[28px] bg-[#faf8f5] h-full w-full p-4 overflow-hidden">
+        <div className="text-[10px] uppercase tracking-[0.18em] text-[#c17f5a]">Mehta Residence</div>
+        <div className="font-display text-xl text-[#1a1612] mt-1" style={{ fontFamily: "'Cormorant Garamond', serif" }}>68% complete</div>
+        <div className="mt-3 h-1.5 rounded-full bg-[#f1ece4] overflow-hidden">
+          <div className="h-full bg-[#c17f5a]" style={{ width: "68%" }} />
+        </div>
+        <div className="mt-5 space-y-2">
+          {["Joinery — Master B", "Painting — Drawing", "Tiles — Kitchen"].map((t, i) => (
+            <div key={i} className="rounded-lg bg-white border border-[#e8e2d8] px-3 py-2 text-[12px] text-[#3d3530] flex items-center justify-between">
+              <span>{t}</span>
+              <CheckCircle2 className="h-3.5 w-3.5 text-[#7a9e8a]" />
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 rounded-lg bg-[#c17f5a]/10 border border-[#c17f5a]/30 p-3">
+          <div className="text-[10px] uppercase tracking-[0.16em] text-[#c17f5a]">Approval pending</div>
+          <div className="text-[12px] text-[#1a1612] mt-1">Master bedroom wardrobe — 3 options</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InvoiceMock() {
+  return (
+    <div className="rounded-2xl bg-[#26201b] border border-[#3a302a] p-5 shadow-2xl">
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-[11px] uppercase tracking-[0.18em] text-[#c17f5a]">Vendor invoice</span>
+        <span className="text-[11px] text-[#7a9e8a] flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Matched</span>
+      </div>
+      <div className="rounded-lg bg-[#1a1612] border border-dashed border-[#3a302a] p-4 text-center">
+        <Receipt className="h-7 w-7 text-[#c17f5a] mx-auto mb-2" />
+        <div className="text-[12px] text-[#c9b8a4]">saini_ply_INV3219.pdf</div>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2 text-[12px]">
+        {[["Vendor", "Saini Ply"], ["Amount", "₹48,200"], ["PO", "PO-0142"], ["Due", "12 Jun"]].map(([k, v]) => (
+          <div key={k} className="rounded-md bg-[#1a1612] border border-[#3a302a] px-3 py-2">
+            <div className="text-[10px] uppercase tracking-wider text-[#7a6e63]">{k}</div>
+            <div className="text-[#f5ecdf]">{v}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BriefingMock() {
+  return (
+    <div className="rounded-2xl bg-white border border-[#e8e2d8] p-6 shadow-2xl">
+      <div className="flex items-center gap-2 mb-4">
+        <Bell className="h-4 w-4 text-[#c17f5a]" />
+        <span className="text-[11px] uppercase tracking-[0.18em] text-[#c17f5a]">Your morning briefing</span>
+      </div>
+      <div className="font-display text-2xl text-[#1a1612] mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+        Today, focus on 3 things.
+      </div>
+      <div className="space-y-2">
+        {[{ d: "Approve Mehta wardrobe options", t: "10 min" }, { d: "Chase Saini Ply for delivery", t: "5 min" }, { d: "Send Patel project invoice", t: "2 min" }].map((x, i) => (
+          <div key={i} className="flex items-center justify-between rounded-lg bg-[#faf8f5] border border-[#e8e2d8] px-3 py-2.5 text-[13px]">
+            <span className="text-[#1a1612]">{x.d}</span>
+            <span className="text-[#6b5f58] text-[11px]">{x.t}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- SOCIAL PROOF -------------------- */
+function SocialProof() {
+  const quotes = [
+    { q: "Replaced 3 WhatsApp groups and an Excel sheet on day one.", a: "Ananya R.", c: "Bangalore" },
+    { q: "Clients stopped calling me for updates. They just check the portal.", a: "Rohan M.", c: "Mumbai" },
+    { q: "Vendor payments finally make sense. AI reads the invoice for me.", a: "Priya K.", c: "Delhi" },
+  ];
+  const cities = ["Mumbai", "Delhi", "Bangalore", "Hyderabad", "Ahmedabad", "Pune", "Chennai"];
+  return (
+    <section className="py-24 md:py-32 bg-[#faf8f5]">
+      <div className="max-w-6xl mx-auto px-5 md:px-8">
+        <Reveal>
+          <h2 className="font-display text-4xl md:text-5xl text-center text-[#1a1612] max-w-3xl mx-auto" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+            Built for how Indian designers actually work.
+          </h2>
+        </Reveal>
+        <div className="mt-16 grid md:grid-cols-3 gap-5">
+          {quotes.map((q, i) => (
+            <Reveal key={i} delay={i * 0.12}>
+              <figure className="rounded-2xl bg-white border border-[#e8e2d8] p-7 h-full card-lift">
+                <div className="text-[#c17f5a] text-3xl font-display leading-none mb-3" style={{ fontFamily: "'Cormorant Garamond', serif" }}>"</div>
+                <blockquote className="text-[#3d3530] text-[15px] leading-relaxed mb-5">{q.q}</blockquote>
+                <figcaption className="text-[13px] text-[#6b5f58]">
+                  <span className="text-[#1a1612] font-medium">{q.a}</span> · {q.c}
+                </figcaption>
+              </figure>
             </Reveal>
           ))}
         </div>
+        <Reveal delay={0.3}>
+          <div className="mt-16 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 text-[#8a7e75] text-sm uppercase tracking-[0.22em]">
+            {cities.map((c) => (
+              <span key={c} className="hover:text-[#c17f5a] transition-colors">{c}</span>
+            ))}
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* -------------------- CTA -------------------- */
+function CTASection() {
+  return (
+    <section className="relative bg-[#1a1612] text-[#f5ecdf] py-24 md:py-32 overflow-hidden">
+      <div aria-hidden className="absolute inset-0 grain-overlay opacity-[0.10] pointer-events-none" />
+      <div aria-hidden className="absolute -bottom-40 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full blur-3xl opacity-30"
+        style={{ background: "radial-gradient(circle, rgba(193,127,90,0.55) 0%, transparent 65%)" }} />
+      <div className="relative max-w-4xl mx-auto px-5 md:px-8 text-center">
+        <Reveal>
+          <h2 className="font-display text-4xl sm:text-5xl md:text-6xl leading-[1.1] text-[#f5ecdf]" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 500 }}>
+            Your projects deserve better than
+            <br />
+            <span className="italic text-[#c17f5a]">WhatsApp and Excel.</span>
+          </h2>
+        </Reveal>
+        <Reveal delay={0.15}>
+          <p className="mt-7 text-lg text-[#c9b8a4] max-w-xl mx-auto">
+            Run your studio like a pro. Get started in under 10 minutes — no card needed.
+          </p>
+        </Reveal>
+        <Reveal delay={0.25}>
+          <div className="mt-9">
+            <Link to="/signup" className="inline-flex items-center gap-2 h-13 px-8 py-3.5 rounded-md bg-[#c17f5a] text-white font-medium btn-premium shadow-xl shadow-[#c17f5a]/30">
+              Get Started <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -773,3 +897,23 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
     </div>
   );
 }
+
+function RevealClass({ children, animation, className = "" }: { children: React.ReactNode; animation: string; className?: string }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div
+      ref={(el) => {
+        if (!el || shown) return;
+        const io = new IntersectionObserver(
+          (entries) => entries.forEach((e) => { if (e.isIntersecting) { setShown(true); io.disconnect(); } }),
+          { threshold: 0.2 },
+        );
+        io.observe(el);
+      }}
+      className={`${shown ? animation : "opacity-0"} ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
