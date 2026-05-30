@@ -42,8 +42,8 @@ function LandingPage() {
         href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap"
         rel="stylesheet"
       />
-      <Nav />
       <Hero />
+
       <Problem />
       <Workflow />
       <Features />
