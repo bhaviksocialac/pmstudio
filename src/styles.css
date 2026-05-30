@@ -235,6 +235,36 @@
 }
 .step-pop { opacity: 0; animation: step-pop 500ms ease-out forwards; }
 
+/* Workflow storytelling — horizontal line draw */
+.wf-line {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+}
+.wf-active .wf-line {
+  animation: draw-line 2s ease-out forwards;
+}
+.wf-line-v {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+}
+.wf-active .wf-line-v {
+  animation: draw-line 2s ease-out forwards;
+}
+@keyframes wf-card-rise {
+  0% { opacity: 0; transform: translateY(24px); }
+  60% { opacity: 1; transform: translateY(-8px); box-shadow: 0 18px 40px -18px rgba(193,127,90,0.55); }
+  100% { opacity: 1; transform: translateY(0); box-shadow: 0 8px 22px -14px rgba(193,127,90,0.35); }
+}
+.wf-card {
+  opacity: 0;
+  animation: wf-card-rise 700ms cubic-bezier(0.22,0.61,0.36,1) forwards;
+}
+.wf-card-inner { transition: box-shadow 300ms ease, transform 300ms ease; }
+.wf-card:hover .wf-card-inner {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 32px -16px rgba(193,127,90,0.45);
+}
+
 /* Slide-in for alternating features */
 @keyframes slide-in-l {
   from { opacity: 0; transform: translateX(-40px); }
@@ -266,11 +296,13 @@
   .animate-fade-up, .pulse-fast, .pulse-slow, .float-y, .pulse-glow,
   .drift-a, .drift-b, .float-soft, .float-soft-2, .word-rise,
   .step-pop, .slide-in-l, .slide-in-r, .task-rise, .fade-soft,
-  .blink-cursor { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .blink-cursor, .wf-card { animation: none !important; opacity: 1 !important; transform: none !important; }
   .btn-premium, .card-lift { transition: none !important; }
   .btn-premium:hover, .card-lift:hover { transform: none !important; }
   .btn-premium::after { display: none; }
-  .draw-line .line-path { stroke-dashoffset: 0 !important; animation: none !important; }
+  .draw-line .line-path,
+  .wf-active .wf-line,
+  .wf-active .wf-line-v { stroke-dashoffset: 0 !important; animation: none !important; }
 }
 
 

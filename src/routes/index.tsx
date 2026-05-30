@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   Menu, X, Phone, Truck, IndianRupee, Sparkles, Smartphone,
   FileText, Bell, Star, ArrowRight, Check, Heart, CheckCircle2, Receipt,
+  FolderPlus, ScanLine, ListChecks, UserCheck, Package, Home,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/landing-hero.jpg";
@@ -126,7 +127,7 @@ type DemoTask = {
 
 const DEMO_TASKS: DemoTask[] = [
   { desc: "Tile delivery", agency: "Ramesh", status: "Material Delivered", statusColor: "#2f4a3d", statusBg: "#cfe3d6", room: "Living Room", date: "19 Jan" },
-  { desc: "Flooring started", agency: "Jangir", status: "WIP", statusColor: "#7a4a32", statusBg: "#f1d9c6", room: "Living Room", date: "19 Jan" },
+  { desc: "Flooring started", agency: "Civil", status: "WIP", statusColor: "#7a4a32", statusBg: "#f1d9c6", room: "Living Room", date: "19 Jan" },
   { desc: "Wardrobe veneer approval", agency: "Client", status: "Approved", statusColor: "#2f4a3d", statusBg: "#cfe3d6", room: "Master Bedroom", date: "Today" },
   { desc: "Electrical conduit", agency: "Electrician", status: "Blocked", statusColor: "#8a2a1f", statusBg: "#f3d2cd", room: "Mandir", date: "Pending" },
 ];
@@ -368,15 +369,24 @@ function Problem() {
 }
 
 
-/* -------------------- WORKFLOW (animated line) -------------------- */
+/* -------------------- WORKFLOW (animated storytelling) -------------------- */
 function Workflow() {
-  const steps = ["Create Project", "AI Reads BOQ", "Tasks Created", "Client Approves", "Vendors Tracked", "Project Delivered"];
+  const steps = [
+    { name: "Create Project", desc: "Upload your BOQ. AI sets up timeline and budget in 8 minutes.", Icon: FolderPlus },
+    { name: "AI Reads BOQ", desc: "Every line item becomes a task. Every vendor identified automatically.", Icon: ScanLine },
+    { name: "Tasks Created", desc: "Site updates typed in plain English or Hindi. Tasks appear instantly.", Icon: ListChecks },
+    { name: "Client Approves", desc: "Client gets a branded portal. Approvals tracked with timestamp.", Icon: UserCheck },
+    { name: "Vendors Tracked", desc: "Invoices uploaded. AI reads amounts. Payments never forgotten.", Icon: Package },
+    { name: "Project Delivered", desc: "Snags closed. Final invoice raised. Home passport sent to client.", Icon: Home },
+  ];
   const [active, setActive] = useState(false);
+  // First card lifts at ~0.1s, last at ~2.0s -> ~0.38s stagger
+  const stagger = 1.9 / (steps.length - 1);
   return (
     <section className="py-24 md:py-32 bg-[#faf8f5]">
       <div className="max-w-6xl mx-auto px-5 md:px-8">
         <Reveal>
-          <div className="text-center max-w-2xl mx-auto mb-16">
+          <div className="text-center max-w-2xl mx-auto mb-20">
             <p className="text-xs uppercase tracking-[0.22em] text-[#c17f5a] mb-3">How it flows</p>
             <h2 className="font-display text-4xl md:text-5xl text-[#1a1612]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
               One workflow, end to end.
@@ -388,36 +398,59 @@ function Workflow() {
             if (!el || active) return;
             const io = new IntersectionObserver(
               (entries) => entries.forEach((e) => { if (e.isIntersecting) { setActive(true); io.disconnect(); } }),
-              { threshold: 0.25 },
+              { threshold: 0.2 },
             );
             io.observe(el);
           }}
-          className={`relative ${active ? "draw-line" : ""}`}
+          className={`relative ${active ? "wf-active" : ""}`}
         >
-          <svg className="hidden md:block absolute left-0 right-0 top-6 w-full h-6 pointer-events-none" viewBox="0 0 1000 24" preserveAspectRatio="none">
-            <path className="line-path" d="M 20 12 L 980 12" stroke="#c17f5a" strokeWidth="2" fill="none" strokeLinecap="round" strokeDasharray="6 6" />
+          {/* Desktop horizontal connecting line */}
+          <svg className="hidden md:block absolute left-0 right-0 top-1/2 -translate-y-1/2 w-full h-3 pointer-events-none z-0" viewBox="0 0 1000 6" preserveAspectRatio="none">
+            <path className="wf-line" d="M 10 3 L 990 3" stroke="#c17f5a" strokeWidth="2" fill="none" strokeLinecap="round" />
           </svg>
-          <div className="relative grid grid-cols-2 md:grid-cols-6 gap-6 md:gap-2">
-            {steps.map((s, i) => (
-              <div
-                key={s}
-                className={`relative flex flex-col items-center gap-3 ${active ? "step-pop" : "opacity-0"}`}
-                style={{ animationDelay: `${0.3 + i * 0.18}s` }}
-              >
-                <div className="h-12 w-12 shrink-0 rounded-full bg-white border-2 border-[#c17f5a] text-[#c17f5a] flex items-center justify-center font-display text-lg shadow-md relative z-10" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-                  {i + 1}
+          {/* Mobile vertical connecting line */}
+          <svg className="md:hidden absolute left-6 top-0 bottom-0 w-3 h-full pointer-events-none z-0" viewBox="0 0 6 1000" preserveAspectRatio="none">
+            <path className="wf-line-v" d="M 3 10 L 3 990" stroke="#c17f5a" strokeWidth="2" fill="none" strokeLinecap="round" />
+          </svg>
+
+          <div className="relative grid grid-cols-1 md:grid-cols-6 gap-5 md:gap-3 z-10">
+            {steps.map((s, i) => {
+              const lift = i % 2 === 0 ? "md:-translate-y-4" : "md:translate-y-4";
+              const delay = `${0.1 + i * stagger}s`;
+              return (
+                <div
+                  key={s.name}
+                  className={`relative ${lift} ${active ? "wf-card" : "opacity-0"} pl-16 md:pl-0`}
+                  style={{ animationDelay: delay }}
+                >
+                  {/* Mobile step dot on vertical line */}
+                  <div className="md:hidden absolute left-3 top-4 h-6 w-6 rounded-full bg-[#c17f5a] text-white flex items-center justify-center text-[11px] font-semibold shadow">
+                    {i + 1}
+                  </div>
+                  <div className="wf-card-inner rounded-2xl bg-white border border-[#ece4d6] p-5 h-full flex flex-col gap-3 shadow-[0_2px_10px_rgba(26,22,18,0.04)]">
+                    <div className="flex items-center justify-between">
+                      <span className="font-display text-2xl text-[#c17f5a] leading-none" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <span className="h-8 w-8 rounded-full bg-[#faf3ea] text-[#c17f5a] flex items-center justify-center">
+                        <s.Icon className="h-4 w-4" />
+                      </span>
+                    </div>
+                    <h3 className="font-display text-[20px] leading-tight text-[#1a1612]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                      {s.name}
+                    </h3>
+                    <p className="text-[13px] leading-relaxed text-[#6b5e52]">{s.desc}</p>
+                  </div>
                 </div>
-                <div className="px-3 py-2 rounded-full bg-white border border-[#e8e2d8] text-[12px] font-medium text-[#1a1612] text-center shadow-sm">
-                  {s}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
     </section>
   );
 }
+
 
 /* -------------------- FEATURES (alternating) -------------------- */
 function Features() {
