@@ -119,7 +119,7 @@ function Hero() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               to="/signup"
-              className="inline-flex items-center gap-2 h-12 px-6 rounded-md bg-[#c17f5a] text-white font-medium hover:bg-[#a86a48] transition shadow-lg shadow-[#c17f5a]/20"
+              className="inline-flex items-center gap-2 h-12 px-6 rounded-md bg-[#c17f5a] text-white font-medium btn-premium shadow-lg shadow-[#c17f5a]/20"
             >
               Start Free — No credit card <ArrowRight className="h-4 w-4" />
             </Link>
