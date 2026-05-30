@@ -157,6 +157,34 @@
   0% { transform: translateX(-120%) skewX(-20deg); }
   100% { transform: translateX(220%) skewX(-20deg); }
 }
+@keyframes drift-a {
+  0%, 100% { transform: translate(0,0) scale(1); }
+  50% { transform: translate(40px,-30px) scale(1.08); }
+}
+@keyframes drift-b {
+  0%, 100% { transform: translate(0,0) scale(1); }
+  50% { transform: translate(-30px,30px) scale(1.05); }
+}
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+@keyframes float-soft-2 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes word-rise {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.drift-a { animation: drift-a 18s ease-in-out infinite; }
+.drift-b { animation: drift-b 22s ease-in-out infinite; }
+.float-soft { animation: float-soft 4s ease-in-out infinite; }
+.float-soft-2 { animation: float-soft-2 5s ease-in-out infinite; }
+.word-rise { display: inline-block; opacity: 0; animation: word-rise 600ms ease-out forwards; }
+.grain-overlay {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.12  0 0 0 0 0.10  0 0 0 0 0.08  0 0 0 0.45 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.5'/></svg>");
+}
 
 .animate-fade-up { animation: fade-up 0.4s ease-out both; }
 .pulse-fast { animation: pulse-dot 1.2s ease-in-out infinite; }
