@@ -125,13 +125,18 @@ export const createInvoiceOrder = createServerFn({ method: "POST" })
 
 // ============ 3. ONE-TIME ADD-ON ORDER ============
 const ADDONS = {
-  legal_templates: { amountPaise: 299900, label: "Legal Templates Pack" },
+  extra_project:   { amountPaise: 49900,  label: "Extra project slot" },
+  extra_member:    { amountPaise: 29900,  label: "Extra team member" },
+  legal_templates: { amountPaise: 299900, label: "Legal contract templates" },
+  portfolio_site:  { amountPaise: 99900,  label: "Portfolio website" },
 } as const;
 type AddonKey = keyof typeof ADDONS;
 
 export const createAddonOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ item: z.enum(["legal_templates"]) }).parse(input))
+  .inputValidator((input) => z.object({
+    item: z.enum(["extra_project", "extra_member", "legal_templates", "portfolio_site"]),
+  }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const addon = ADDONS[data.item as AddonKey];
