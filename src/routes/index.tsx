@@ -57,7 +57,7 @@ function LandingPage() {
 }
 
 
-/* -------------------- NAV -------------------- */
+/* -------------------- NAV (dark, over hero) -------------------- */
 function Nav() {
   const [open, setOpen] = useState(false);
   const links = [
@@ -66,17 +66,23 @@ function Nav() {
     { label: "About", href: "#waitlist" },
   ];
   return (
-    <nav className="sticky top-0 z-50 bg-[#faf8f5]/85 backdrop-blur border-b border-[#e8e2d8]">
+    <nav className="absolute top-0 inset-x-0 z-50 bg-transparent">
       <div className="max-w-6xl mx-auto px-5 md:px-8 h-16 flex items-center justify-between">
-        <Link to="/" className="font-display text-2xl tracking-tight" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+        <Link
+          to="/"
+          className="text-2xl tracking-tight text-[#faf8f5]"
+          style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 500 }}
+        >
           PMStudio
         </Link>
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-9 absolute left-1/2 -translate-x-1/2">
           {links.map((l) => (
-            <a key={l.label} href={l.href} className="text-sm text-[#3d3530] hover:text-[#c17f5a] transition">
+            <a key={l.label} href={l.href} className="text-sm text-[#d8cfc4] hover:text-[#c17f5a] transition">
               {l.label}
             </a>
           ))}
+        </div>
+        <div className="hidden md:block">
           <Link
             to="/signup"
             className="inline-flex items-center h-10 px-5 rounded-md bg-[#c17f5a] text-white font-medium hover:bg-[#a86a48] transition shadow-sm"
@@ -84,14 +90,14 @@ function Nav() {
             Get Started
           </Link>
         </div>
-        <button className="md:hidden p-2" onClick={() => setOpen((o) => !o)} aria-label="Menu">
+        <button className="md:hidden p-2 text-[#faf8f5]" onClick={() => setOpen((o) => !o)} aria-label="Menu">
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
       {open && (
-        <div className="md:hidden border-t border-[#e8e2d8] px-5 py-4 space-y-3 bg-[#faf8f5]">
+        <div className="md:hidden border-t border-[#3a302a] px-5 py-4 space-y-3 bg-[#1a1612]">
           {links.map((l) => (
-            <a key={l.label} href={l.href} className="block text-[#3d3530]" onClick={() => setOpen(false)}>
+            <a key={l.label} href={l.href} className="block text-[#d8cfc4]" onClick={() => setOpen(false)}>
               {l.label}
             </a>
           ))}
@@ -104,219 +110,254 @@ function Nav() {
   );
 }
 
-/* -------------------- HERO -------------------- */
+/* -------------------- HERO (dark, live AI demo) -------------------- */
+const DEMO_MESSAGE =
+  "Ramesh delivered tiles today. Jangir started flooring in living room on 19th. Client approved the wardrobe veneer finish. Electrical conduit in mandir still pending.";
+
+type DemoTask = {
+  desc: string;
+  agency: string;
+  status: string;
+  statusColor: string;
+  statusBg: string;
+  room: string;
+  date: string;
+};
+
+const DEMO_TASKS: DemoTask[] = [
+  { desc: "Tile delivery", agency: "Ramesh", status: "Material Delivered", statusColor: "#2f4a3d", statusBg: "#cfe3d6", room: "Living Room", date: "19 Jan" },
+  { desc: "Flooring started", agency: "Jangir", status: "WIP", statusColor: "#7a4a32", statusBg: "#f1d9c6", room: "Living Room", date: "19 Jan" },
+  { desc: "Wardrobe veneer approval", agency: "Client", status: "Approved", statusColor: "#2f4a3d", statusBg: "#cfe3d6", room: "Master Bedroom", date: "Today" },
+  { desc: "Electrical conduit", agency: "Electrician", status: "Blocked", statusColor: "#8a2a1f", statusBg: "#f3d2cd", room: "Mandir", date: "Pending" },
+];
+
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return reduced;
+}
+
 function Hero() {
-  const headlineWords = [
-    { text: "Run", color: "#1a1612" },
-    { text: "your", color: "#1a1612" },
-    { text: "\n" },
-    { text: "interior", color: "#1a1612" },
-    { text: "design", color: "#1a1612" },
-    { text: "studio", color: "#1a1612" },
-    { text: "\n" },
-    { text: "like", color: "#c17f5a" },
-    { text: "a", color: "#c17f5a" },
-    { text: "pro.", color: "#c17f5a" },
-  ];
-  let wIdx = 0;
+  const reduced = useReducedMotion();
+  const [typed, setTyped] = useState("");
+  const [visibleTasks, setVisibleTasks] = useState(0);
+  const [showSummary, setShowSummary] = useState(false);
+  const [fading, setFading] = useState(false);
+
+  useEffect(() => {
+    if (reduced) {
+      setTyped(DEMO_MESSAGE);
+      setVisibleTasks(DEMO_TASKS.length);
+      setShowSummary(true);
+      return;
+    }
+
+    let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const schedule = (fn: () => void, ms: number) => {
+      const id = setTimeout(() => { if (!cancelled) fn(); }, ms);
+      timers.push(id);
+    };
+
+    const run = () => {
+      setTyped("");
+      setVisibleTasks(0);
+      setShowSummary(false);
+      setFading(false);
+
+      // start typing after 1s
+      let i = 0;
+      const typeNext = () => {
+        if (cancelled) return;
+        if (i >= DEMO_MESSAGE.length) return;
+        const ch = DEMO_MESSAGE[i];
+        i += 1;
+        setTyped(DEMO_MESSAGE.slice(0, i));
+        // variable speed
+        let delay = 38 + Math.random() * 32;
+        if (ch === " ") delay = 20;
+        if (ch === "." || ch === ",") delay = 260;
+        schedule(typeNext, delay);
+      };
+      schedule(typeNext, 1000);
+
+      // start revealing tasks 500ms after typing begins
+      DEMO_TASKS.forEach((_, idx) => {
+        schedule(() => setVisibleTasks((v) => Math.max(v, idx + 1)), 1500 + idx * 300);
+      });
+      // summary after tasks
+      schedule(() => setShowSummary(true), 1500 + DEMO_TASKS.length * 300 + 400);
+
+      // loop: fade out then restart
+      const totalTypingMs = DEMO_MESSAGE.length * 55 + 1000;
+      const holdAfter = Math.max(totalTypingMs, 1500 + DEMO_TASKS.length * 300 + 400) + 3000;
+      schedule(() => setFading(true), holdAfter);
+      schedule(run, holdAfter + 500);
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+    };
+  }, [reduced]);
 
   return (
-    <section className="relative overflow-hidden">
-      {/* Layered warm background */}
+    <section className="relative overflow-hidden bg-[#1a1612] text-[#faf8f5]">
+      {/* subtle warm glow */}
       <div
         aria-hidden
-        className="absolute inset-0 -z-10"
-        style={{
-          background:
-            "linear-gradient(180deg, #faf8f5 0%, #f6efe6 55%, #f1e4d6 100%)",
-        }}
+        className="absolute -z-0 top-[-220px] left-1/2 -translate-x-1/2 w-[900px] h-[900px] rounded-full blur-3xl opacity-30 pointer-events-none"
+        style={{ background: "radial-gradient(circle, rgba(193,127,90,0.55) 0%, transparent 65%)" }}
       />
-      {/* Drifting organic shapes */}
-      <div
-        aria-hidden
-        className="absolute -z-10 top-[-180px] right-[-160px] w-[620px] h-[620px] rounded-full blur-3xl opacity-60 drift-a"
-        style={{ background: "radial-gradient(circle, rgba(193,127,90,0.45) 0%, transparent 65%)" }}
-      />
-      <div
-        aria-hidden
-        className="absolute -z-10 bottom-[-200px] left-[-180px] w-[560px] h-[560px] rounded-full blur-3xl opacity-50 drift-b"
-        style={{ background: "radial-gradient(circle, rgba(122,158,138,0.40) 0%, transparent 65%)" }}
-      />
-      {/* Grain */}
-      <div aria-hidden className="absolute inset-0 -z-10 grain-overlay opacity-[0.28] mix-blend-multiply pointer-events-none" />
+      <div aria-hidden className="absolute inset-0 grain-overlay opacity-[0.08] pointer-events-none" />
 
-      <div className="max-w-6xl mx-auto px-5 md:px-8 pt-16 md:pt-24 pb-12 md:pb-20 grid md:grid-cols-2 gap-12 md:gap-10 items-center">
-        <div>
-          <h1
-            className="font-display text-[42px] sm:text-[54px] md:text-[68px] leading-[1.02] tracking-[-0.015em] text-[#1a1612]"
-            style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 500 }}
-          >
-            {headlineWords.map((w, i) => {
-              if (w.text === "\n") return <br key={i} />;
-              const delay = 0.15 + wIdx * 0.08;
-              wIdx += 1;
-              return (
-                <span
-                  key={i}
-                  className="word-rise mr-[0.25em]"
-                  style={{ color: w.color, animationDelay: `${delay}s` }}
-                >
-                  {w.text}
-                </span>
-              );
-            })}
-          </h1>
-          <p
-            className="mt-7 text-lg text-[#5a4f48] max-w-xl leading-relaxed opacity-0"
-            style={{ animation: "fade-up 600ms ease-out 1s forwards" }}
-          >
-            Project management, client portal, vendor tracking and AI communication — built specifically for Indian interior designers.
-          </p>
-          <div
-            className="mt-8 flex flex-wrap gap-3 opacity-0"
-            style={{ animation: "fade-up 600ms ease-out 1.15s forwards" }}
-          >
-            <Link
-              to="/signup"
-              className="inline-flex items-center gap-2 h-12 px-6 rounded-md bg-[#c17f5a] text-white font-medium btn-premium shadow-lg shadow-[#c17f5a]/25"
-            >
-              Get Started <ArrowRight className="h-4 w-4" />
-            </Link>
-            <a
-              href="#how"
-              className="inline-flex items-center h-12 px-6 rounded-md border border-[#1a1612]/20 text-[#1a1612] font-medium hover:bg-[#1a1612]/5 transition"
-            >
-              See how it works
-            </a>
-          </div>
-          <div
-            className="mt-8 flex items-center gap-3 text-sm text-[#6b5f58] opacity-0"
-            style={{ animation: "fade-up 600ms ease-out 1.3s forwards" }}
-          >
-            <div className="flex">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <Star key={i} className="h-4 w-4 fill-[#d4a574] text-[#d4a574]" />
-              ))}
-            </div>
-            <span>Trusted by interior designers across India</span>
-          </div>
-        </div>
+      <Nav />
 
-        {/* Floating composition */}
-        <div
-          className="relative min-h-[360px] md:min-h-[480px] opacity-0"
-          style={{ animation: "fade-up 700ms ease-out 0.4s forwards" }}
+      <div className="relative max-w-5xl mx-auto px-5 md:px-8 pt-32 md:pt-40 pb-16 md:pb-24 text-center">
+        <p
+          className="text-[11px] uppercase tracking-[0.32em] text-[#c17f5a] mb-6 fade-soft"
+          style={{ animationDelay: "0.1s" }}
         >
-          {/* terracotta glow */}
+          Watch AI in action
+        </p>
+        <h1
+          className="font-display text-[40px] sm:text-[58px] md:text-[76px] leading-[1.05] tracking-[-0.015em] text-[#faf8f5] fade-soft"
+          style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 500, animationDelay: "0.25s" }}
+        >
+          Tell AI what happened.
+          <br />
+          <span className="text-[#faf8f5]">PMStudio handles</span>
+          <br />
+          <span className="italic text-[#c17f5a]">the rest.</span>
+        </h1>
+
+        {/* Live demo */}
+        <div className={`mt-12 max-w-[700px] mx-auto transition-opacity duration-500 ${fading ? "opacity-0" : "opacity-100"}`}>
+          {/* Input bar */}
           <div
-            aria-hidden
-            className="absolute inset-6 rounded-[32px] blur-3xl opacity-60"
-            style={{ background: "radial-gradient(circle, rgba(193,127,90,0.55) 0%, transparent 70%)" }}
-          />
-          {/* main mockup */}
-          <div className="relative float-soft">
-            <img
-              src={heroImage}
-              alt="PMStudio dashboard"
-              className="relative rounded-2xl shadow-2xl w-full ring-1 ring-black/5"
-              loading="eager"
-            />
-          </div>
-          {/* phone portal card */}
-          <div
-            className="hidden sm:block absolute -left-4 md:-left-10 bottom-2 md:bottom-6 w-[150px] md:w-[180px] rounded-2xl bg-white shadow-xl ring-1 ring-black/5 p-3 float-soft-2"
+            className="rounded-2xl border border-[#3a302a] bg-[#26201b] px-5 py-4 text-left shadow-2xl shadow-black/40 fade-soft"
             style={{ animationDelay: "0.6s" }}
           >
-            <div className="text-[10px] uppercase tracking-[0.18em] text-[#c17f5a] mb-1">Client portal</div>
-            <div className="font-display text-[#1a1612] text-lg leading-tight" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-              Mehta Residence
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="h-3.5 w-3.5 text-[#c17f5a]" />
+              <span className="text-[10px] uppercase tracking-[0.22em] text-[#c17f5a]">AI Site Update</span>
             </div>
-            <div className="mt-2 h-1.5 rounded-full bg-[#f1ece4] overflow-hidden">
-              <div className="h-full w-[68%] bg-[#c17f5a]" />
+            <div className="text-[15px] md:text-[16px] leading-relaxed text-[#f5ecdf] min-h-[3.5em] whitespace-pre-wrap">
+              {typed}
+              <span className="inline-block w-[2px] h-[1.05em] align-[-0.18em] bg-[#c17f5a] ml-[1px] blink-cursor" />
             </div>
-            <div className="mt-2 text-[11px] text-[#6b5f58]">68% — Joinery phase</div>
           </div>
-          {/* AI task card */}
-          <div
-            className="hidden md:flex absolute -top-2 -right-2 md:-right-6 w-[210px] rounded-xl bg-white shadow-xl ring-1 ring-black/5 p-3 gap-2 items-start float-soft"
-            style={{ animationDelay: "1.2s" }}
-          >
-            <div className="h-8 w-8 shrink-0 rounded-lg bg-[#c17f5a]/12 text-[#c17f5a] flex items-center justify-center">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-[0.16em] text-[#6b5f58]">AI created</div>
-              <div className="text-[13px] text-[#1a1612] leading-snug truncate">
-                Order ceiling lights — by Fri
+
+          {/* Task cards */}
+          <div className="mt-6 space-y-3">
+            {DEMO_TASKS.map((t, i) => (
+              <div
+                key={i}
+                className="task-rise rounded-xl bg-[#faf8f5] text-[#1a1612] px-4 py-3 text-left shadow-lg shadow-black/20"
+                style={{
+                  visibility: i < visibleTasks ? "visible" : "hidden",
+                  animationDelay: "0ms",
+                }}
+              >
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span
+                    className="text-[10px] font-medium uppercase tracking-[0.12em] px-2 py-1 rounded-full"
+                    style={{ color: t.statusColor, background: t.statusBg }}
+                  >
+                    {t.status}
+                  </span>
+                  <span className="font-medium text-[14px] md:text-[15px]">{t.desc}</span>
+                  <span className="text-[12px] text-[#6b5f58]">· {t.agency}</span>
+                  <span className="ml-auto flex items-center gap-3 text-[11px] text-[#6b5f58]">
+                    <span className="px-2 py-0.5 rounded bg-[#f1ece4]">{t.room}</span>
+                    <span>{t.date}</span>
+                  </span>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
-          {/* Invoice card */}
+
+          {/* Summary */}
           <div
-            className="hidden md:flex absolute right-2 md:-right-4 bottom-6 w-[200px] rounded-xl bg-white shadow-xl ring-1 ring-black/5 p-3 gap-2 items-start float-soft-2"
-            style={{ animationDelay: "1.8s" }}
+            className={`mt-5 text-[13px] text-[#c17f5a] tracking-wide transition-opacity duration-500 ${showSummary ? "opacity-100" : "opacity-0"}`}
           >
-            <div className="h-8 w-8 shrink-0 rounded-lg bg-[#7a9e8a]/15 text-[#7a9e8a] flex items-center justify-center">
-              <Receipt className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-[0.16em] text-[#6b5f58]">Invoice matched</div>
-              <div className="text-[13px] text-[#1a1612] leading-snug">₹48,200 · Saini Ply</div>
-            </div>
-            <CheckCircle2 className="h-4 w-4 text-[#7a9e8a] shrink-0" />
+            4 tasks created · 1 dependency detected · 0 manual data entry
           </div>
         </div>
+
+        {/* CTAs */}
+        <div
+          className="mt-12 flex flex-wrap justify-center gap-3 fade-soft"
+          style={{ animationDelay: "0.9s" }}
+        >
+          <Link
+            to="/signup"
+            className="inline-flex items-center gap-2 h-12 px-6 rounded-md bg-[#c17f5a] text-white font-medium btn-premium shadow-lg shadow-[#c17f5a]/30 hover:bg-[#a86a48] transition"
+          >
+            Get Started Free <ArrowRight className="h-4 w-4" />
+          </Link>
+          <a
+            href="#solution"
+            className="inline-flex items-center gap-2 h-12 px-6 rounded-md border border-[#faf8f5]/25 text-[#faf8f5] font-medium hover:bg-[#faf8f5]/10 transition"
+          >
+            See all features ↓
+          </a>
+        </div>
+
+        <p
+          className="mt-6 text-[12px] text-[#8a7e75] fade-soft"
+          style={{ animationDelay: "1.05s" }}
+        >
+          Used by interior designers across India — Mumbai, Delhi, Bangalore, Ahmedabad
+        </p>
       </div>
 
-      {/* Trust strip */}
-      <Reveal>
-        <div className="max-w-6xl mx-auto px-5 md:px-8 pb-12 md:pb-16">
-          <div className="text-center text-[12px] uppercase tracking-[0.22em] text-[#8a7e75]">
-            Built for residential · commercial · retail · hospitality designers
-          </div>
-        </div>
-      </Reveal>
+      {/* Gradient fade into off-white problem section */}
+      <div
+        aria-hidden
+        className="h-24 md:h-32 w-full"
+        style={{ background: "linear-gradient(180deg, #1a1612 0%, #faf8f5 100%)" }}
+      />
     </section>
   );
 }
 
-/* -------------------- PROBLEM (dark dramatic) -------------------- */
+/* -------------------- PROBLEM (off-white, "Sound familiar?") -------------------- */
 function Problem() {
   const pains = [
-    { icon: Phone, title: "WhatsApp chaos", body: "Approvals buried in 14 chats. Nothing tracked." },
-    { icon: Truck, title: "Vendors stall", body: "Deliveries slip. Payments forgotten. Projects stuck." },
-    { icon: IndianRupee, title: "Budget blind spots", body: "Overruns surface too late. Disputes with no paper trail." },
+    { icon: Phone, title: "Approval requests buried in 300 messages" },
+    { icon: FileText, title: "Budget tracked across 4 different Excel files" },
+    { icon: Bell, title: "You find out about delays after they have already happened" },
   ];
   return (
-    <section className="relative bg-[#1a1612] text-[#f5ecdf] py-24 md:py-36 overflow-hidden">
-      <div aria-hidden className="absolute inset-0 grain-overlay opacity-[0.10] pointer-events-none" />
-      <div aria-hidden className="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full blur-3xl opacity-30"
-        style={{ background: "radial-gradient(circle, rgba(193,127,90,0.55) 0%, transparent 65%)" }} />
+    <section className="relative bg-[#faf8f5] text-[#1a1612] py-20 md:py-28">
       <div className="relative max-w-5xl mx-auto px-5 md:px-8 text-center">
         <Reveal>
-          <p className="text-xs uppercase tracking-[0.28em] text-[#c17f5a] mb-8">The reality</p>
-        </Reveal>
-        <Reveal delay={0.1}>
           <h2
-            className="font-display text-3xl sm:text-5xl md:text-6xl leading-[1.1] text-[#f5ecdf] max-w-4xl mx-auto"
+            className="font-display text-4xl sm:text-5xl md:text-6xl leading-[1.1] text-[#1a1612]"
             style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 500 }}
           >
-            Every approval. Every vendor. Every invoice.
-            <br />
-            <span className="text-[#c17f5a] italic">You're the one chasing it.</span>
+            Sound familiar?
           </h2>
         </Reveal>
-        <div className="mt-20 grid md:grid-cols-3 gap-5">
+        <div className="mt-14 grid md:grid-cols-3 gap-5 text-left">
           {pains.map((p, i) => (
-            <Reveal key={p.title} delay={0.2 + i * 0.12}>
-              <div className="rounded-2xl bg-[#26201b] border border-[#3a302a] p-7 text-left h-full hover:border-[#c17f5a]/40 transition-colors">
-                <div className="h-11 w-11 rounded-xl bg-[#c17f5a]/15 text-[#c17f5a] flex items-center justify-center mb-5">
+            <Reveal key={p.title} delay={0.15 + i * 0.12}>
+              <div
+                className="rounded-2xl bg-white border border-[#ece4d8] border-l-4 p-7 h-full shadow-sm hover:shadow-md transition-shadow"
+                style={{ borderLeftColor: "#c17f5a" }}
+              >
+                <div className="h-10 w-10 rounded-lg bg-[#c17f5a]/12 text-[#c17f5a] flex items-center justify-center mb-5">
                   <p.icon className="h-5 w-5" />
                 </div>
-                <h3 className="font-display text-2xl text-[#f5ecdf] mb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-                  {p.title}
-                </h3>
-                <p className="text-[#c9b8a4] leading-relaxed text-[15px]">{p.body}</p>
+                <p className="text-[15px] leading-relaxed text-[#3d3530]">{p.title}</p>
               </div>
             </Reveal>
           ))}
@@ -325,6 +366,7 @@ function Problem() {
     </section>
   );
 }
+
 
 /* -------------------- WORKFLOW (animated line) -------------------- */
 function Workflow() {
