@@ -113,7 +113,7 @@ function Nav() {
 
 /* -------------------- HERO (dark, live AI demo) -------------------- */
 const DEMO_MESSAGE =
-  "Ramesh delivered tiles today. Jangir started flooring in living room on 19th. Client approved the wardrobe veneer finish. Electrical conduit in mandir still pending.";
+  "Ramesh delivered tiles today. Civil team started flooring in living room on 19th. Client approved the wardrobe veneer finish. Electrical conduit in mandir still pending.";
 
 type DemoTask = {
   desc: string;
