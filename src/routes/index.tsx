@@ -103,34 +103,93 @@ function Nav() {
 
 /* -------------------- HERO -------------------- */
 function Hero() {
+  const headlineWords = [
+    { text: "Run", color: "#1a1612" },
+    { text: "your", color: "#1a1612" },
+    { text: "\n" },
+    { text: "interior", color: "#1a1612" },
+    { text: "design", color: "#1a1612" },
+    { text: "studio", color: "#1a1612" },
+    { text: "\n" },
+    { text: "like", color: "#c17f5a" },
+    { text: "a", color: "#c17f5a" },
+    { text: "pro.", color: "#c17f5a" },
+  ];
+  let wIdx = 0;
+
   return (
     <section className="relative overflow-hidden">
-      <div className="max-w-6xl mx-auto px-5 md:px-8 pt-16 md:pt-24 pb-16 md:pb-24 grid md:grid-cols-2 gap-12 items-center">
-        <div className="animate-fade-up" style={{ animationDuration: "0.6s" }}>
+      {/* Layered warm background */}
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10"
+        style={{
+          background:
+            "linear-gradient(180deg, #faf8f5 0%, #f6efe6 55%, #f1e4d6 100%)",
+        }}
+      />
+      {/* Drifting organic shapes */}
+      <div
+        aria-hidden
+        className="absolute -z-10 top-[-180px] right-[-160px] w-[620px] h-[620px] rounded-full blur-3xl opacity-60 drift-a"
+        style={{ background: "radial-gradient(circle, rgba(193,127,90,0.45) 0%, transparent 65%)" }}
+      />
+      <div
+        aria-hidden
+        className="absolute -z-10 bottom-[-200px] left-[-180px] w-[560px] h-[560px] rounded-full blur-3xl opacity-50 drift-b"
+        style={{ background: "radial-gradient(circle, rgba(122,158,138,0.40) 0%, transparent 65%)" }}
+      />
+      {/* Grain */}
+      <div aria-hidden className="absolute inset-0 -z-10 grain-overlay opacity-[0.28] mix-blend-multiply pointer-events-none" />
+
+      <div className="max-w-6xl mx-auto px-5 md:px-8 pt-16 md:pt-24 pb-12 md:pb-20 grid md:grid-cols-2 gap-12 md:gap-10 items-center">
+        <div>
           <h1
-            className="font-display leading-[1.05] text-[44px] md:text-[64px] tracking-tight text-[#1a1612]"
+            className="font-display text-[42px] sm:text-[54px] md:text-[68px] leading-[1.02] tracking-[-0.015em] text-[#1a1612]"
             style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 500 }}
           >
-            Run your interior design studio <em className="text-[#c17f5a] not-italic">like a pro</em>
+            {headlineWords.map((w, i) => {
+              if (w.text === "\n") return <br key={i} />;
+              const delay = 0.15 + wIdx * 0.08;
+              wIdx += 1;
+              return (
+                <span
+                  key={i}
+                  className="word-rise mr-[0.25em]"
+                  style={{ color: w.color, animationDelay: `${delay}s` }}
+                >
+                  {w.text}
+                </span>
+              );
+            })}
           </h1>
-          <p className="mt-6 text-lg text-[#5a4f48] max-w-xl leading-relaxed">
+          <p
+            className="mt-7 text-lg text-[#5a4f48] max-w-xl leading-relaxed opacity-0"
+            style={{ animation: "fade-up 600ms ease-out 1s forwards" }}
+          >
             Project management, client portal, vendor tracking and AI communication — built specifically for Indian interior designers.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div
+            className="mt-8 flex flex-wrap gap-3 opacity-0"
+            style={{ animation: "fade-up 600ms ease-out 1.15s forwards" }}
+          >
             <Link
               to="/signup"
-              className="inline-flex items-center gap-2 h-12 px-6 rounded-md bg-[#c17f5a] text-white font-medium btn-premium shadow-lg shadow-[#c17f5a]/20"
+              className="inline-flex items-center gap-2 h-12 px-6 rounded-md bg-[#c17f5a] text-white font-medium btn-premium shadow-lg shadow-[#c17f5a]/25"
             >
-              Start Free — No credit card <ArrowRight className="h-4 w-4" />
+              Get Started <ArrowRight className="h-4 w-4" />
             </Link>
             <a
               href="#how"
-              className="inline-flex items-center h-12 px-6 rounded-md border border-[#1a1612]/15 text-[#1a1612] font-medium hover:bg-[#1a1612]/5 transition"
+              className="inline-flex items-center h-12 px-6 rounded-md border border-[#1a1612]/20 text-[#1a1612] font-medium hover:bg-[#1a1612]/5 transition"
             >
               See how it works
             </a>
           </div>
-          <div className="mt-8 flex items-center gap-3 text-sm text-[#6b5f58]">
+          <div
+            className="mt-8 flex items-center gap-3 text-sm text-[#6b5f58] opacity-0"
+            style={{ animation: "fade-up 600ms ease-out 1.3s forwards" }}
+          >
             <div className="flex">
               {[0, 1, 2, 3, 4].map((i) => (
                 <Star key={i} className="h-4 w-4 fill-[#d4a574] text-[#d4a574]" />
@@ -139,22 +198,81 @@ function Hero() {
             <span>Trusted by interior designers across India</span>
           </div>
         </div>
-        <div className="animate-fade-up" style={{ animationDuration: "0.8s", animationDelay: "0.15s" }}>
-          <div className="relative">
-            <div
-              className="absolute -inset-8 rounded-full opacity-50 blur-3xl"
-              style={{ background: "radial-gradient(circle, #c17f5a 0%, transparent 70%)" }}
-            />
+
+        {/* Floating composition */}
+        <div
+          className="relative min-h-[360px] md:min-h-[480px] opacity-0"
+          style={{ animation: "fade-up 700ms ease-out 0.4s forwards" }}
+        >
+          {/* terracotta glow */}
+          <div
+            aria-hidden
+            className="absolute inset-6 rounded-[32px] blur-3xl opacity-60"
+            style={{ background: "radial-gradient(circle, rgba(193,127,90,0.55) 0%, transparent 70%)" }}
+          />
+          {/* main mockup */}
+          <div className="relative float-soft">
             <img
               src={heroImage}
-              alt="PMStudio dashboard on a laptop"
-              className="relative rounded-xl shadow-2xl w-full float-y"
+              alt="PMStudio dashboard"
+              className="relative rounded-2xl shadow-2xl w-full ring-1 ring-black/5"
               loading="eager"
             />
-
+          </div>
+          {/* phone portal card */}
+          <div
+            className="hidden sm:block absolute -left-4 md:-left-10 bottom-2 md:bottom-6 w-[150px] md:w-[180px] rounded-2xl bg-white shadow-xl ring-1 ring-black/5 p-3 float-soft-2"
+            style={{ animationDelay: "0.6s" }}
+          >
+            <div className="text-[10px] uppercase tracking-[0.18em] text-[#c17f5a] mb-1">Client portal</div>
+            <div className="font-display text-[#1a1612] text-lg leading-tight" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+              Mehta Residence
+            </div>
+            <div className="mt-2 h-1.5 rounded-full bg-[#f1ece4] overflow-hidden">
+              <div className="h-full w-[68%] bg-[#c17f5a]" />
+            </div>
+            <div className="mt-2 text-[11px] text-[#6b5f58]">68% — Joinery phase</div>
+          </div>
+          {/* AI task card */}
+          <div
+            className="hidden md:flex absolute -top-2 -right-2 md:-right-6 w-[210px] rounded-xl bg-white shadow-xl ring-1 ring-black/5 p-3 gap-2 items-start float-soft"
+            style={{ animationDelay: "1.2s" }}
+          >
+            <div className="h-8 w-8 shrink-0 rounded-lg bg-[#c17f5a]/12 text-[#c17f5a] flex items-center justify-center">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-[#6b5f58]">AI created</div>
+              <div className="text-[13px] text-[#1a1612] leading-snug truncate">
+                Order ceiling lights — by Fri
+              </div>
+            </div>
+          </div>
+          {/* Invoice card */}
+          <div
+            className="hidden md:flex absolute right-2 md:-right-4 bottom-6 w-[200px] rounded-xl bg-white shadow-xl ring-1 ring-black/5 p-3 gap-2 items-start float-soft-2"
+            style={{ animationDelay: "1.8s" }}
+          >
+            <div className="h-8 w-8 shrink-0 rounded-lg bg-[#7a9e8a]/15 text-[#7a9e8a] flex items-center justify-center">
+              <Receipt className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-[#6b5f58]">Invoice matched</div>
+              <div className="text-[13px] text-[#1a1612] leading-snug">₹48,200 · Saini Ply</div>
+            </div>
+            <CheckCircle2 className="h-4 w-4 text-[#7a9e8a] shrink-0" />
           </div>
         </div>
       </div>
+
+      {/* Trust strip */}
+      <Reveal>
+        <div className="max-w-6xl mx-auto px-5 md:px-8 pb-12 md:pb-16">
+          <div className="text-center text-[12px] uppercase tracking-[0.22em] text-[#8a7e75]">
+            Built for residential · commercial · retail · hospitality designers
+          </div>
+        </div>
+      </Reveal>
     </section>
   );
 }
