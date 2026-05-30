@@ -897,3 +897,23 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
     </div>
   );
 }
+
+function RevealClass({ children, animation, className = "" }: { children: React.ReactNode; animation: string; className?: string }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div
+      ref={(el) => {
+        if (!el || shown) return;
+        const io = new IntersectionObserver(
+          (entries) => entries.forEach((e) => { if (e.isIntersecting) { setShown(true); io.disconnect(); } }),
+          { threshold: 0.2 },
+        );
+        io.observe(el);
+      }}
+      className={`${shown ? animation : "opacity-0"} ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
