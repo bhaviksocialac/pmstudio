@@ -223,7 +223,8 @@
 .link-underline:hover::after { transform: scaleX(1); transform-origin: left; }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-fade-up, .pulse-fast, .pulse-slow, .float-y, .pulse-glow { animation: none !important; }
+  .animate-fade-up, .pulse-fast, .pulse-slow, .float-y, .pulse-glow,
+  .drift-a, .drift-b, .float-soft, .float-soft-2, .word-rise { animation: none !important; opacity: 1 !important; }
   .btn-premium, .card-lift { transition: none !important; }
   .btn-premium:hover, .card-lift:hover { transform: none !important; }
   .btn-premium::after { display: none; }
