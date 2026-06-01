@@ -194,6 +194,7 @@ export type Database = {
         Row: {
           client_id: string
           created_at: string
+          deleted_at: string | null
           designation: string | null
           email: string | null
           id: string
@@ -208,6 +209,7 @@ export type Database = {
         Insert: {
           client_id: string
           created_at?: string
+          deleted_at?: string | null
           designation?: string | null
           email?: string | null
           id?: string
@@ -222,6 +224,7 @@ export type Database = {
         Update: {
           client_id?: string
           created_at?: string
+          deleted_at?: string | null
           designation?: string | null
           email?: string | null
           id?: string
@@ -253,6 +256,7 @@ export type Database = {
           country: string | null
           created_at: string
           currency_code: string
+          deleted_at: string | null
           designation: string | null
           email: string | null
           flat_number: string | null
@@ -292,6 +296,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           currency_code?: string
+          deleted_at?: string | null
           designation?: string | null
           email?: string | null
           flat_number?: string | null
@@ -331,6 +336,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           currency_code?: string
+          deleted_at?: string | null
           designation?: string | null
           email?: string | null
           flat_number?: string | null
@@ -366,6 +372,7 @@ export type Database = {
       document_folders: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           name: string
           path: string
@@ -375,6 +382,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name: string
           path: string
@@ -384,6 +392,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name?: string
           path?: string
@@ -462,54 +471,90 @@ export type Database = {
       invoices: {
         Row: {
           amount: number
+          amount_paid: number
           client_id: string | null
           created_at: string
+          deleted_at: string | null
           due_at: string | null
+          gst_amount: number
+          gst_percent: number
           id: string
+          line_items: Json
           milestone: string | null
+          notes: string | null
           number: string | null
           paid_at: string | null
+          payment_terms: string | null
+          pdf_storage_path: string | null
+          pdf_url: string | null
           project_id: string | null
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
           sent_at: string | null
+          source: string
           status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
           updated_at: string
           user_id: string
+          viewed_at: string | null
         }
         Insert: {
           amount?: number
+          amount_paid?: number
           client_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           due_at?: string | null
+          gst_amount?: number
+          gst_percent?: number
           id?: string
+          line_items?: Json
           milestone?: string | null
+          notes?: string | null
           number?: string | null
           paid_at?: string | null
+          payment_terms?: string | null
+          pdf_storage_path?: string | null
+          pdf_url?: string | null
           project_id?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           sent_at?: string | null
+          source?: string
           status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
           updated_at?: string
           user_id: string
+          viewed_at?: string | null
         }
         Update: {
           amount?: number
+          amount_paid?: number
           client_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           due_at?: string | null
+          gst_amount?: number
+          gst_percent?: number
           id?: string
+          line_items?: Json
           milestone?: string | null
+          notes?: string | null
           number?: string | null
           paid_at?: string | null
+          payment_terms?: string | null
+          pdf_storage_path?: string | null
+          pdf_url?: string | null
           project_id?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           sent_at?: string | null
+          source?: string
           status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
           updated_at?: string
           user_id?: string
+          viewed_at?: string | null
         }
         Relationships: [
           {
@@ -972,10 +1017,13 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          deleted_at: string | null
           file_size: number | null
           file_url: string
           folder_path: string
           id: string
+          linked_invoice_id: string | null
+          linked_invoice_kind: string | null
           mime_type: string | null
           name: string
           project_id: string
@@ -987,10 +1035,13 @@ export type Database = {
         Insert: {
           category?: string
           created_at?: string
+          deleted_at?: string | null
           file_size?: number | null
           file_url: string
           folder_path?: string
           id?: string
+          linked_invoice_id?: string | null
+          linked_invoice_kind?: string | null
           mime_type?: string | null
           name: string
           project_id: string
@@ -1002,10 +1053,13 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string
+          deleted_at?: string | null
           file_size?: number | null
           file_url?: string
           folder_path?: string
           id?: string
+          linked_invoice_id?: string | null
+          linked_invoice_kind?: string | null
           mime_type?: string | null
           name?: string
           project_id?: string
@@ -1141,6 +1195,7 @@ export type Database = {
           completion: number
           country: string | null
           created_at: string
+          deleted_at: string | null
           description: string | null
           end_date: string | null
           expected_handover: string | null
@@ -1168,6 +1223,7 @@ export type Database = {
           completion?: number
           country?: string | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           end_date?: string | null
           expected_handover?: string | null
@@ -1195,6 +1251,7 @@ export type Database = {
           completion?: number
           country?: string | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           end_date?: string | null
           expected_handover?: string | null
@@ -1270,6 +1327,7 @@ export type Database = {
           checked_in_at: string | null
           contractor_id: string
           created_at: string
+          deleted_at: string | null
           hours_on_site: number | null
           id: string
           present: boolean
@@ -1287,6 +1345,7 @@ export type Database = {
           checked_in_at?: string | null
           contractor_id: string
           created_at?: string
+          deleted_at?: string | null
           hours_on_site?: number | null
           id?: string
           present?: boolean
@@ -1304,6 +1363,7 @@ export type Database = {
           checked_in_at?: string | null
           contractor_id?: string
           created_at?: string
+          deleted_at?: string | null
           hours_on_site?: number | null
           id?: string
           present?: boolean
@@ -1376,6 +1436,7 @@ export type Database = {
           contractor_name: string | null
           created_at: string
           deadline: string | null
+          deleted_at: string | null
           description: string
           id: string
           linked_task_id: string | null
@@ -1401,6 +1462,7 @@ export type Database = {
           contractor_name?: string | null
           created_at?: string
           deadline?: string | null
+          deleted_at?: string | null
           description: string
           id?: string
           linked_task_id?: string | null
@@ -1426,6 +1488,7 @@ export type Database = {
           contractor_name?: string | null
           created_at?: string
           deadline?: string | null
+          deleted_at?: string | null
           description?: string
           id?: string
           linked_task_id?: string | null
@@ -1548,6 +1611,7 @@ export type Database = {
           contractor: string | null
           created_at: string
           delayed: boolean
+          deleted_at: string | null
           depends_on: Json
           description: string | null
           done: boolean
@@ -1593,6 +1657,7 @@ export type Database = {
           contractor?: string | null
           created_at?: string
           delayed?: boolean
+          deleted_at?: string | null
           depends_on?: Json
           description?: string | null
           done?: boolean
@@ -1638,6 +1703,7 @@ export type Database = {
           contractor?: string | null
           created_at?: string
           delayed?: boolean
+          deleted_at?: string | null
           depends_on?: Json
           description?: string | null
           done?: boolean
@@ -1680,6 +1746,7 @@ export type Database = {
       team_members: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           name: string
           role: string
@@ -1688,6 +1755,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name: string
           role?: string
@@ -1696,6 +1764,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           name?: string
           role?: string
@@ -1858,10 +1927,13 @@ export type Database = {
       vendor_invoices: {
         Row: {
           amount_paid: number
+          approved_at: string | null
           bank_account_snapshot: string | null
+          bank_details: Json
           bank_name_snapshot: string | null
           company_name_snapshot: string | null
           created_at: string
+          deleted_at: string | null
           due_date: string | null
           gst_amount: number
           gst_percent: number
@@ -1870,12 +1942,17 @@ export type Database = {
           ifsc_snapshot: string | null
           invoice_date: string | null
           invoice_number: string | null
+          line_items: Json
           mime_type: string | null
           notes: string | null
           original_filename: string | null
+          paid_at: string | null
+          payment_terms: string | null
           pdf_storage_path: string | null
           pdf_url: string | null
+          phase_subcategory_id: string | null
           project_id: string
+          source: string
           status: string
           subtotal: number
           terms: string | null
@@ -1883,13 +1960,18 @@ export type Database = {
           updated_at: string
           user_id: string
           vendor_id: string
+          verified_at: string | null
+          work_description: string | null
         }
         Insert: {
           amount_paid?: number
+          approved_at?: string | null
           bank_account_snapshot?: string | null
+          bank_details?: Json
           bank_name_snapshot?: string | null
           company_name_snapshot?: string | null
           created_at?: string
+          deleted_at?: string | null
           due_date?: string | null
           gst_amount?: number
           gst_percent?: number
@@ -1898,12 +1980,17 @@ export type Database = {
           ifsc_snapshot?: string | null
           invoice_date?: string | null
           invoice_number?: string | null
+          line_items?: Json
           mime_type?: string | null
           notes?: string | null
           original_filename?: string | null
+          paid_at?: string | null
+          payment_terms?: string | null
           pdf_storage_path?: string | null
           pdf_url?: string | null
+          phase_subcategory_id?: string | null
           project_id: string
+          source?: string
           status?: string
           subtotal?: number
           terms?: string | null
@@ -1911,13 +1998,18 @@ export type Database = {
           updated_at?: string
           user_id: string
           vendor_id: string
+          verified_at?: string | null
+          work_description?: string | null
         }
         Update: {
           amount_paid?: number
+          approved_at?: string | null
           bank_account_snapshot?: string | null
+          bank_details?: Json
           bank_name_snapshot?: string | null
           company_name_snapshot?: string | null
           created_at?: string
+          deleted_at?: string | null
           due_date?: string | null
           gst_amount?: number
           gst_percent?: number
@@ -1926,12 +2018,17 @@ export type Database = {
           ifsc_snapshot?: string | null
           invoice_date?: string | null
           invoice_number?: string | null
+          line_items?: Json
           mime_type?: string | null
           notes?: string | null
           original_filename?: string | null
+          paid_at?: string | null
+          payment_terms?: string | null
           pdf_storage_path?: string | null
           pdf_url?: string | null
+          phase_subcategory_id?: string | null
           project_id?: string
+          source?: string
           status?: string
           subtotal?: number
           terms?: string | null
@@ -1939,6 +2036,8 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vendor_id?: string
+          verified_at?: string | null
+          work_description?: string | null
         }
         Relationships: []
       }
@@ -1951,6 +2050,7 @@ export type Database = {
           contact_person: string | null
           country: string | null
           created_at: string
+          deleted_at: string | null
           email: string | null
           flat_number: string | null
           gst: string | null
@@ -1979,6 +2079,7 @@ export type Database = {
           contact_person?: string | null
           country?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           flat_number?: string | null
           gst?: string | null
@@ -2007,6 +2108,7 @@ export type Database = {
           contact_person?: string | null
           country?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           flat_number?: string | null
           gst?: string | null
@@ -2092,6 +2194,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      purge_trashed_rows: { Args: never; Returns: undefined }
     }
     Enums: {
       ai_draft_kind:
