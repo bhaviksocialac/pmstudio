@@ -17,8 +17,9 @@ export const Route = createFileRoute("/_authenticated/vendors")({
   component: VendorsPage,
 });
 
-const DEFAULT_CATS = ["Civil","Carpentry","Electrical","Plumbing","Flooring","Painting","Furniture","Lighting","Hardware","Tiles","Sanitary","HVAC","Other"];
-const DEFAULT_TERMS = ["100% Advance","50-50","On Completion","30 Days Credit","Custom"];
+import { DEFAULT_WORK_CATEGORIES, PAYMENT_TERM_PRESETS } from "@/lib/vendor-constants";
+const DEFAULT_CATS = [...DEFAULT_WORK_CATEGORIES];
+const DEFAULT_TERMS = PAYMENT_TERM_PRESETS;
 
 function VendorsPage() {
   const [q, setQ] = useState("");
