@@ -12,7 +12,7 @@ import { VendorAutocomplete } from "@/components/VendorAutocomplete";
 import { VendorModal } from "@/routes/_authenticated/vendors";
 import { InvoiceUploadDialog } from "@/components/vendors/InvoiceUploadDialog";
 import { VendorInvoiceList } from "@/components/vendors/VendorInvoiceList";
-import { extractInvoiceFromDocument, type InvoiceExtract } from "@/lib/vendor-invoice-extract.functions";
+import { extractVendorQuotation, type QuotationExtract } from "@/lib/vendor-quotation.functions";
 import { extractVendorQuotation, type QuotationExtract } from "@/lib/vendor-quotation.functions";
 import { assignVendorToProjectTasks } from "@/lib/vendor-assignment.functions";
 import { DEFAULT_WORK_CATEGORIES } from "@/lib/vendor-constants";
