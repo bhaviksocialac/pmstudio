@@ -151,18 +151,22 @@ export const parseBoqChecklist = createServerFn({ method: "POST" })
         { role: "user", content: buildPrompt(text) },
       ]);
     } else if (isPdf) {
+      let pdfText = "";
+      try {
+        pdfText = await extractPdfText(fileBase64);
+      } catch (err) {
+        throw new Error(`Could not read PDF: ${err instanceof Error ? err.message : "unknown error"}`);
+      }
+      if (pdfText.length < 30) {
+        throw new Error("This PDF appears to be scanned (no extractable text). Please upload an Excel BOQ or a text-based PDF.");
+      }
+      pdfText = pdfText.slice(0, 80000);
       items = await callGateway([
         { role: "system", content: SYSTEM },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: buildPrompt(null) },
-            { type: "image_url", image_url: { url: `data:application/pdf;base64,${fileBase64}` } },
-          ],
-        },
+        { role: "user", content: buildPrompt(pdfText) },
       ]);
     } else {
-      throw new Error("Upload PDF or Excel.");
+      throw new Error("Upload a PDF or Excel (.xlsx, .xls) BOQ file.");
     }
 
     const totalsByWorkType: Record<string, number> = {};
