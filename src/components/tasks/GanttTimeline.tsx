@@ -10,7 +10,22 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import type { TaskRow } from "./TaskTable";
 import { phaseOfTask, PROJECT_PHASES, isTaskDone, type ProjectPhase } from "@/lib/task-flow";
 
-type ViewMode = "Day" | "Week" | "Month" | "Year";
+type ViewMode = "Day" | "Week" | "Month" | "Quarter" | "Year";
+
+// Custom Quarter view mode — Frappe ships Day/Week/Month/Year only.
+const QUARTER_VIEW_MODE = {
+  name: "Quarter",
+  padding: "6m",
+  step: "3m",
+  column_width: 100,
+  date_format: "YYYY-MM",
+  lower_text: (d: Date) => `Q${Math.floor(d.getMonth() / 3) + 1}`,
+  upper_text: (d: Date, lastDate: Date | null) =>
+    !lastDate || d.getFullYear() !== lastDate.getFullYear() ? String(d.getFullYear()) : "",
+  thick_line: (d: Date) => d.getMonth() === 0,
+  snap_at: "30d",
+};
+const DEFAULT_VIEW_MODES = ["Day", "Week", "Month", "Year"];
 type GroupMode = "all" | "agency" | "work_type" | "room";
 
 type Milestone = {
