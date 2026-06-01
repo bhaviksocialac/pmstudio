@@ -31,7 +31,7 @@ function VendorsPage() {
   const { data: vendors = [], isLoading } = useQuery({
     queryKey: ["vendors"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("vendors").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("vendors").select("*").is("deleted_at", null).order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as DbVendor[];
     },
