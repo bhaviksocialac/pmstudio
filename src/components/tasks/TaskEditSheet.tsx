@@ -11,10 +11,11 @@ import {
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { STATUS_ORDER, STATUS_META, PRIORITY_META, WORK_TYPES } from "@/lib/task-flow";
+import { STATUS_ORDER, STATUS_META, PRIORITY_META } from "@/lib/task-flow";
 import type { TaskRow } from "./TaskTable";
 import { asWorkTypes } from "./TaskTable";
 import { AgencyPicker, AreaPicker, DependencyPicker, DateField, WorkTypePicker } from "./TaskInlineEditors";
+import { useWorkTypes } from "@/hooks/useWorkTypes";
 
 export function TaskEditSheet({
   task, open, onClose, onChanged, allTasks, vendors, teamMembers = [], rooms, onAddRoom,
@@ -119,7 +120,7 @@ export function TaskEditSheet({
             </Field>
 
             <Field label="Work Type">
-              <WorkTypePickerWithHook
+              <WorkTypePickerInner
                 value={asWorkTypes(draft)}
                 onChange={(v) => patch({ work_types: v as unknown, work_type: v[0] ?? null })}
               />
