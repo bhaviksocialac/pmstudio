@@ -64,7 +64,9 @@ function buildPrompt(text: string | null) {
 
 Rules:
 - Material purchases → Procurement. On-site work → Execution. Final finishing → Finishing.
-- Cap output at 80 items.
+- Skip header rows, subtotal rows, grand totals, and pure notes.
+- Every distinct line item becomes ONE task. Do not merge lines.
+- Cap output at 150 items.
 
 Return ONLY: {"items":[{"phase":"...","subcategory":"...","title":"...","room":null,"amount":null,"work_type":"...","initial_status":"..."}]}
 
