@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { WhatsAppGroupsSettings } from "@/components/WhatsAppGroupsSettings";
 import { BillingPanel } from "@/components/BillingPanel";
 import { TeamMembersSettings } from "@/components/TeamMembersSettings";
+import { WorkTypesSettings } from "@/components/WorkTypesSettings";
 import { ClearTestDataPanel } from "@/components/ClearTestDataPanel";
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -27,6 +28,7 @@ function SettingsPage() {
         <div className="space-y-12">
           <BillingPanel />
           <TeamMembersSettings />
+          <WorkTypesSettings />
           <WhatsAppGroupsSettings />
           <ClearTestDataPanel />
         </div>
