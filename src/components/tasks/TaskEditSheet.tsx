@@ -119,9 +119,8 @@ export function TaskEditSheet({
             </Field>
 
             <Field label="Work Type">
-              <WorkTypePicker
+              <WorkTypePickerWithHook
                 value={asWorkTypes(draft)}
-                options={WORK_TYPES as unknown as readonly string[]}
                 onChange={(v) => patch({ work_types: v as unknown, work_type: v[0] ?? null })}
               />
             </Field>

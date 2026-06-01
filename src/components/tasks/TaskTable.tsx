@@ -95,6 +95,7 @@ export function TaskTable({
   const [pendingStatus, setPendingStatus] = useState<{ task: TaskRow; status: string } | null>(null);
   const cascade = useServerFn(cascadeDependents);
   const splitFn = useServerFn(splitTaskPerRoom);
+  const workTypes = useWorkTypes();
 
   const projectScopeTasks = allProjectTasks ?? rows;
 
@@ -299,7 +300,8 @@ export function TaskTable({
                       <div className="min-w-[160px] max-w-[220px]">
                         <WorkTypePicker
                           value={asWorkTypes(t)}
-                          options={WORK_TYPES as unknown as readonly string[]}
+                          options={workTypes.options}
+                          onAddOption={(v) => workTypes.addWorkType(v)}
                           onChange={(v) => updateField(t, { work_types: v, work_type: v[0] ?? null })}
                         />
                       </div>
