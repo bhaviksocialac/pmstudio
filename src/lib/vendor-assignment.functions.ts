@@ -30,7 +30,9 @@ type AssignResult = {
   totalQuoted: number;
   scopeCategories: string[];
   vendorName: string;
+  byCategory: Record<string, number>;
 };
+
 
 export const assignVendorToProjectTasks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -57,7 +59,7 @@ export const assignVendorToProjectTasks = createServerFn({ method: "POST" })
     const vendorName = vendor.company_name?.trim() || vendor.name?.trim() || "Vendor";
     const cats = (pv.scope_categories ?? []).map((c) => c.toLowerCase().trim()).filter(Boolean);
     if (cats.length === 0) {
-      return { matchedTaskIds: [], matchedCount: 0, totalQuoted: 0, scopeCategories: [], vendorName };
+      return { matchedTaskIds: [], matchedCount: 0, totalQuoted: 0, scopeCategories: [], vendorName, byCategory: {} };
     }
 
     // 2. Find candidate tasks
@@ -78,8 +80,14 @@ export const assignVendorToProjectTasks = createServerFn({ method: "POST" })
       return cats.includes(wt);
     });
 
+    const byCategory: Record<string, number> = {};
+    for (const t of candidates) {
+      const wt = (t.work_type ?? "Other").trim();
+      byCategory[wt] = (byCategory[wt] ?? 0) + 1;
+    }
+
     if (candidates.length === 0) {
-      return { matchedTaskIds: [], matchedCount: 0, totalQuoted: 0, scopeCategories: cats, vendorName };
+      return { matchedTaskIds: [], matchedCount: 0, totalQuoted: 0, scopeCategories: cats, vendorName, byCategory };
     }
 
     // 3. Split po_amount across matched tasks (boq_amount weighted)
@@ -127,7 +135,9 @@ export const assignVendorToProjectTasks = createServerFn({ method: "POST" })
       totalQuoted,
       scopeCategories: cats,
       vendorName,
+      byCategory,
     };
+
   });
 
 /**

@@ -137,8 +137,19 @@ const tabs: { id: Tab; label: string }[] = [
 function ProjectDetailView({ project }: { project: Project }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
-  
+
+  useEffect(() => {
+    const onGoto = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { tab?: Tab; projectId?: string } | undefined;
+      if (detail?.projectId && detail.projectId !== project.id) return;
+      if (detail?.tab) setTab(detail.tab);
+    };
+    window.addEventListener("pmstudio:goto-tab", onGoto as EventListener);
+    return () => window.removeEventListener("pmstudio:goto-tab", onGoto as EventListener);
+  }, [project.id]);
+
   const h = healthMap[project.health as keyof typeof healthMap];
+
 
   return (
     <AppShell>
