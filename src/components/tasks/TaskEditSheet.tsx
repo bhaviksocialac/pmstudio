@@ -238,3 +238,21 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
+
+function WorkTypePickerInner({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const wt = useWorkTypes();
+  return (
+    <WorkTypePicker
+      value={value}
+      options={wt.options}
+      onAddOption={(v) => wt.addWorkType(v)}
+      onChange={onChange}
+    />
+  );
+}
