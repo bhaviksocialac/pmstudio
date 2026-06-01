@@ -1,101 +1,79 @@
-# Plan — Frappe Gantt Timeline + Shared Work Types
+# BOQ ↔ Tasks ↔ Vendors ↔ Budget Intelligence
 
-## Part 1 — Frappe Gantt Timeline (replaces `GanttTimeline.tsx`)
+This is a large feature. Below is the scoped plan so you can confirm before I build it.
 
-### Setup
-- `bun add frappe-gantt` (use npm package, not CDN — required by Worker bundler / Vite).
-- Import CSS in `src/styles.css` via `@import "frappe-gantt/dist/frappe-gantt.css";`.
-- Add PMStudio overrides in `styles.css` under a `.pmstudio-gantt` scope:
-  - phase bars `#c17f5a`, task bars `#e8b99a`, done `#6b9e82`, delayed `#c4685a`, today line `#c4685a`, milestones `#1a1612`, arrows `#c17f5a`, grid `#faf8f5`, weekend `#f0ece6`, font DM Sans.
+## What exists already
+- `parseBoqChecklist` AI server fn that reads BOQ PDF/Excel and creates tasks with `work_type`, `area`, status — but stores BOQ amount only inside a description string.
+- `extractVendorQuotation` AI server fn that returns categorised quotation lines.
+- `project_vendors` + `project_vendor_line_items` tables with quoted amounts.
+- `vendor_invoices` + `vendor_invoice_payments` (with paid trigger).
+- `budget_lines` table for per-category budget rollup.
+- `tasks.vendor_id`, `tasks.agency`, `tasks.work_type`, `tasks.phase`.
 
-### New component `src/components/tasks/FrappeGanttTimeline.tsx`
-Replaces existing `GanttTimeline.tsx` (kept file path consumers untouched by re-exporting from same name, or update import in `ProjectTasksTab.tsx`).
+## What's missing (this plan adds)
 
-State / structure:
-- Props: `rows: TaskRow[]`, `projectId`, `onSelect(id)`.
-- Local state: `viewMode` (`'Day'|'Week'|'Month'|'Quarter'|'Year'`, default `Month`, `Week` on mobile via `useIsMobile`), `groupBy` (`'all'|'agency'|'work_type'|'room'`), `collapsed: Set<string>` (groups), `pendingMove` (dep warning dialog state).
-- Load milestones via `supabase.from('milestones')` (same as today).
+### 1. Schema (single migration)
+- `tasks` → add `boq_amount numeric`, `quoted_amount numeric`, `invoiced_amount numeric`, `source text` (`boq` | `vendor` | `manual`), `auto_assigned boolean`, `manual_overrides jsonb` (track which fields the user changed).
+- `projects` → add `boq_total numeric`, `quoted_total numeric` (denormalised rollups, kept in sync by trigger).
+- New table `project_alerts` (project_id, kind, severity, payload jsonb, dismissed_at) for the dashboard alerts.
+- Trigger: when `tasks.boq_amount` / `quoted_amount` / `invoiced_amount` changes, recompute `projects.boq_total`, `projects.quoted_total`, `projects.spent`, and per-category rows in `budget_lines`.
 
-Row building:
-1. Group tasks by `groupBy`. For `all` → phase from `phaseOfTask`. For others → bucket key.
-2. For each group, compute span = min(start) → max(end). If no dated tasks → render a placeholder dashed bar "No dates set — add tasks to see timeline" (custom_class on a synthetic task).
-3. Build Frappe task array:
-   - Parent (group) task: `id=grp:<key>`, custom_class `pms-phase`, name = group label, dates from span.
-   - Child tasks (only if not collapsed): `id=task:<uuid>`, parent set via `dependencies` for arrow only when real deps exist, `custom_class` based on status (`pms-done`, `pms-wip`, `pms-delayed`, `pms-planned`, `pms-blocked`).
-   - Milestone synthetic tasks: `id=ms:<id>`, single-day, `custom_class` `pms-milestone pms-ms-ontime|delayed|upcoming`, placed on the phase row by inserting in same group.
-4. Dependency arrows: include `dependencies: predecessorIds.join(',')` for tasks where DB has `blocked_by` (TaskRow may already track this — fallback to none if unavailable).
+### 2. BOQ upload — upgrade `parseBoqChecklist`
+- Persist `boq_amount` directly on each task (not just in description).
+- Set `source='boq'`, infer `phase` from work_type (Civil/Electrical/Plumbing → Execution; Flooring/Tiles supply → Procurement; Paint/False ceiling → Finishing).
+- Return preview payload `{tasks, totalsByWorkType, total}` so UI can show review screen.
 
-Gantt instance:
-- Init in `useEffect` after refs ready, destroy & re-init on `rows`, `groupBy`, `collapsed`, `viewMode` change.
-- Options: `view_mode: viewMode`, `bar_height: 24`, `padding: 14`, `custom_popup_html`, `on_click`, `on_date_change`, `on_view_change`.
-- After init: scroll today into view (`gantt.scroll_current()` if available, else manual `scrollLeft` calc via today minus container start × column width).
-- Stagger entrance: add CSS class with `animation-delay: calc(var(--i) * 50ms)` set via `bar.setAttribute('style', ...)` after render. Ease-out only.
+### 3. BOQ preview/confirm UI
+- New `BoqReviewSheet` opened after upload: groups proposed tasks by work_type, editable rows (title, work_type, amount, area), totals per group, "Confirm & Save" → calls a new server fn `saveBoqTasks` that does the insert in one transaction.
+- Replaces the current silent insert in `BoqUploadButton`.
 
-Interactions:
-- `on_click(task)`:
-  - If `id` starts with `grp:` → toggle collapsed for that group.
-  - If `ms:` → open milestone popover (simple `Dialog` with name/date/amount/status).
-  - Else → `onSelect(taskId)` to open existing task edit sheet.
-- `on_date_change(task, start, end)`:
-  - Persist via `supabase.from('tasks').update({ planned_start, planned_end, start_date, due_date }).eq('id', taskId)`.
-  - If task has dependents (look up in current rows by `blocked_by` array containing id), open AlertDialog "Moving this task affects N dependent tasks. Update them too?" Yes → cascade-shift dependents by same delta and update DB; No → leave.
-  - Toast success/error.
+### 4. Vendor auto-assignment server fn (`assignVendorFromQuotation`)
+Called right after a quotation is extracted and `project_vendor_line_items` saved.
+For each quotation line:
+- Fuzzy-match against existing project tasks (same `work_type` ∩ trigram similarity on title/description ≥ 0.35).
+- If matched → set `tasks.vendor_id`, `tasks.agency = vendor.name`, `tasks.quoted_amount = line.amount`, `tasks.auto_assigned=true`. Compute variance vs `boq_amount`; push to `assignmentSummary`.
+- If unmatched → create new task `source='vendor'`, vendor pre-assigned, `boq_amount=null`, `quoted_amount=line.amount`, `work_type` from category, phase inferred.
+- For tasks in vendor's `scope_categories` that still have no vendor → also assign this vendor (bulk-assign by category).
+- Return `{matched, created, conflicts, totalVariance, newScopeAmount}`.
 
-Toolbar (above chart, sticky):
-- Zoom button group Day/Week/Month/Quarter/Year — active state uses bg `#c17f5a` text white.
-- Group-by dropdown (`Select`): All / Agency / Work Type / Room.
-- Legend chips unchanged.
+### 5. Vendor assignment review UI
+- `VendorAssignmentReviewDialog` shown after quotation extract. Lists matched tasks (with BOQ→Quote variance pill, amber ≥15%, red ≥30%), new tasks created, and any conflicts (multiple vendors covering same scope → per-task vendor dropdown). Designer confirms.
 
-Mobile:
-- Default `viewMode = 'Week'`.
-- `touch-action: pan-x pinch-zoom` on scroll container.
-- Wrap chart in horizontal scroll container (Frappe handles internally; just ensure parent overflow-x auto with momentum `-webkit-overflow-scrolling: touch`).
+### 6. Budget reconciliation panel
+- `BudgetReconciliationPanel` on the project Overview tab. Three layers: BOQ Estimate / Approved Quotes / Actual Invoiced. Toggle ex-GST ↔ incl-GST. Per work_type breakdown table (BOQ, Quoted, Variance, Invoiced, Remaining). Driven by SQL view `v_project_budget_rollup`.
 
-Empty / dedupe:
-- Only one row per group key (Map-based). Skip rendering placeholder if group already shown.
+### 7. Smart alerts
+- New `evaluateProjectAlerts` server fn (also invoked from the BOQ/vendor flows) inserts into `project_alerts`:
+  - Quote variance ≥15% per scope.
+  - Quoted total > project.budget (client-approved).
+  - Invoice > quoted line amount.
+  - Work type has tasks but no vendor after 7 days.
+  - Tasks without `boq_amount` after BOQ upload.
+- `ProjectAlertsStrip` component on Project Overview + Dashboard Morning Briefing.
 
-Wiring:
-- Update `src/components/tasks/ProjectTasksTab.tsx` to import the new component (or repurpose `GanttTimeline.tsx` filename — pick rename to keep imports stable: replace file contents).
+### 8. Manual override protection
+- Any field changed in `TaskTable`/`TaskEditSheet` writes its key into `tasks.manual_overrides` (e.g. `{vendor_id: true, work_type: true}`).
+- Auto-assign skips fields present in `manual_overrides`. Pencil icon shown next to overridden fields.
 
-## Part 2 — Shared custom work types
+## Out of scope (not in this turn)
+- New OCR / re-training of categorisation keywords beyond what the AI prompt already does (keyword list will be added as a fallback when AI returns "Other").
+- Client portal budget update UI (data updates automatically; the existing portal will read new totals).
+- Detailed GST input-credit ledger (we'll surface ex/incl toggle and per-invoice GST that already exists; full ITC report is a separate ask).
 
-### Migration (single)
-```sql
-CREATE TABLE public.work_types (
-  id uuid PK default gen_random_uuid(),
-  user_id uuid not null,
-  name text not null,
-  hidden_default boolean not null default false,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
-  UNIQUE(user_id, lower(name))
-);
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.work_types TO authenticated;
-GRANT ALL ON public.work_types TO service_role;
-ALTER TABLE public.work_types ENABLE ROW LEVEL SECURITY;
-CREATE POLICY work_types_own ON public.work_types FOR ALL TO authenticated
-  USING (auth.uid()=user_id) WITH CHECK (auth.uid()=user_id);
-```
-Backfill: insert distinct existing `tasks.work_type` values per user that aren't in defaults (incl. "Bosch") via a one-shot SQL in the migration.
+## Technical notes (for me, not user-facing)
+- All server fns use `requireSupabaseAuth`.
+- Fuzzy matching uses `pg_trgm` (`similarity()`), enable extension in migration.
+- Triggers run as `SECURITY DEFINER` with `search_path = public`.
+- `quoted_total` / `boq_total` updated via per-row trigger on `tasks` rather than recomputed in app code.
+- No edits to `client.ts` / `types.ts` (auto-generated).
 
-### Code
-- New hook `src/hooks/useWorkTypes.ts`:
-  - Loads defaults (existing constant list) + `work_types` rows for current user.
-  - Filters out defaults marked `hidden_default=true` (defaults rows stored with `hidden_default=true` flag and special `name` matching default).
-  - Exposes `add(name)`, `rename(id,name)`, `remove(id)`, `toggleHidden(name)`.
-- Update Work Type combobox (in `TaskInlineEditors.tsx` and `AddTaskPanel.tsx` and `TaskEditSheet.tsx`) to:
-  - Use the hook for suggestions.
-  - When user creates a new value not in list, call `add()` then save.
-- Settings page (`src/routes/_authenticated/settings.tsx`): new "Work Types" section listing defaults (with hide toggle) + customs (rename/delete inline).
+## Build order
+1. Migration (schema + trigger + view + pg_trgm).
+2. Upgrade `parseBoqChecklist` → return preview, persist `boq_amount`.
+3. `BoqReviewSheet` + `saveBoqTasks`.
+4. `assignVendorFromQuotation` + review dialog, hook into existing vendor add flow.
+5. `BudgetReconciliationPanel` on Overview.
+6. `evaluateProjectAlerts` + `ProjectAlertsStrip`.
+7. Manual-override tracking in task editors.
 
-### Out of scope
-- No changes to existing tasks data model beyond work_type strings (already free-text).
-- No re-skin of task edit sheet beyond ensuring the new combobox.
-
-## Rollout
-1. Migration (single approval).
-2. Install `frappe-gantt`, add CSS overrides, build new Gantt component, swap import.
-3. Build work-types hook + settings UI + combobox wiring.
-4. Verify build, smoke check Timeline tab and Tasks dropdown.
-
-~10–14 files touched.
+Reply **yes** to build this, or tell me which parts to drop / add.

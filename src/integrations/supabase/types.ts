@@ -977,6 +977,48 @@ export type Database = {
         }
         Relationships: []
       }
+      project_alerts: {
+        Row: {
+          body: string | null
+          created_at: string
+          dismissed_at: string | null
+          id: string
+          kind: string
+          payload: Json
+          project_id: string
+          severity: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          kind: string
+          payload?: Json
+          project_id: string
+          severity?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          kind?: string
+          payload?: Json
+          project_id?: string
+          severity?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       project_contractors: {
         Row: {
           category: string | null
@@ -1315,6 +1357,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          boq_total: number
           budget: number
           city: string | null
           client_id: string | null
@@ -1334,6 +1377,7 @@ export type Database = {
           name: string
           phase: Database["public"]["Enums"]["project_phase"]
           pincode: string | null
+          quoted_total: number
           spent: number
           start_date: string | null
           state: string | null
@@ -1343,6 +1387,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          boq_total?: number
           budget?: number
           city?: string | null
           client_id?: string | null
@@ -1362,6 +1407,7 @@ export type Database = {
           name: string
           phase?: Database["public"]["Enums"]["project_phase"]
           pincode?: string | null
+          quoted_total?: number
           spent?: number
           start_date?: string | null
           state?: string | null
@@ -1371,6 +1417,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          boq_total?: number
           budget?: number
           city?: string | null
           client_id?: string | null
@@ -1390,6 +1437,7 @@ export type Database = {
           name?: string
           phase?: Database["public"]["Enums"]["project_phase"]
           pincode?: string | null
+          quoted_total?: number
           spent?: number
           start_date?: string | null
           state?: string | null
@@ -1732,6 +1780,8 @@ export type Database = {
           assigned_at: string | null
           assignee: string | null
           attachments: Json
+          auto_assigned: boolean
+          boq_amount: number | null
           completed_at: string | null
           completion_pct: number
           contractor: string | null
@@ -1747,7 +1797,9 @@ export type Database = {
           ifc_date: string | null
           ifr_date: string | null
           ifr_type: string | null
+          invoiced_amount: number
           mailed: boolean
+          manual_overrides: Json
           notes: string | null
           parent_task_id: string | null
           phase: string | null
@@ -1755,8 +1807,10 @@ export type Database = {
           planned_start: string | null
           priority: string
           project_id: string | null
+          quoted_amount: number | null
           response_at: string | null
           room: string | null
+          source: string
           start_date: string | null
           started_at: string | null
           status: string
@@ -1778,6 +1832,8 @@ export type Database = {
           assigned_at?: string | null
           assignee?: string | null
           attachments?: Json
+          auto_assigned?: boolean
+          boq_amount?: number | null
           completed_at?: string | null
           completion_pct?: number
           contractor?: string | null
@@ -1793,7 +1849,9 @@ export type Database = {
           ifc_date?: string | null
           ifr_date?: string | null
           ifr_type?: string | null
+          invoiced_amount?: number
           mailed?: boolean
+          manual_overrides?: Json
           notes?: string | null
           parent_task_id?: string | null
           phase?: string | null
@@ -1801,8 +1859,10 @@ export type Database = {
           planned_start?: string | null
           priority?: string
           project_id?: string | null
+          quoted_amount?: number | null
           response_at?: string | null
           room?: string | null
+          source?: string
           start_date?: string | null
           started_at?: string | null
           status?: string
@@ -1824,6 +1884,8 @@ export type Database = {
           assigned_at?: string | null
           assignee?: string | null
           attachments?: Json
+          auto_assigned?: boolean
+          boq_amount?: number | null
           completed_at?: string | null
           completion_pct?: number
           contractor?: string | null
@@ -1839,7 +1901,9 @@ export type Database = {
           ifc_date?: string | null
           ifr_date?: string | null
           ifr_type?: string | null
+          invoiced_amount?: number
           mailed?: boolean
+          manual_overrides?: Json
           notes?: string | null
           parent_task_id?: string | null
           phase?: string | null
@@ -1847,8 +1911,10 @@ export type Database = {
           planned_start?: string | null
           priority?: string
           project_id?: string | null
+          quoted_amount?: number | null
           response_at?: string | null
           room?: string | null
+          source?: string
           start_date?: string | null
           started_at?: string | null
           status?: string
@@ -2367,7 +2433,26 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_project_budget_rollup: {
+        Row: {
+          boq_amount: number | null
+          invoiced_amount: number | null
+          project_id: string | null
+          quoted_amount: number | null
+          task_count: number | null
+          tasks_without_vendor: number | null
+          work_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       change_task_status: {
@@ -2381,6 +2466,8 @@ export type Database = {
         Returns: undefined
       }
       purge_trashed_rows: { Args: never; Returns: undefined }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       ai_draft_kind:
