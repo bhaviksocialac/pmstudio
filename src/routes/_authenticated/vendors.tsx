@@ -124,16 +124,30 @@ function VendorsPage() {
               <article key={v.id} className="rounded-[16px] bg-card border border-border p-6" style={{ boxShadow: "var(--shadow-card)" }}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    {v.category && (
-                      <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-[6px] mb-1 inline-block" style={{ background: "rgba(193,127,90,0.15)", color: "#c17f5a" }}>{v.category}</span>
-                    )}
+                    {(() => {
+                      const cats: string[] = Array.isArray((v as any).work_categories) && (v as any).work_categories.length
+                        ? (v as any).work_categories
+                        : (v.category ? [v.category] : []);
+                      const vtype = ((v as any).vendor_type ?? "company") as "individual" | "company";
+                      return (
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-[6px]"
+                            style={{ background: vtype === "individual" ? "rgba(122,158,138,0.18)" : "rgba(193,127,90,0.15)", color: vtype === "individual" ? "#7a9e8a" : "#c17f5a" }}>
+                            {vtype === "individual" ? "Individual" : "Company"}
+                          </span>
+                          {cats.map((c) => (
+                            <span key={c} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-foreground/80">{c}</span>
+                          ))}
+                        </div>
+                      );
+                    })()}
                     <h3 className="font-display text-2xl leading-tight">{v.company_name || v.name}</h3>
-                    {v.company_name && v.name && <div className="text-xs text-muted-foreground mt-0.5">Contact: {v.name}</div>}
+                    {v.company_name && v.name && <div className="text-xs text-muted-foreground mt-0.5">Contact: {v.name}{(v as any).designation ? ` · ${(v as any).designation}` : ""}</div>}
                     <div className="mt-3 space-y-1 text-xs">
                       {v.phone && (
                         <div className="flex items-center gap-2 text-muted-foreground font-mono">
                           <Phone className="h-3 w-3" /> {v.phone}
-                          {v.whatsapp && <MessageCircle className="h-3 w-3 text-[#25D366]" />}
+                          {(v as any).whatsapp && <MessageCircle className="h-3 w-3 text-[#25D366]" />}
                         </div>
                       )}
                       {v.gst && <div className="font-mono text-muted-foreground">GST: {v.gst}</div>}
