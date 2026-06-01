@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, X, MessageCircle, ExternalLink, Pencil, Trash2, Loader2, Phone, FileUp, Upload, Sparkles, Check } from "lucide-react";
+import { Plus, X, MessageCircle, ExternalLink, Pencil, Trash2, Loader2, Phone, FileUp, Upload, Sparkles, Check, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,7 @@ import { VendorModal } from "@/routes/_authenticated/vendors";
 import { InvoiceUploadDialog } from "@/components/vendors/InvoiceUploadDialog";
 import { VendorInvoiceList } from "@/components/vendors/VendorInvoiceList";
 import { extractInvoiceFromDocument, type InvoiceExtract } from "@/lib/vendor-invoice-extract.functions";
+import { assignVendorToProjectTasks } from "@/lib/vendor-assignment.functions";
 
 
 type ProjectVendorRow = {
@@ -40,6 +41,21 @@ export function ProjectVendorsTab({ projectId }: { projectId: string }) {
   const [editing, setEditing] = useState<Joined | null>(null);
   const [uploadingFor, setUploadingFor] = useState<DbVendor | null>(null);
   const qc = useQueryClient();
+  const assignFn = useServerFn(assignVendorToProjectTasks);
+  const assign = useMutation({
+    mutationFn: (projectVendorId: string) => assignFn({ data: { projectId, projectVendorId } }),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["project-tasks", projectId] });
+      qc.invalidateQueries({ queryKey: ["budget-rollup", projectId] });
+      qc.invalidateQueries({ queryKey: ["alerts-tasks", projectId] });
+      if (r.matchedCount === 0) {
+        toast.info(`No matching tasks found for ${r.vendorName} (scope: ${r.scopeCategories.join(", ") || "none"})`);
+      } else {
+        toast.success(`Linked ${r.vendorName} to ${r.matchedCount} task${r.matchedCount > 1 ? "s" : ""} · ${formatINR(r.totalQuoted)} quoted`);
+      }
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Auto-link failed"),
+  });
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["project_vendors", projectId],
@@ -138,6 +154,19 @@ export function ProjectVendorsTab({ projectId }: { projectId: string }) {
                     </Link>
                     <button onClick={() => setEditing(r)} className="h-8 px-2.5 rounded-[6px] border border-border text-[11px] hover:bg-muted inline-flex items-center gap-1">
                       <Pencil className="h-3 w-3" /> Edit
+                    </button>
+                    <button
+                      onClick={() => assign.mutate(r.id)}
+                      disabled={assign.isPending}
+                      title="Link this vendor to matching BOQ tasks and split the PO across them"
+                      className="h-8 px-2.5 rounded-[6px] border border-border text-[11px] hover:bg-muted inline-flex items-center gap-1 disabled:opacity-60"
+                    >
+                      {assign.isPending && assign.variables === r.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Link2 className="h-3 w-3" />
+                      )}
+                      Auto-link tasks
                     </button>
                     <button onClick={() => del.mutate(r.id)} className="h-8 px-2.5 rounded-[6px] border border-border text-[11px] hover:bg-[#fff0ee] text-[#c4685a] inline-flex items-center gap-1">
                       <Trash2 className="h-3 w-3" />
