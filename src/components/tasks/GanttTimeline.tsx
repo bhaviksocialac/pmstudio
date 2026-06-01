@@ -437,7 +437,7 @@ export function GanttTimeline({
         <h3 className="font-display text-lg">Gantt Timeline</h3>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex rounded-[8px] border border-border overflow-hidden">
-            {(["Day", "Week", "Month", "Year"] as ViewMode[]).map((v) => (
+            {(["Day", "Week", "Month", "Quarter", "Year"] as ViewMode[]).map((v) => (
               <button
                 key={v}
                 onClick={() => setViewMode(v)}
