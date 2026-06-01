@@ -423,6 +423,7 @@ function OverviewTab({ project, onGoTo }: { project: Project; onGoTo: (t: Tab) =
 
         <RoomProgressGrid projectId={project.id} />
         <ProjectProgressPanels projectId={project.id} />
+        <BudgetReconciliationPanel projectId={project.id} projectBudget={project.budget} />
         <ProjectActivityFeed projectId={project.id} />
         <AutoPhaseCompleter project={project} phaseMeta={phaseMeta} />
       </div>
