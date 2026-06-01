@@ -83,12 +83,12 @@ function VendorsPage() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("vendors").delete().eq("id", id);
+      const { error } = await supabase.from("vendors").update({ deleted_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["vendors"] });
-      toast.success("Vendor deleted");
+      toast.success("Vendor moved to Trash");
       setDeleting(null);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
