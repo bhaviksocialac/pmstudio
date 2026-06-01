@@ -1,92 +1,78 @@
-import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, CalendarPlus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Gantt from "frappe-gantt";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { TaskRow } from "./TaskTable";
 import { phaseOfTask, PROJECT_PHASES, isTaskDone, type ProjectPhase } from "@/lib/task-flow";
 
-const DAY = 86400000;
-const ROW_H = 32;
-const HEADER_H = 36;
-const LEFT_W = 260;
+type ViewMode = "Day" | "Week" | "Month" | "Year";
+type GroupMode = "all" | "agency" | "work_type" | "room";
 
-type Scale = "weekly" | "monthly" | "yearly";
-const SCALE_DAY_W: Record<Scale, number> = { weekly: 22, monthly: 7, yearly: 1.6 };
+type Milestone = {
+  id: string;
+  name: string;
+  kind: string;
+  trigger: { phase?: string } | null;
+  status: string;
+  triggered_at: string | null;
+  triggered_on_time: boolean | null;
+  invoice_amount?: number | null;
+};
+
+type FrappeTask = {
+  id: string;
+  name: string;
+  start: string;
+  end: string;
+  progress: number;
+  dependencies?: string;
+  custom_class?: string;
+};
+
+const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
 function toDate(s: string | null | undefined): Date | null {
   if (!s) return null;
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
 }
-function diffDays(a: Date, b: Date) {
-  return Math.round((b.getTime() - a.getTime()) / DAY);
-}
-function fmt(d: Date) {
-  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
-}
 
-type Item = { t: TaskRow; ps: Date | null; pe: Date | null; as: Date | null; ae: Date | null };
-
-type Milestone = {
-  id: string;
-  name: string;
-  kind: string;
-  trigger: { phase?: string };
-  status: string;
-  triggered_at: string | null;
-  triggered_on_time: boolean | null;
-};
-
-type GroupKey = { phase: ProjectPhase; bucket: string; items: Item[] };
-
-const ROOM_COLOR = {
-  done: "#7a9e8a",
-  delayed: "#c4685a",
-  wip: "#d4882a",
-  pending: "#c4b8a6",
-} as const;
-
-function roomsOfItem(it: Item): string[] {
-  const t = it.t;
-  if (Array.isArray(t.areas) && (t.areas as string[]).length) return (t.areas as string[]).filter(Boolean);
-  if (t.area) return [t.area];
-  return ["(unassigned)"];
-}
-
-function roomStatus(its: Item[]): "done" | "delayed" | "wip" | "pending" {
-  const today = new Date();
-  const all = its.length;
-  const done = its.filter((i) => isTaskDone(i.t)).length;
-  const delayed = its.some(
-    (i) => !isTaskDone(i.t) && i.pe && i.pe < today,
-  );
-  if (delayed) return "delayed";
-  if (done === all && all > 0) return "done";
-  if (its.some((i) => i.t.status === "wip" || i.t.status === "in_progress" || (i.as && !isTaskDone(i.t)))) return "wip";
-  return "pending";
-}
-
-function bucketOf(phase: ProjectPhase, it: Item): string {
-  // Procurement → contractor / vendor / "Client approvals"
-  if (phase === "Procurement") {
-    const s = (it.t.status ?? "").toLowerCase();
-    if (s.includes("approval")) return "Client approvals";
-    return (it.t.agency || it.t.contractor || "Unassigned").trim();
+function rowsToBucketKey(t: TaskRow, mode: GroupMode): string {
+  if (mode === "agency") return (t.agency || t.contractor || t.assignee || "Unassigned").trim();
+  if (mode === "work_type") {
+    const wts = Array.isArray((t as { work_types?: unknown }).work_types)
+      ? ((t as { work_types?: unknown }).work_types as string[])
+      : [];
+    return (wts[0] || t.work_type || "Other").trim();
   }
-  // Otherwise: by work_type
-  const wts = Array.isArray((it.t as { work_types?: unknown }).work_types)
-    ? ((it.t as { work_types?: unknown }).work_types as string[])
-    : [];
-  return (wts[0] || it.t.work_type || "Other").trim();
+  if (mode === "room") {
+    const areas = Array.isArray(t.areas) && (t.areas as string[]).length
+      ? (t.areas as string[])
+      : (t.area ? [t.area] : []);
+    return (areas[0] || "Unassigned").trim();
+  }
+  return phaseOfTask(t);
 }
 
-function smartLabel(phase: ProjectPhase, bucket: string, its: Item[]): string {
-  if (phase === "Procurement") return bucket;
-  const contractors = Array.from(
-    new Set(its.map((i) => (i.t.agency || i.t.contractor || "").trim()).filter(Boolean)),
-  );
-  if (contractors.length === 1) return `${bucket} — ${contractors[0]}`;
-  if (contractors.length > 1) return `${bucket} — ${contractors.length} vendors`;
-  return bucket;
+function statusClass(t: TaskRow): string {
+  const today = new Date();
+  if (isTaskDone(t)) return "pms-done";
+  const pe = toDate(t.planned_end ?? t.due_date);
+  if (pe && pe < today) return "pms-delayed";
+  if (t.status === "wip" || t.status === "in_progress") return "pms-wip";
+  if (t.status === "blocked") return "pms-blocked";
+  return "pms-planned";
+}
+
+function progressOf(t: TaskRow): number {
+  if (isTaskDone(t)) return 100;
+  if (t.status === "wip" || t.status === "in_progress") return 50;
+  return 0;
 }
 
 export function GanttTimeline({
@@ -98,201 +84,315 @@ export function GanttTimeline({
   onSelect?: (id: string) => void;
   projectId?: string;
 }) {
-  const [scale, setScale] = useState<Scale>("monthly");
-  const DAY_W = SCALE_DAY_W[scale];
-
+  const isMobile = useIsMobile();
+  const [viewMode, setViewMode] = useState<ViewMode>(isMobile ? "Week" : "Month");
+  const [groupBy, setGroupBy] = useState<GroupMode>("all");
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [activeMilestone, setActiveMilestone] = useState<Milestone | null>(null);
+  const [pendingMove, setPendingMove] = useState<{
+    taskId: string;
+    deltaDays: number;
+    dependents: TaskRow[];
+  } | null>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const ganttRef = useRef<Gantt | null>(null);
+
+  // Load milestones
   useEffect(() => {
     if (!projectId) return;
     let cancelled = false;
     (async () => {
       const { data } = await supabase
         .from("milestones")
-        .select("id,name,kind,trigger,status,triggered_at,triggered_on_time")
+        .select("id,name,kind,trigger,status,triggered_at,triggered_on_time,invoice_amount")
         .eq("project_id", projectId);
       if (!cancelled && data) setMilestones(data as unknown as Milestone[]);
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [projectId]);
 
-  // Items (parents only) + split scheduled / unscheduled
-  const { scheduled, unscheduled } = useMemo(() => {
-    const parents = rows.filter((r) => !r.parent_task_id);
-    const sch: Item[] = [];
-    const un: Item[] = [];
-    parents.forEach((t) => {
-      const ps = toDate(t.planned_start) ?? toDate(t.start_date);
-      const pe = toDate(t.planned_end) ?? toDate(t.due_date);
-      const as = toDate(t.actual_start) ?? (t.status === "wip" || t.status === "done" ? ps : null);
-      const ae = toDate(t.actual_end) ?? (t.status === "done" ? toDate(t.due_date) : null);
-      const it: Item = { t, ps, pe, as, ae };
-      if (!ps && !pe && !as && !ae) un.push(it);
-      else sch.push(it);
-    });
-    return { scheduled: sch, unscheduled: un };
-  }, [rows]);
-
-  // Group scheduled: phase → bucket → items
-  const grouped = useMemo(() => {
-    const phaseMap = new Map<ProjectPhase, Map<string, Item[]>>();
-    scheduled.forEach((it) => {
-      const ph = phaseOfTask(it.t);
-      const bk = bucketOf(ph, it);
-      if (!phaseMap.has(ph)) phaseMap.set(ph, new Map());
-      const bMap = phaseMap.get(ph)!;
-      const arr = bMap.get(bk) ?? [];
-      arr.push(it);
-      bMap.set(bk, arr);
-    });
-    return PROJECT_PHASES.filter((p) => phaseMap.has(p)).map((p) => ({
-      phase: p,
-      buckets: Array.from(phaseMap.get(p)!.entries())
-        .map(([bucket, items]): GroupKey => ({ phase: p, bucket, items }))
-        .sort((a, b) => a.bucket.localeCompare(b.bucket)),
-    }));
-  }, [scheduled]);
-
-  // Date range
-  const { start, totalDays } = useMemo(() => {
-    let min: Date | null = null;
-    let max: Date | null = null;
-    scheduled.forEach(({ ps, pe, as, ae }) => {
-      [ps, pe, as, ae].forEach((d) => {
-        if (d) {
-          if (!min || d < min) min = d;
-          if (!max || d > max) max = d;
-        }
+  // Map: task id → dependents (tasks that depend on this one)
+  const dependentsByTaskId = useMemo(() => {
+    const m = new Map<string, TaskRow[]>();
+    rows.forEach((t) => {
+      const deps = Array.isArray(t.depends_on) ? (t.depends_on as string[]) : [];
+      deps.forEach((dId) => {
+        const arr = m.get(dId) ?? [];
+        arr.push(t);
+        m.set(dId, arr);
       });
-    });
-    const today = new Date();
-    if (!min) min = new Date(today.getTime() - 14 * DAY);
-    if (!max) max = new Date(today.getTime() + 30 * DAY);
-    min = new Date(min.getTime() - 3 * DAY);
-    max = new Date(max.getTime() + 3 * DAY);
-    return { start: min, totalDays: Math.max(14, diffDays(min, max)) };
-  }, [scheduled]);
-
-  // Default all phases COLLAPSED
-  const [expandedPhase, setExpandedPhase] = useState<Set<string>>(new Set());
-  const [expandedBucket, setExpandedBucket] = useState<Set<string>>(new Set());
-  const [showUnscheduled, setShowUnscheduled] = useState(false);
-
-  const togglePhase = (p: string) =>
-    setExpandedPhase((s) => {
-      const n = new Set(s);
-      n.has(p) ? n.delete(p) : n.add(p);
-      return n;
-    });
-  const toggleBucket = (k: string) =>
-    setExpandedBucket((s) => {
-      const n = new Set(s);
-      n.has(k) ? n.delete(k) : n.add(k);
-      return n;
-    });
-
-  type RenderRow =
-    | { kind: "phase"; phase: ProjectPhase; items: Item[]; expanded: boolean }
-    | { kind: "bucket"; phase: ProjectPhase; bucket: string; items: Item[]; expanded: boolean }
-    | { kind: "task"; item: Item };
-
-  const renderRows: RenderRow[] = [];
-  grouped.forEach((g) => {
-    const allItems = g.buckets.flatMap((b) => b.items);
-    const phaseExpanded = expandedPhase.has(g.phase);
-    renderRows.push({ kind: "phase", phase: g.phase, items: allItems, expanded: phaseExpanded });
-    if (!phaseExpanded) return;
-    g.buckets.forEach((b) => {
-      const key = `${g.phase}::${b.bucket}`;
-      const bExpanded = expandedBucket.has(key);
-      renderRows.push({ kind: "bucket", phase: g.phase, bucket: b.bucket, items: b.items, expanded: bExpanded });
-      if (!bExpanded) return;
-      b.items.forEach((it) => renderRows.push({ kind: "task", item: it }));
-    });
-  });
-
-  // y offsets
-  const yOffsets: number[] = [];
-  {
-    let y = HEADER_H + 8;
-    renderRows.forEach((r) => {
-      yOffsets.push(y);
-      y += r.kind === "task" ? ROW_H : HEADER_H;
-    });
-  }
-
-  const width = LEFT_W + totalDays * DAY_W;
-  const chartHeight = (yOffsets[yOffsets.length - 1] ?? HEADER_H) + (renderRows[renderRows.length - 1]?.kind === "task" ? ROW_H : HEADER_H) + 12;
-  const height = Math.max(180, chartHeight);
-
-  // Top axis ticks based on scale
-  const ticks: { x: number; label: string; major: boolean }[] = [];
-  for (let d = 0; d <= totalDays; d++) {
-    const day = new Date(start.getTime() + d * DAY);
-    if (scale === "weekly") {
-      if (day.getDay() === 1 || d === 0) {
-        ticks.push({ x: LEFT_W + d * DAY_W, label: fmt(day), major: day.getDate() <= 7 });
-      }
-    } else if (scale === "monthly") {
-      if (day.getDate() === 1 || d === 0) {
-        ticks.push({
-          x: LEFT_W + d * DAY_W,
-          label: day.toLocaleDateString("en-IN", { month: "short", year: "2-digit" }),
-          major: day.getMonth() === 0,
-        });
-      }
-    } else {
-      if ((day.getMonth() === 0 && day.getDate() === 1) || d === 0) {
-        ticks.push({ x: LEFT_W + d * DAY_W, label: String(day.getFullYear()), major: true });
-      } else if (day.getDate() === 1 && day.getMonth() % 3 === 0) {
-        ticks.push({
-          x: LEFT_W + d * DAY_W,
-          label: day.toLocaleDateString("en-IN", { month: "short" }),
-          major: false,
-        });
-      }
-    }
-  }
-
-  const groupSpan = (its: Item[]): { s: Date | null; e: Date | null } => {
-    let s: Date | null = null,
-      e: Date | null = null;
-    its.forEach(({ ps, pe, as, ae }) => {
-      [ps, as].forEach((d) => {
-        if (d && (!s || d < s)) s = d;
-      });
-      [pe, ae].forEach((d) => {
-        if (d && (!e || d > e)) e = d;
-      });
-    });
-    return { s, e };
-  };
-
-  // Phase → milestones
-  const milestonesByPhase = useMemo(() => {
-    const m = new Map<string, Milestone[]>();
-    milestones.forEach((ms) => {
-      const ph = ms.kind === "phase" ? (ms.trigger?.phase ?? "").trim() : "";
-      if (!ph) return;
-      const arr = m.get(ph) ?? [];
-      arr.push(ms);
-      m.set(ph, arr);
     });
     return m;
-  }, [milestones]);
+  }, [rows]);
 
-  const PHASE_COLOR: Record<ProjectPhase, string> = {
-    Survey: "#8a7d6e",
-    Design: "#a07ec0",
-    Procurement: "#d4882a",
-    Execution: "#c17f5a",
-    Finishing: "#7a9e8a",
-    Handover: "#5e8a76",
+  // Build groups
+  const groups = useMemo(() => {
+    const parents = rows.filter((r) => !r.parent_task_id);
+    const map = new Map<string, TaskRow[]>();
+
+    // For "all" mode, pre-seed all phases so empty ones can show placeholders
+    if (groupBy === "all") {
+      PROJECT_PHASES.forEach((p) => map.set(p, []));
+    }
+
+    parents.forEach((t) => {
+      const k = rowsToBucketKey(t, groupBy);
+      const arr = map.get(k) ?? [];
+      arr.push(t);
+      map.set(k, arr);
+    });
+
+    const entries: { key: string; phase?: ProjectPhase; items: TaskRow[] }[] = [];
+    if (groupBy === "all") {
+      PROJECT_PHASES.forEach((p) => {
+        entries.push({ key: p, phase: p, items: map.get(p) ?? [] });
+      });
+    } else {
+      Array.from(map.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .forEach(([k, items]) => entries.push({ key: k, items }));
+    }
+    return entries;
+  }, [rows, groupBy]);
+
+  // Build the Frappe tasks array
+  const frappeTasks = useMemo<FrappeTask[]>(() => {
+    const out: FrappeTask[] = [];
+    const today = fmt(new Date());
+
+    const groupSpan = (items: TaskRow[]): { start: Date; end: Date } | null => {
+      let s: Date | null = null;
+      let e: Date | null = null;
+      items.forEach((t) => {
+        const ps = toDate(t.planned_start) ?? toDate(t.start_date) ?? toDate(t.actual_start);
+        const pe = toDate(t.planned_end) ?? toDate(t.due_date) ?? toDate(t.actual_end);
+        if (ps && (!s || ps < s)) s = ps;
+        if (pe && (!e || pe > e)) e = pe;
+      });
+      return s && e ? { start: s, end: e } : null;
+    };
+
+    groups.forEach((g) => {
+      const span = groupSpan(g.items);
+      const groupId = `grp:${g.key}`;
+      const isCollapsed = collapsed.has(g.key);
+
+      if (!span) {
+        // Empty placeholder
+        out.push({
+          id: groupId,
+          name: `${g.key} — No dates set — add tasks to see timeline`,
+          start: today,
+          end: today,
+          progress: 0,
+          custom_class: "pms-empty",
+        });
+        return;
+      }
+
+      const doneCount = g.items.filter((t) => isTaskDone(t)).length;
+      const pct = g.items.length ? Math.round((doneCount / g.items.length) * 100) : 0;
+      out.push({
+        id: groupId,
+        name: `${isCollapsed ? "▶" : "▼"} ${g.key}  (${doneCount}/${g.items.length} · ${pct}%)`,
+        start: fmt(span.start),
+        end: fmt(span.end),
+        progress: pct,
+        custom_class: "pms-phase",
+      });
+
+      if (!isCollapsed) {
+        g.items.forEach((t) => {
+          const ps = toDate(t.planned_start) ?? toDate(t.start_date) ?? toDate(t.actual_start);
+          const pe = toDate(t.planned_end) ?? toDate(t.due_date) ?? toDate(t.actual_end);
+          if (!ps || !pe) return;
+          const deps = Array.isArray(t.depends_on) ? (t.depends_on as string[]) : [];
+          out.push({
+            id: `task:${t.id}`,
+            name: t.title,
+            start: fmt(ps),
+            end: fmt(pe),
+            progress: progressOf(t),
+            dependencies: deps.map((d) => `task:${d}`).join(","),
+            custom_class: statusClass(t),
+          });
+        });
+
+        // Milestones (only in "all" mode where group key matches phase)
+        if (groupBy === "all" && g.phase) {
+          milestones
+            .filter((m) => m.kind === "phase" && (m.trigger?.phase ?? "") === g.phase)
+            .forEach((m) => {
+              const at = toDate(m.triggered_at) ?? span.end;
+              const today2 = new Date();
+              const diff = (at.getTime() - today2.getTime()) / 86400000;
+              let cls = "pms-milestone";
+              if (m.status === "pending") {
+                cls += diff >= 0 && diff <= 7 ? " pms-ms-upcoming" : " pms-ms-delayed";
+              } else {
+                cls += m.triggered_on_time === false ? " pms-ms-delayed" : " pms-ms-ontime";
+              }
+              const day = fmt(at);
+              out.push({
+                id: `ms:${m.id}`,
+                name: `◆ ${m.name}`,
+                start: day,
+                end: day,
+                progress: 0,
+                custom_class: cls,
+              });
+            });
+        }
+      }
+    });
+
+    return out;
+  }, [groups, collapsed, milestones, groupBy]);
+
+  // (Re)mount the Gantt instance whenever data/view changes
+  useEffect(() => {
+    if (!containerRef.current) return;
+    if (frappeTasks.length === 0) {
+      containerRef.current.innerHTML = "";
+      ganttRef.current = null;
+      return;
+    }
+
+    // Clear container
+    containerRef.current.innerHTML = "";
+
+    const g = new Gantt(containerRef.current, frappeTasks, {
+      view_mode: viewMode,
+      bar_height: 22,
+      bar_corner_radius: 4,
+      padding: 14,
+      readonly: false,
+      infinite_padding: false,
+      today_button: false,
+      view_mode_select: false,
+      popup: ({ task, set_title, set_subtitle, set_details }: { task: { name: string; start: string | Date; end: string | Date; progress?: number }; set_title: (s: string) => void; set_subtitle: (s: string) => void; set_details: (s: string) => void }) => {
+        set_title(task.name.replace(/^[▶▼]\s*/, ""));
+        const start = new Date(task.start as unknown as string);
+        const end = new Date(task.end as unknown as string);
+        set_subtitle(`${start.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} → ${end.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`);
+        set_details(`${task.progress ?? 0}% complete`);
+      },
+      on_click: (task: { id: string }) => {
+        if (task.id.startsWith("grp:")) {
+          const key = task.id.slice(4);
+          setCollapsed((s) => {
+            const n = new Set(s);
+            n.has(key) ? n.delete(key) : n.add(key);
+            return n;
+          });
+          return;
+        }
+        if (task.id.startsWith("ms:")) {
+          const msId = task.id.slice(3);
+          const ms = milestones.find((m) => m.id === msId);
+          if (ms) setActiveMilestone(ms);
+          return;
+        }
+        if (task.id.startsWith("task:")) {
+          onSelect?.(task.id.slice(5));
+        }
+      },
+      on_date_change: async (
+        task: { id: string },
+        start: Date,
+        end: Date,
+      ) => {
+        if (!task.id.startsWith("task:")) return;
+        const taskId = task.id.slice(5);
+        const original = rows.find((r) => r.id === taskId);
+        if (!original) return;
+        const startStr = fmt(start);
+        const endStr = fmt(end);
+        const { error } = await supabase
+          .from("tasks")
+          .update({
+            planned_start: startStr,
+            planned_end: endStr,
+            start_date: startStr,
+            due_date: endStr,
+          })
+          .eq("id", taskId);
+        if (error) {
+          toast.error(`Couldn't save dates: ${error.message}`);
+          return;
+        }
+        toast.success("Dates updated");
+        // Check dependents
+        const dependents = dependentsByTaskId.get(taskId) ?? [];
+        if (dependents.length > 0) {
+          const originalEnd = toDate(original.planned_end ?? original.due_date);
+          const deltaDays = originalEnd
+            ? Math.round((end.getTime() - originalEnd.getTime()) / 86400000)
+            : 0;
+          if (deltaDays !== 0) {
+            setPendingMove({ taskId, deltaDays, dependents });
+          }
+        }
+      },
+    });
+
+    ganttRef.current = g;
+
+    // Center on today
+    requestAnimationFrame(() => {
+      try {
+        g.scroll_current?.();
+        // Stagger animation: assign --i to each bar wrapper
+        const wrappers = containerRef.current?.querySelectorAll(".bar-wrapper");
+        wrappers?.forEach((el, i) => {
+          (el as HTMLElement).style.animationDelay = `${i * 50}ms`;
+        });
+        // Draw today line
+        drawTodayLine(containerRef.current);
+      } catch {
+        /* noop */
+      }
+    });
+
+    return () => {
+      if (containerRef.current) containerRef.current.innerHTML = "";
+      ganttRef.current = null;
+    };
+  }, [frappeTasks, viewMode, milestones, onSelect, rows, dependentsByTaskId]);
+
+  // Cascade dependents
+  const applyCascade = async () => {
+    if (!pendingMove) return;
+    const { deltaDays, dependents } = pendingMove;
+    const shift = (s: string | null) => {
+      if (!s) return null;
+      const d = new Date(s);
+      d.setDate(d.getDate() + deltaDays);
+      return fmt(d);
+    };
+    for (const dep of dependents) {
+      await supabase
+        .from("tasks")
+        .update({
+          planned_start: shift(dep.planned_start ?? dep.start_date),
+          planned_end: shift(dep.planned_end ?? dep.due_date),
+          start_date: shift(dep.start_date),
+          due_date: shift(dep.due_date),
+        })
+        .eq("id", dep.id);
+    }
+    toast.success(`${dependents.length} dependent task${dependents.length === 1 ? "" : "s"} updated`);
+    setPendingMove(null);
   };
 
-  if (scheduled.length === 0 && unscheduled.length === 0) {
-    return <div className="text-center text-sm text-muted-foreground py-12">No tasks to chart.</div>;
+  if (rows.length === 0) {
+    return (
+      <div className="text-center text-sm text-muted-foreground py-12">
+        No tasks to chart.
+      </div>
+    );
   }
 
   return (
@@ -302,296 +402,140 @@ export function GanttTimeline({
     >
       <div className="px-5 py-4 border-b border-border flex items-center justify-between flex-wrap gap-3">
         <h3 className="font-display text-lg">Gantt Timeline</h3>
-        <div className="flex items-center gap-4 text-[11px] text-muted-foreground flex-wrap">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: ROOM_COLOR.done }} /> Done
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: ROOM_COLOR.wip }} /> WIP
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: ROOM_COLOR.delayed }} /> Delayed
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: ROOM_COLOR.pending }} /> Pending
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-[#c4685a]">◆ Milestone</span>
-          <div className="flex rounded-[8px] border border-border overflow-hidden ml-2">
-            {(["weekly", "monthly", "yearly"] as Scale[]).map((s) => (
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex rounded-[8px] border border-border overflow-hidden">
+            {(["Day", "Week", "Month", "Year"] as ViewMode[]).map((v) => (
               <button
-                key={s}
-                onClick={() => setScale(s)}
-                className={`h-7 px-2.5 text-[11px] capitalize ${scale === s ? "bg-[#c17f5a] text-white" : "bg-white text-muted-foreground hover:bg-muted/40"}`}
+                key={v}
+                onClick={() => setViewMode(v)}
+                className={`h-8 px-3 text-[11px] font-medium transition-colors ${
+                  viewMode === v
+                    ? "bg-[#c17f5a] text-white"
+                    : "bg-white text-muted-foreground hover:bg-[#c17f5a14]"
+                }`}
               >
-                {s}
+                {v}
               </button>
             ))}
           </div>
-        </div>
-      </div>
-
-      <div className="overflow-auto relative">
-        <div className="relative" style={{ width, height }}>
-          <svg width={width} height={height} className="block absolute inset-0 pointer-events-none">
-            {/* axis grid */}
-            {ticks.map((m, i) => (
-              <g key={i}>
-                <line
-                  x1={m.x}
-                  y1={0}
-                  x2={m.x}
-                  y2={height}
-                  stroke={m.major ? "#d4cdbf" : "#ece7dc"}
-                  strokeWidth={1}
-                />
-                <text
-                  x={m.x + 4}
-                  y={18}
-                  fontSize={10}
-                  fill="#8a7d6e"
-                  className="font-mono uppercase tracking-wider"
-                >
-                  {m.label}
-                </text>
-              </g>
-            ))}
-            {/* today line — RED */}
-            {(() => {
-              const today = new Date();
-              const d = diffDays(start, today);
-              if (d < 0 || d > totalDays) return null;
-              const x = LEFT_W + d * DAY_W;
-              return (
-                <g>
-                  <line x1={x} y1={20} x2={x} y2={height - 10} stroke="#dc2626" strokeWidth={1.5} />
-                  <text x={x + 3} y={32} fontSize={9} fill="#dc2626" className="font-mono">
-                    TODAY
-                  </text>
-                </g>
-              );
-            })()}
-
-            {/* bars */}
-            {renderRows.map((r, i) => {
-              const y = yOffsets[i];
-
-              if (r.kind === "phase" || r.kind === "bucket") {
-                const { s, e } = groupSpan(r.items);
-                if (!s || !e) return null;
-                const x0 = LEFT_W + diffDays(start, s) * DAY_W;
-                const w = Math.max(6, (diffDays(s, e) + 1) * DAY_W);
-                const barH = r.kind === "phase" ? 18 : 14;
-                const yBar = y + (HEADER_H - barH) / 2;
-
-                // Build room segments
-                const byRoom = new Map<string, Item[]>();
-                r.items.forEach((it) => {
-                  roomsOfItem(it).forEach((rm) => {
-                    const arr = byRoom.get(rm) ?? [];
-                    arr.push(it);
-                    byRoom.set(rm, arr);
-                  });
-                });
-                const rooms = Array.from(byRoom.entries());
-                const segW = w / Math.max(1, rooms.length);
-
-                return (
-                  <g key={i}>
-                    <rect
-                      x={x0}
-                      y={yBar}
-                      width={w}
-                      height={barH}
-                      rx={4}
-                      fill="white"
-                      stroke={r.kind === "phase" ? PHASE_COLOR[r.phase] : "#c4b8a6"}
-                      strokeWidth={1}
-                    />
-                    {rooms.map(([room, its], k) => {
-                      const st = roomStatus(its);
-                      const span = groupSpan(its);
-                      const dates =
-                        span.s && span.e ? `${fmt(span.s)} → ${fmt(span.e)}` : "—";
-                      return (
-                        <g key={room}>
-                          <rect
-                            x={x0 + k * segW + 1}
-                            y={yBar + 1}
-                            width={Math.max(1, segW - 1)}
-                            height={barH - 2}
-                            fill={ROOM_COLOR[st]}
-                            opacity={st === "pending" ? 0.55 : 0.9}
-                            style={{ pointerEvents: "auto" }}
-                          >
-                            <title>{`${room} — ${st.toUpperCase()} — ${dates}`}</title>
-                          </rect>
-                        </g>
-                      );
-                    })}
-                    {/* milestone diamonds on phase row */}
-                    {r.kind === "phase" &&
-                      (milestonesByPhase.get(r.phase) ?? []).map((ms, k) => {
-                        const at = ms.triggered_at ? toDate(ms.triggered_at) : e;
-                        if (!at) return null;
-                        const mx = LEFT_W + diffDays(start, at) * DAY_W;
-                        const my = yBar + barH / 2;
-                        const onTime = ms.status === "pending"
-                          ? false
-                          : ms.triggered_on_time !== false;
-                        const color = onTime ? "#16a34a" : "#dc2626";
-                        return (
-                          <g key={ms.id + k}>
-                            <polygon
-                              points={`${mx},${my - 8} ${mx + 7},${my} ${mx},${my + 8} ${mx - 7},${my}`}
-                              fill={color}
-                              stroke="white"
-                              strokeWidth={1.5}
-                              style={{ pointerEvents: "auto" }}
-                            >
-                              <title>{`◆ ${ms.name} — ${ms.status}${ms.triggered_at ? ` (${ms.triggered_at})` : ""}`}</title>
-                            </polygon>
-                          </g>
-                        );
-                      })}
-                  </g>
-                );
-              }
-
-              // Task row
-              const { ps, pe, as, ae, t } = r.item;
-              const delayed = pe && ae && ae > pe;
-              return (
-                <g key={i}>
-                  <rect x={0} y={y} width={width} height={ROW_H} fill={i % 2 ? "#fafaf7" : "transparent"} />
-                  {ps && pe && (
-                    <rect
-                      x={LEFT_W + diffDays(start, ps) * DAY_W}
-                      y={y + 8}
-                      width={Math.max(2, (diffDays(ps, pe) + 1) * DAY_W)}
-                      height={7}
-                      rx={3}
-                      fill="#c17f5a18"
-                      stroke="#c17f5a"
-                      strokeWidth={1}
-                    />
-                  )}
-                  {as && (
-                    <rect
-                      x={LEFT_W + diffDays(start, as) * DAY_W}
-                      y={y + 17}
-                      width={Math.max(2, (diffDays(as, ae ?? new Date()) + 1) * DAY_W)}
-                      height={7}
-                      rx={3}
-                      fill={delayed ? "#c4685a" : isTaskDone(t) ? "#7a9e8a" : "#d4882a"}
-                    />
-                  )}
-                </g>
-              );
-            })}
-          </svg>
-
-          {/* Left labels (HTML, clickable) */}
-          <div className="absolute left-0 top-0" style={{ width: LEFT_W }}>
-            {renderRows.map((r, i) => {
-              const y = yOffsets[i];
-              if (r.kind === "phase") {
-                const done = r.items.filter((it) => isTaskDone(it.t)).length;
-                const pct = r.items.length ? Math.round((done / r.items.length) * 100) : 0;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => togglePhase(r.phase)}
-                    className="absolute left-0 right-0 flex items-center gap-1.5 px-2 text-[11px] font-bold uppercase tracking-[0.14em] hover:bg-muted/40"
-                    style={{ top: y, height: HEADER_H, color: PHASE_COLOR[r.phase] }}
-                  >
-                    {r.expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                    <span className="flex-1 text-left truncate">{r.phase}</span>
-                    <span className="font-mono text-[10px] opacity-70">
-                      {done}/{r.items.length} · {pct}%
-                    </span>
-                  </button>
-                );
-              }
-              if (r.kind === "bucket") {
-                const key = `${r.phase}::${r.bucket}`;
-                const done = r.items.filter((it) => isTaskDone(it.t)).length;
-                const pct = r.items.length ? Math.round((done / r.items.length) * 100) : 0;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => toggleBucket(key)}
-                    className="absolute left-0 right-0 flex items-center gap-1.5 pl-6 pr-2 text-[11px] font-medium hover:bg-muted/30 text-foreground"
-                    style={{ top: y, height: HEADER_H }}
-                  >
-                    {r.expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                    <span className="flex-1 text-left truncate">{smartLabel(r.phase, r.bucket, r.items)}</span>
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {done}/{r.items.length} · {pct}%
-                    </span>
-                  </button>
-                );
-              }
-              const t = r.item.t;
-              return (
-                <button
-                  key={i}
-                  onClick={() => onSelect?.(t.id)}
-                  className="absolute left-0 right-0 text-left pl-10 pr-2 hover:bg-muted/20"
-                  style={{ top: y, height: ROW_H }}
-                >
-                  <div className="text-[12px] font-medium truncate text-foreground">{t.title}</div>
-                  <div className="text-[9px] text-muted-foreground truncate">
-                    {(t.agency || t.contractor || "—") +
-                      (Array.isArray(t.areas) && (t.areas as string[]).length
-                        ? " · " + (t.areas as string[]).slice(0, 2).join(", ")
-                        : "")}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Unscheduled tasks section */}
-      {unscheduled.length > 0 && (
-        <div className="border-t border-border bg-[#fafaf7]">
-          <button
-            onClick={() => setShowUnscheduled((v) => !v)}
-            className="w-full flex items-center gap-2 px-5 py-3 text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:bg-muted/40"
+          <select
+            value={groupBy}
+            onChange={(e) => setGroupBy(e.target.value as GroupMode)}
+            className="h-8 px-2 rounded-[8px] border border-border bg-white text-[11px] font-medium"
           >
-            {showUnscheduled ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-            Unscheduled Tasks — {unscheduled.length} item{unscheduled.length === 1 ? "" : "s"}
-          </button>
-          {showUnscheduled && (
-            <ul className="divide-y divide-border">
-              {unscheduled.map((it) => (
-                <li
-                  key={it.t.id}
-                  className="flex items-center gap-3 px-5 py-2.5 text-[12px]"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate text-foreground">{it.t.title}</div>
-                    <div className="text-[10px] text-muted-foreground truncate">
-                      {(it.t.agency || it.t.contractor || "—") +
-                        (Array.isArray(it.t.areas) && (it.t.areas as string[]).length
-                          ? " · " + (it.t.areas as string[]).slice(0, 3).join(", ")
-                          : "") +
-                        (it.t.work_type ? " · " + it.t.work_type : "")}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => onSelect?.(it.t.id)}
-                    className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] bg-[#c17f5a] text-white hover:bg-[#a86b4a]"
-                  >
-                    <CalendarPlus className="h-3.5 w-3.5" /> Schedule
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+            <option value="all">Group: Phase</option>
+            <option value="agency">Group: Agency</option>
+            <option value="work_type">Group: Work Type</option>
+            <option value="room">Group: Room</option>
+          </select>
         </div>
-      )}
+      </div>
+
+      <div className="px-5 py-2 border-b border-border flex items-center gap-4 text-[11px] text-muted-foreground flex-wrap">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#6b9e82" }} /> Done
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#c17f5a" }} /> WIP
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#c4685a" }} /> Delayed
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm border border-[#d4882a]" style={{ background: "#fff3e0" }} /> Planned
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm" style={{ background: "#b8aea3" }} /> Blocked
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-[#1a1612]">◆ Milestone</span>
+      </div>
+
+      <div className="pmstudio-gantt-scroll overflow-auto pmstudio-gantt relative">
+        <div ref={containerRef} />
+      </div>
+
+      {/* Milestone popup */}
+      <AlertDialog open={!!activeMilestone} onOpenChange={(o) => !o && setActiveMilestone(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>◆ {activeMilestone?.name}</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm pt-2">
+                <div>
+                  <span className="text-muted-foreground">Date: </span>
+                  {activeMilestone?.triggered_at
+                    ? new Date(activeMilestone.triggered_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+                    : "—"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Status: </span>
+                  <span className="font-medium capitalize">{activeMilestone?.status}</span>
+                </div>
+                {activeMilestone?.invoice_amount ? (
+                  <div>
+                    <span className="text-muted-foreground">Linked invoice: </span>
+                    ₹{Number(activeMilestone.invoice_amount).toLocaleString("en-IN")}
+                  </div>
+                ) : null}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setActiveMilestone(null)}>Close</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dependency cascade prompt */}
+      <AlertDialog open={!!pendingMove} onOpenChange={(o) => !o && setPendingMove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update dependent tasks?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Moving this task affects {pendingMove?.dependents.length} dependent task
+              {pendingMove?.dependents.length === 1 ? "" : "s"}. Shift them by the same
+              {" "}
+              {pendingMove?.deltaDays} day{Math.abs(pendingMove?.deltaDays ?? 0) === 1 ? "" : "s"} too?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingMove(null)}>No</AlertDialogCancel>
+            <AlertDialogAction onClick={applyCascade} className="bg-[#c17f5a] hover:bg-[#a86b4a]">
+              Yes, shift them
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
+}
+
+// Draw a red vertical "Today" line over the rendered SVG
+function drawTodayLine(container: HTMLDivElement | null) {
+  if (!container) return;
+  const svg = container.querySelector("svg.gantt") as SVGSVGElement | null;
+  if (!svg) return;
+  const today = new Date();
+  const dateText = svg.querySelector(".today-highlight");
+  if (!dateText) return;
+  const rect = (dateText as SVGRectElement).getBoundingClientRect();
+  const svgRect = svg.getBoundingClientRect();
+  const x = rect.left - svgRect.left + rect.width / 2;
+  // Remove any previous indicator
+  container.querySelectorAll(".pmstudio-today-line, .pmstudio-today-label").forEach((n) => n.remove());
+  const line = document.createElement("div");
+  line.className = "pmstudio-today-line";
+  line.style.left = `${x}px`;
+  const label = document.createElement("div");
+  label.className = "pmstudio-today-label";
+  label.style.left = `${x}px`;
+  label.textContent = "Today";
+  // Position relative to the scroll wrapper
+  const wrapper = container.parentElement;
+  if (wrapper) {
+    wrapper.style.position = wrapper.style.position || "relative";
+    wrapper.appendChild(line);
+    wrapper.appendChild(label);
+    void today;
+  }
 }

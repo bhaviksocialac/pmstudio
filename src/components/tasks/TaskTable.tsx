@@ -8,7 +8,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  STATUS_META, STATUS_ORDER, PRIORITY_META, rowTint, nextStatus, WORK_TYPES,
+  STATUS_META, STATUS_ORDER, PRIORITY_META, rowTint, nextStatus,
 } from "@/lib/task-flow";
 import { cascadeDependents, splitTaskPerRoom } from "@/lib/task-ai.functions";
 import {
@@ -17,6 +17,7 @@ import {
 import { TaskEditSheet } from "./TaskEditSheet";
 import { StatusChangeDialog, type StatusChangePayload } from "./StatusChangeDialog";
 import { changeTaskStatus } from "@/lib/task-status";
+import { useWorkTypes } from "@/hooks/useWorkTypes";
 
 export type TaskRow = {
   id: string;
@@ -94,6 +95,7 @@ export function TaskTable({
   const [pendingStatus, setPendingStatus] = useState<{ task: TaskRow; status: string } | null>(null);
   const cascade = useServerFn(cascadeDependents);
   const splitFn = useServerFn(splitTaskPerRoom);
+  const workTypes = useWorkTypes();
 
   const projectScopeTasks = allProjectTasks ?? rows;
 
@@ -298,7 +300,8 @@ export function TaskTable({
                       <div className="min-w-[160px] max-w-[220px]">
                         <WorkTypePicker
                           value={asWorkTypes(t)}
-                          options={WORK_TYPES as unknown as readonly string[]}
+                          options={workTypes.options}
+                          onAddOption={(v) => workTypes.addWorkType(v)}
                           onChange={(v) => updateField(t, { work_types: v, work_type: v[0] ?? null })}
                         />
                       </div>

@@ -11,10 +11,11 @@ import {
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { STATUS_ORDER, STATUS_META, PRIORITY_META, WORK_TYPES } from "@/lib/task-flow";
+import { STATUS_ORDER, STATUS_META, PRIORITY_META } from "@/lib/task-flow";
 import type { TaskRow } from "./TaskTable";
 import { asWorkTypes } from "./TaskTable";
 import { AgencyPicker, AreaPicker, DependencyPicker, DateField, WorkTypePicker } from "./TaskInlineEditors";
+import { useWorkTypes } from "@/hooks/useWorkTypes";
 
 export function TaskEditSheet({
   task, open, onClose, onChanged, allTasks, vendors, teamMembers = [], rooms, onAddRoom,
@@ -119,9 +120,8 @@ export function TaskEditSheet({
             </Field>
 
             <Field label="Work Type">
-              <WorkTypePicker
+              <WorkTypePickerInner
                 value={asWorkTypes(draft)}
-                options={WORK_TYPES as unknown as readonly string[]}
                 onChange={(v) => patch({ work_types: v as unknown, work_type: v[0] ?? null })}
               />
             </Field>
@@ -236,5 +236,23 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <Label className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-medium">{label}</Label>
       {children}
     </div>
+  );
+}
+
+function WorkTypePickerInner({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const wt = useWorkTypes();
+  return (
+    <WorkTypePicker
+      value={value}
+      options={wt.options}
+      onAddOption={(v) => wt.addWorkType(v)}
+      onChange={onChange}
+    />
   );
 }
