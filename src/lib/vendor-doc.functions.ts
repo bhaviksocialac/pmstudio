@@ -14,6 +14,7 @@ const inputSchema = z.object({
 export type VendorExtract = {
   company_name?: string;
   contact_person?: string;
+  candidate_names?: string[];
   phone?: string;
   email?: string;
   gst?: string;
@@ -36,23 +37,32 @@ export const extractVendorFromDocument = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ ok: boolean; data?: VendorExtract; error?: string }> => {
     const dataUri = `data:${data.mimeType};base64,${data.base64}`;
 
-    const system = `You read invoices, quotations and Bills of Quantities for an interior design studio in India.
-Extract vendor and line-item details. Return ONE JSON object with these optional keys:
+    const system = `You read invoices, quotations and Bills of Quantities (BOQ) for an interior design studio in India.
+
+CRITICAL — WHOSE NAME TO EXTRACT as "company_name":
+Extract the SUPPLIER / VENDOR / contractor — the company or person SUPPLYING the goods or services (and who will be PAID).
+- DO take names from labels like: "From:", "Supplier:", "Vendor:", "Sold By:", "Bill From:", "Seller:", "Contractor:", letterhead at the very top of an invoice, or the GSTIN/PAN owner who is ISSUING the document.
+- DO NOT use names near: "Prepared by:", "Issued to:", "Bill To:", "Client:", "Customer:", "Architect:", "Designer:", "Consultant:", "Project Manager:", "For:", "Attention:". These are NEVER the vendor.
+- On a BOQ, the architect/designer who "prepared" the document is NOT the vendor. The vendor is the supplier the BOQ is addressed to or who quoted the rates.
+- If you cannot confidently pick one supplier from multiple companies on the page, put your best guess in "company_name" AND list every distinct company/person name found on the document in "candidate_names" so the user can choose.
+
+Return ONE JSON object with these optional keys:
 {
-  "company_name": string,
-  "contact_person": string,
+  "company_name": string,        // SUPPLIER company name
+  "contact_person": string,      // supplier-side contact
+  "candidate_names": string[],   // every plausible vendor name on the doc; include company_name; omit if certain
   "phone": string,
   "email": string,
-  "gst": string,         // 15-char GSTIN
-  "pan": string,         // 10-char PAN
+  "gst": string,                 // 15-char GSTIN of the supplier
+  "pan": string,                 // 10-char PAN
   "ifsc": string,
   "bank_account": string,
-  "flat_number": string, // unit / shop / building no.
-  "street": string,      // street + area
+  "flat_number": string,
+  "street": string,
   "city": string,
   "state": string,
   "country": string,
-  "pincode": string,     // 6-digit Indian PIN
+  "pincode": string,             // 6-digit Indian PIN
   "items": [{ "description": string, "qty": string, "rate": string, "amount": string }],
   "notes": string
 }
