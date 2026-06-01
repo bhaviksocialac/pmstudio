@@ -7,7 +7,7 @@ import { TaskTable, type TaskRow } from "@/components/tasks/TaskTable";
 import { TaskFilters, emptyFilters, type FilterState } from "@/components/tasks/TaskFilters";
 
 import { GanttTimeline } from "@/components/tasks/GanttTimeline";
-import { STATUS_META, WORK_TYPES, deriveActionRequired } from "@/lib/task-flow";
+import { STATUS_META, deriveActionRequired } from "@/lib/task-flow";
 import { useWorkTypes } from "@/hooks/useWorkTypes";
 
 type GroupBy = "all" | "status" | "contractor" | "room" | "work_type";
