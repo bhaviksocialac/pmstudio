@@ -8,6 +8,7 @@ import { TaskFilters, emptyFilters, type FilterState } from "@/components/tasks/
 
 import { GanttTimeline } from "@/components/tasks/GanttTimeline";
 import { STATUS_META, WORK_TYPES, deriveActionRequired } from "@/lib/task-flow";
+import { useWorkTypes } from "@/hooks/useWorkTypes";
 
 type GroupBy = "all" | "status" | "contractor" | "room" | "work_type";
 type View = "table" | "gantt";
@@ -31,6 +32,7 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
   const [extraRooms, setExtraRooms] = useState<string[]>([]);
   const [extraStatuses, setExtraStatuses] = useState<string[]>([]);
   const [extraWorkTypes, setExtraWorkTypes] = useState<string[]>([]);
+  const sharedWorkTypes = useWorkTypes();
 
   const tasksQ = useQuery({
     queryKey: ["project-tasks", projectId],
@@ -110,7 +112,7 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
       const wts = Array.isArray(t.work_types) && (t.work_types as string[]).length ? (t.work_types as string[]) : (t.work_type ? [t.work_type] : []);
       wts.forEach((w) => workTypes.add(w));
     });
-    WORK_TYPES.forEach((w) => workTypes.add(w));
+    sharedWorkTypes.options.forEach((w) => workTypes.add(w));
     const baseStatuses = Object.keys(STATUS_META).filter((s) => !["todo", "in_progress"].includes(s));
     const statuses = Array.from(new Set([...baseStatuses, ...extraStatuses]));
 
@@ -134,10 +136,13 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
         key: "workTypes" as const, label: "Work Type", values: Array.from(workTypes).sort(),
         format: (v: string) => titleCase(v),
         addLabel: "Add Work Type",
-        onAdd: (v: string) => setExtraWorkTypes((p) => Array.from(new Set([...p, v]))),
+        onAdd: (v: string) => {
+          sharedWorkTypes.addWorkType(v);
+          setExtraWorkTypes((p) => Array.from(new Set([...p, v])));
+        },
       },
     ];
-  }, [rows, extraRooms, extraStatuses, extraWorkTypes]);
+  }, [rows, extraRooms, extraStatuses, extraWorkTypes, sharedWorkTypes]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
