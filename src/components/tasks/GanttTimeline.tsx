@@ -378,7 +378,18 @@ export function GanttTimeline({
       }
     });
 
+    // Recompute today line on scroll/resize so it stays glued to the right column at all zoom levels.
+    const wrapper = containerRef.current?.parentElement;
+    const redraw = () => drawTodayLine(containerRef.current);
+    wrapper?.addEventListener("scroll", redraw, { passive: true });
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(redraw) : null;
+    if (ro && containerRef.current) ro.observe(containerRef.current);
+    window.addEventListener("resize", redraw);
+
     return () => {
+      wrapper?.removeEventListener("scroll", redraw);
+      window.removeEventListener("resize", redraw);
+      ro?.disconnect();
       if (containerRef.current) containerRef.current.innerHTML = "";
       ganttRef.current = null;
     };
