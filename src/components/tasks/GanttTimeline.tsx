@@ -272,7 +272,7 @@ export function GanttTimeline({
       infinite_padding: false,
       today_button: false,
       view_mode_select: false,
-      popup: ({ task, set_title, set_subtitle, set_details }) => {
+      popup: ({ task, set_title, set_subtitle, set_details }: { task: { name: string; start: string | Date; end: string | Date; progress?: number }; set_title: (s: string) => void; set_subtitle: (s: string) => void; set_details: (s: string) => void }) => {
         set_title(task.name.replace(/^[▶▼]\s*/, ""));
         const start = new Date(task.start as unknown as string);
         const end = new Date(task.end as unknown as string);
