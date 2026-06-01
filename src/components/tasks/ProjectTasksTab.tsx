@@ -32,7 +32,7 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
   const [extraRooms, setExtraRooms] = useState<string[]>([]);
   const [extraStatuses, setExtraStatuses] = useState<string[]>([]);
   const [extraWorkTypes, setExtraWorkTypes] = useState<string[]>([]);
-  const sharedWorkTypes = useWorkTypes();
+  const { options: sharedWorkTypeOptions, addWorkType: addSharedWorkType } = useWorkTypes();
 
   const tasksQ = useQuery({
     queryKey: ["project-tasks", projectId],
@@ -112,7 +112,7 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
       const wts = Array.isArray(t.work_types) && (t.work_types as string[]).length ? (t.work_types as string[]) : (t.work_type ? [t.work_type] : []);
       wts.forEach((w) => workTypes.add(w));
     });
-    sharedWorkTypes.options.forEach((w) => workTypes.add(w));
+    sharedWorkTypeOptions.forEach((w) => workTypes.add(w));
     const baseStatuses = Object.keys(STATUS_META).filter((s) => !["todo", "in_progress"].includes(s));
     const statuses = Array.from(new Set([...baseStatuses, ...extraStatuses]));
 
@@ -137,12 +137,12 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
         format: (v: string) => titleCase(v),
         addLabel: "Add Work Type",
         onAdd: (v: string) => {
-          sharedWorkTypes.addWorkType(v);
+          addSharedWorkType(v);
           setExtraWorkTypes((p) => Array.from(new Set([...p, v])));
         },
       },
     ];
-  }, [rows, extraRooms, extraStatuses, extraWorkTypes, sharedWorkTypes]);
+  }, [rows, extraRooms, extraStatuses, extraWorkTypes, sharedWorkTypeOptions, addSharedWorkType]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
