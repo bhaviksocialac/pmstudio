@@ -309,7 +309,7 @@
 
 
 /* ============== Frappe Gantt — PMStudio theme ============== */
-@import "frappe-gantt/dist/frappe-gantt.css";
+@import "../node_modules/frappe-gantt/dist/frappe-gantt.css";
 
 .pmstudio-gantt {
   font-family: "DM Sans", system-ui, sans-serif;
