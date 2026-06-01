@@ -340,13 +340,19 @@ export function GanttTimeline({
           return;
         }
         toast.success("Dates updated");
-        // Check dependents
+        // Check dependents — prefer start-date delta (covers pure moves);
+        // fall back to end-date delta when only the end changed (resize).
         const dependents = dependentsByTaskId.get(taskId) ?? [];
         if (dependents.length > 0) {
+          const originalStart = toDate(original.planned_start ?? original.start_date);
           const originalEnd = toDate(original.planned_end ?? original.due_date);
-          const deltaDays = originalEnd
+          const startDelta = originalStart
+            ? Math.round((start.getTime() - originalStart.getTime()) / 86400000)
+            : 0;
+          const endDelta = originalEnd
             ? Math.round((end.getTime() - originalEnd.getTime()) / 86400000)
             : 0;
+          const deltaDays = startDelta !== 0 ? startDelta : endDelta;
           if (deltaDays !== 0) {
             setPendingMove({ taskId, deltaDays, dependents });
           }
