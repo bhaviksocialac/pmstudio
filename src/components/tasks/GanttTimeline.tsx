@@ -10,7 +10,22 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import type { TaskRow } from "./TaskTable";
 import { phaseOfTask, PROJECT_PHASES, isTaskDone, type ProjectPhase } from "@/lib/task-flow";
 
-type ViewMode = "Day" | "Week" | "Month" | "Year";
+type ViewMode = "Day" | "Week" | "Month" | "Quarter" | "Year";
+
+// Custom Quarter view mode — Frappe ships Day/Week/Month/Year only.
+const QUARTER_VIEW_MODE = {
+  name: "Quarter",
+  padding: "6m",
+  step: "3m",
+  column_width: 100,
+  date_format: "YYYY-MM",
+  lower_text: (d: Date) => `Q${Math.floor(d.getMonth() / 3) + 1}`,
+  upper_text: (d: Date, lastDate: Date | null) =>
+    !lastDate || d.getFullYear() !== lastDate.getFullYear() ? String(d.getFullYear()) : "",
+  thick_line: (d: Date) => d.getMonth() === 0,
+  snap_at: "30d",
+};
+const DEFAULT_VIEW_MODES = ["Day", "Week", "Month", "Year"];
 type GroupMode = "all" | "agency" | "work_type" | "room";
 
 type Milestone = {
@@ -265,6 +280,7 @@ export function GanttTimeline({
 
     const g = new Gantt(containerRef.current, frappeTasks, {
       view_mode: viewMode,
+      view_modes: [...DEFAULT_VIEW_MODES, QUARTER_VIEW_MODE] as unknown as string[],
       bar_height: 22,
       bar_corner_radius: 4,
       padding: 14,
@@ -324,13 +340,19 @@ export function GanttTimeline({
           return;
         }
         toast.success("Dates updated");
-        // Check dependents
+        // Check dependents — prefer start-date delta (covers pure moves);
+        // fall back to end-date delta when only the end changed (resize).
         const dependents = dependentsByTaskId.get(taskId) ?? [];
         if (dependents.length > 0) {
+          const originalStart = toDate(original.planned_start ?? original.start_date);
           const originalEnd = toDate(original.planned_end ?? original.due_date);
-          const deltaDays = originalEnd
+          const startDelta = originalStart
+            ? Math.round((start.getTime() - originalStart.getTime()) / 86400000)
+            : 0;
+          const endDelta = originalEnd
             ? Math.round((end.getTime() - originalEnd.getTime()) / 86400000)
             : 0;
+          const deltaDays = startDelta !== 0 ? startDelta : endDelta;
           if (deltaDays !== 0) {
             setPendingMove({ taskId, deltaDays, dependents });
           }
@@ -356,7 +378,18 @@ export function GanttTimeline({
       }
     });
 
+    // Recompute today line on scroll/resize so it stays glued to the right column at all zoom levels.
+    const wrapper = containerRef.current?.parentElement;
+    const redraw = () => drawTodayLine(containerRef.current);
+    wrapper?.addEventListener("scroll", redraw, { passive: true });
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(redraw) : null;
+    if (ro && containerRef.current) ro.observe(containerRef.current);
+    window.addEventListener("resize", redraw);
+
     return () => {
+      wrapper?.removeEventListener("scroll", redraw);
+      window.removeEventListener("resize", redraw);
+      ro?.disconnect();
       if (containerRef.current) containerRef.current.innerHTML = "";
       ganttRef.current = null;
     };
@@ -404,7 +437,7 @@ export function GanttTimeline({
         <h3 className="font-display text-lg">Gantt Timeline</h3>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex rounded-[8px] border border-border overflow-hidden">
-            {(["Day", "Week", "Month", "Year"] as ViewMode[]).map((v) => (
+            {(["Day", "Week", "Month", "Quarter", "Year"] as ViewMode[]).map((v) => (
               <button
                 key={v}
                 onClick={() => setViewMode(v)}
