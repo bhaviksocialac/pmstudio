@@ -30,7 +30,9 @@ type AssignResult = {
   totalQuoted: number;
   scopeCategories: string[];
   vendorName: string;
+  byCategory: Record<string, number>;
 };
+
 
 export const assignVendorToProjectTasks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
