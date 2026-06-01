@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Check, Search, Plus, X } from "lucide-react";
+import { CalendarIcon, Check, Search, Plus, X, Building2, User, HelpCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -89,13 +89,16 @@ export function AgencyTag({ value, kind, className }: { value: string | null; ki
     team:    "bg-[#c17f5a22] text-[#7a4628] border-[#c17f5a55]",
     client:  "bg-[#7a9e8a22] text-[#3d5e4b] border-[#7a9e8a55]",
     vendor:  "bg-[#e6e2da] text-[#3a3a3a] border-[#cfc8bd]",
-    unknown: "bg-[#e6e2da] text-[#3a3a3a] border-[#cfc8bd]",
+    unknown: "bg-amber-50 text-amber-800 border-amber-200",
   };
+  const Icon = kind === "vendor" ? Building2 : kind === "team" ? User : kind === "unknown" ? HelpCircle : null;
+  const title = kind === "unknown" ? `"${value}" is not linked to a vendor or team member` : undefined;
   return (
-    <span className={cn(
-      "inline-flex items-center px-2 py-0.5 rounded-[6px] text-[11px] font-medium border whitespace-nowrap",
+    <span title={title} className={cn(
+      "inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[11px] font-medium border whitespace-nowrap",
       styles[kind], className,
     )}>
+      {Icon && <Icon className="h-3 w-3 opacity-80" />}
       {value}
     </span>
   );
@@ -208,14 +211,45 @@ export function AgencyPicker({ value, vendors, teamMembers = [], onChange }: {
           )}
 
           {q.trim() &&
-            ![...teamNames, ...vendorNames, "Client"].some((o) => o.toLowerCase() === ql) && (
-            <button
-              onClick={() => { onChange(q.trim()); setOpen(false); setQ(""); }}
-              className="w-full text-left px-2 py-1.5 rounded text-xs text-[#c17f5a] hover:bg-[#c17f5a18]"
-            >
-              + Use &quot;{q.trim()}&quot;
-            </button>
-          )}
+            ![...teamNames, ...vendorNames, "Client"].some((o) => o.toLowerCase() === ql) && (() => {
+              // Fuzzy "Did you mean ..." suggestion against existing roster.
+              const score = (a: string, b: string) => {
+                const an = a.toLowerCase(); const bn = b.toLowerCase();
+                if (an === bn) return 1;
+                if (an.includes(bn) || bn.includes(an)) return 0.9;
+                const bg = (s: string) => { const v = ` ${s} `; const out = new Set<string>(); for (let i = 0; i < v.length - 1; i++) out.add(v.slice(i, i + 2)); return out; };
+                const A = bg(an); const B = bg(bn); let inter = 0; A.forEach((g) => { if (B.has(g)) inter++; });
+                return (A.size && B.size) ? (2 * inter) / (A.size + B.size) : 0;
+              };
+              type Cand = { name: string; kind: "team" | "vendor"; score: number };
+              const cands: Cand[] = [
+                ...teamNames.map((n): Cand => ({ name: n, kind: "team", score: score(q.trim(), n) })),
+                ...vendorNames.map((n): Cand => ({ name: n, kind: "vendor", score: score(q.trim(), n) })),
+              ].filter((c) => c.score >= 0.5).sort((a, b) => b.score - a.score).slice(0, 2);
+
+              return (
+                <div className="space-y-1 pt-1 border-t border-border">
+                  {cands.map((c) => (
+                    <button
+                      key={c.kind + c.name}
+                      onClick={() => { onChange(c.name); setOpen(false); setQ(""); }}
+                      className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted inline-flex items-center gap-2"
+                    >
+                      {c.kind === "vendor" ? <Building2 className="h-3 w-3 text-muted-foreground" /> : <User className="h-3 w-3 text-[#c17f5a]" />}
+                      <span>Did you mean <span className="font-medium">{c.name}</span>?</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground">{c.kind}</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => { onChange(q.trim()); setOpen(false); setQ(""); }}
+                    className="w-full text-left px-2 py-1.5 rounded text-xs text-[#c17f5a] hover:bg-[#c17f5a18] inline-flex items-center gap-2"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Use &quot;{q.trim()}&quot; as free-text
+                  </button>
+                </div>
+              );
+            })()}
         </div>
       </PopoverContent>
     </Popover>
