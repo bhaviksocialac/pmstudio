@@ -186,12 +186,12 @@ function VendorsPage() {
       {deleting && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setDeleting(null)}>
           <div className="w-full max-w-sm bg-card rounded-[16px] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-2xl mb-2">Delete {deleting.company_name || deleting.name}?</h3>
-            <p className="text-sm text-muted-foreground mb-5">This cannot be undone.</p>
+            <h3 className="font-display text-2xl mb-2">Move {deleting.company_name || deleting.name} to Trash?</h3>
+            <p className="text-sm text-muted-foreground mb-5">You can restore from Trash within 30 days.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setDeleting(null)} className="h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">Cancel</button>
               <button onClick={() => del.mutate(deleting.id)} disabled={del.isPending} className="h-10 px-5 rounded-[6px] bg-[#c4685a] text-white text-sm font-medium hover:brightness-95 inline-flex items-center gap-2 disabled:opacity-60">
-                {del.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Delete
+                {del.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Move to Trash
               </button>
             </div>
           </div>
