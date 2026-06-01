@@ -620,16 +620,19 @@ function SummaryCard({
         <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
           <button onClick={onClose} className="h-10 px-4 rounded-[6px] border border-border text-sm">Close</button>
           {summary.matched > 0 && (
-            <Link
-              to="/projects/$projectId"
-              params={{ projectId }}
-              search={{ tab: "tasks", vendor: summary.vendorName }}
-              onClick={onClose}
+            <button
+              onClick={() => {
+                onClose();
+                // Switch to the Tasks tab via the project page's hash if it listens, otherwise just toast
+                window.dispatchEvent(new CustomEvent("pmstudio:goto-tab", { detail: { tab: "tasks", projectId, vendor: summary.vendorName } }));
+                toast.info(`Open the Tasks tab to see ${summary.vendorName}'s assignments.`);
+              }}
               className="h-10 px-5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium inline-flex items-center gap-2"
             >
               View assigned tasks <ExternalLink className="h-3.5 w-3.5" />
-            </Link>
+            </button>
           )}
+
         </div>
       </div>
     </div>
