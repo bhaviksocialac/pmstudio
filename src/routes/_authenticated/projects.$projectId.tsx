@@ -32,6 +32,8 @@ import { AttendanceTab } from "@/components/AttendanceTab";
 import { MilestonesTab } from "@/components/milestones/MilestonesTab";
 import { ProjectVendorsTab } from "@/components/vendors/ProjectVendorsTab";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
+import { BudgetReconciliationPanel } from "@/components/BudgetReconciliationPanel";
+import { ProjectAlertsStrip } from "@/components/ProjectAlertsStrip";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: ({ params }) => {
@@ -190,6 +192,10 @@ function ProjectDetailView({ project }: { project: Project }) {
           </div>
         </div>
 
+
+        <div className="mb-4">
+          <ProjectAlertsStrip projectId={project.id} projectBudget={project.budget} />
+        </div>
 
         {tab === "overview" && <OverviewTab project={project} onGoTo={setTab} />}
         {tab === "milestones" && <MilestonesTab projectId={project.id} />}
