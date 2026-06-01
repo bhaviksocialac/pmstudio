@@ -53,7 +53,9 @@ export const extractInvoiceFromDocument = createServerFn({ method: "POST" })
     const system = `You are reading a vendor invoice for an Indian interior design studio.
 Extract every field accurately using the provided tool. Dates MUST be ISO yyyy-mm-dd.
 Numbers must be plain numbers (no commas, no ₹ symbol). If a field is not present, return null.
-Extract every line item as a separate row.`;
+Extract every line item as a separate row.
+
+CRITICAL — "company_name" must be the SUPPLIER / VENDOR who is ISSUING the invoice and being paid (taken from "From:", "Supplier:", "Vendor:", "Sold By:", "Bill From:", letterhead at top, or the GSTIN/PAN owner issuing the document). It is NEVER the architect, designer, consultant, client, or anyone after "Prepared by:", "Issued to:", "Bill To:", "Client:", "Customer:", "Architect:", "Designer:", "For:", or "Attention:". If multiple companies appear and you are unsure, return your best guess plus every distinct candidate in "candidate_names".`;
 
     const tool = {
       type: "function" as const,

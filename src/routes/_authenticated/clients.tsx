@@ -392,14 +392,24 @@ function ClientModal({ onClose, client }: { onClose: () => void; client?: DbClie
           <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-[10px]">
             <button
               type="button"
-              onClick={() => setClientType("individual")}
+              onClick={() => {
+                if (clientType !== "individual") {
+                  setForm((f) => ({ ...f, name: "", contact_person: "", designation: "" }));
+                }
+                setClientType("individual");
+              }}
               className={`h-10 rounded-[8px] text-sm font-medium inline-flex items-center justify-center gap-2 transition ${clientType === "individual" ? "bg-card shadow-sm" : "text-muted-foreground"}`}
             >
               <User className="h-4 w-4" /> Individual
             </button>
             <button
               type="button"
-              onClick={() => setClientType("company")}
+              onClick={() => {
+                if (clientType !== "company") {
+                  setForm((f) => ({ ...f, name: "", contact_person: "", designation: "" }));
+                }
+                setClientType("company");
+              }}
               className={`h-10 rounded-[8px] text-sm font-medium inline-flex items-center justify-center gap-2 transition ${clientType === "company" ? "bg-card shadow-sm" : "text-muted-foreground"}`}
             >
               <Building2 className="h-4 w-4" /> Company / Business

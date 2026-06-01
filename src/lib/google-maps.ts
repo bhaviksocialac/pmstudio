@@ -64,10 +64,17 @@ export function parsePlace(place: {
   const sublocality = pick(comps, "sublocality") || pick(comps, "sublocality_level_1") || pick(comps, "neighborhood");
   const streetParts = [streetNumber, route, sublocality].filter(Boolean);
   const street = streetParts.join(", ") || place.formatted_address || place.formattedAddress || "";
-  const city = pick(comps, "locality") || pick(comps, "administrative_area_level_2") || pick(comps, "postal_town");
-  const state = pick(comps, "administrative_area_level_1");
-  const country = pick(comps, "country");
+  const city = pick(comps, "locality") || pick(comps, "administrative_area_level_3") || pick(comps, "administrative_area_level_2") || pick(comps, "postal_town");
+  let state = pick(comps, "administrative_area_level_1");
+  let country = pick(comps, "country");
   const pincode = pick(comps, "postal_code");
+
+  // Fallback: infer state + country from known Indian cities when Google omits the components
+  const inferred = inferIndianStateFromCity(city);
+  if (!state && inferred.state) state = inferred.state;
+  if (!country && (inferred.state || /\bIndia\b/i.test(place.formatted_address ?? place.formattedAddress ?? ""))) {
+    country = "India";
+  }
 
   let latitude: number | null = null;
   let longitude: number | null = null;
@@ -80,4 +87,30 @@ export function parsePlace(place: {
   }
 
   return { street, city, state, country, pincode, latitude, longitude };
+}
+
+const INDIA_CITY_STATE: Record<string, string> = {
+  mumbai: "Maharashtra", pune: "Maharashtra", nashik: "Maharashtra", nagpur: "Maharashtra", aurangabad: "Maharashtra", thane: "Maharashtra", "navi mumbai": "Maharashtra",
+  delhi: "Delhi", "new delhi": "Delhi", noida: "Uttar Pradesh", gurgaon: "Haryana", gurugram: "Haryana", faridabad: "Haryana", ghaziabad: "Uttar Pradesh",
+  bangalore: "Karnataka", bengaluru: "Karnataka", mysore: "Karnataka", mysuru: "Karnataka", hubli: "Karnataka", mangalore: "Karnataka",
+  chennai: "Tamil Nadu", coimbatore: "Tamil Nadu", madurai: "Tamil Nadu", tiruchirappalli: "Tamil Nadu", salem: "Tamil Nadu",
+  hyderabad: "Telangana", secunderabad: "Telangana", warangal: "Telangana",
+  ahmedabad: "Gujarat", surat: "Gujarat", vadodara: "Gujarat", rajkot: "Gujarat", gandhinagar: "Gujarat",
+  kolkata: "West Bengal", howrah: "West Bengal", siliguri: "West Bengal", durgapur: "West Bengal",
+  jaipur: "Rajasthan", jodhpur: "Rajasthan", udaipur: "Rajasthan", kota: "Rajasthan", ajmer: "Rajasthan",
+  lucknow: "Uttar Pradesh", kanpur: "Uttar Pradesh", agra: "Uttar Pradesh", varanasi: "Uttar Pradesh", allahabad: "Uttar Pradesh", prayagraj: "Uttar Pradesh",
+  bhopal: "Madhya Pradesh", indore: "Madhya Pradesh", jabalpur: "Madhya Pradesh", gwalior: "Madhya Pradesh",
+  chandigarh: "Chandigarh", panchkula: "Haryana", mohali: "Punjab", ludhiana: "Punjab", amritsar: "Punjab", jalandhar: "Punjab",
+  kochi: "Kerala", cochin: "Kerala", thiruvananthapuram: "Kerala", trivandrum: "Kerala", kozhikode: "Kerala", calicut: "Kerala",
+  patna: "Bihar", gaya: "Bihar",
+  bhubaneswar: "Odisha", cuttack: "Odisha",
+  guwahati: "Assam", shillong: "Meghalaya", dehradun: "Uttarakhand", shimla: "Himachal Pradesh", srinagar: "Jammu and Kashmir", jammu: "Jammu and Kashmir",
+  ranchi: "Jharkhand", jamshedpur: "Jharkhand", raipur: "Chhattisgarh", panaji: "Goa", goa: "Goa",
+  visakhapatnam: "Andhra Pradesh", vijayawada: "Andhra Pradesh", guntur: "Andhra Pradesh",
+};
+
+function inferIndianStateFromCity(city: string): { state: string } {
+  const key = city.trim().toLowerCase();
+  if (!key) return { state: "" };
+  return { state: INDIA_CITY_STATE[key] ?? "" };
 }
