@@ -17,6 +17,7 @@ declare module "frappe-gantt" {
   }
   export interface GanttOptions {
     view_mode?: string;
+    view_modes?: unknown[];
     bar_height?: number;
     bar_corner_radius?: number;
     padding?: number;
