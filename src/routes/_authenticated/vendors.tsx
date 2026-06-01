@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/vendors")({
 });
 
 import { DEFAULT_WORK_CATEGORIES, PAYMENT_TERM_PRESETS } from "@/lib/vendor-constants";
-const DEFAULT_CATS = [...DEFAULT_WORK_CATEGORIES];
+const DEFAULT_CATS: string[] = [...DEFAULT_WORK_CATEGORIES];
 const DEFAULT_TERMS = PAYMENT_TERM_PRESETS;
 
 function VendorsPage() {
