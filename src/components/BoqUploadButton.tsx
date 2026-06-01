@@ -1,15 +1,16 @@
 import { useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2, FileUp } from "lucide-react";
 import { toast } from "sonner";
-import { parseBoqChecklist } from "@/lib/boq-checklist.functions";
+import { parseBoqChecklist, type BoqPreviewItem } from "@/lib/boq-checklist.functions";
+import { BoqReviewSheet } from "@/components/BoqReviewSheet";
 
 export function BoqUploadButton({ projectId, className }: { projectId: string; className?: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
+  const [previewItems, setPreviewItems] = useState<BoqPreviewItem[] | null>(null);
   const fn = useServerFn(parseBoqChecklist);
-  const qc = useQueryClient();
 
   const upload = useMutation({
     mutationFn: async (file: File) => {
@@ -24,11 +25,12 @@ export function BoqUploadButton({ projectId, className }: { projectId: string; c
       return fn({ data: { projectId, fileBase64, filename: file.name, mime: file.type || "application/octet-stream" } });
     },
     onSuccess: (res) => {
-      toast.success(`BOQ parsed: ${res.created} tasks created${res.subcategoriesAdded ? `, ${res.subcategoriesAdded} subcategories added` : ""}.`);
-      qc.invalidateQueries({ queryKey: ["phase-subs", projectId] });
-      qc.invalidateQueries({ queryKey: ["tasks-by-sub", projectId] });
-      qc.invalidateQueries({ queryKey: ["project-activity", projectId] });
-      qc.invalidateQueries({ queryKey: ["tasks"] });
+      if (!res.items.length) {
+        toast.error("No BOQ line items detected.");
+        return;
+      }
+      setPreviewItems(res.items);
+      toast.success(`Found ${res.items.length} line items · ₹${Math.round(res.total).toLocaleString("en-IN")}. Review below.`);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to parse BOQ"),
     onSettled: () => setPending(false),
@@ -54,8 +56,15 @@ export function BoqUploadButton({ projectId, className }: { projectId: string; c
         className={className ?? "h-9 px-3 rounded-[6px] bg-[#c17f5a] text-white text-xs font-medium hover:brightness-95 inline-flex items-center gap-1.5 disabled:opacity-60"}
       >
         {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileUp className="h-3.5 w-3.5" />}
-        {pending ? "Reading BOQ…" : "Upload BOQ (auto-checklist)"}
+        {pending ? "Reading BOQ…" : "Upload BOQ (AI auto-tasks)"}
       </button>
+
+      <BoqReviewSheet
+        projectId={projectId}
+        open={!!previewItems}
+        onOpenChange={(v) => { if (!v) setPreviewItems(null); }}
+        initialItems={previewItems ?? []}
+      />
     </>
   );
 }
