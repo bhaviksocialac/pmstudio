@@ -280,6 +280,7 @@ export function GanttTimeline({
 
     const g = new Gantt(containerRef.current, frappeTasks, {
       view_mode: viewMode,
+      view_modes: [...DEFAULT_VIEW_MODES, QUARTER_VIEW_MODE] as unknown as string[],
       bar_height: 22,
       bar_corner_radius: 4,
       padding: 14,
