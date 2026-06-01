@@ -340,6 +340,35 @@ export type ConfirmResult = {
   firedMilestones: { id: string; name: string; invoice_amount: number }[];
 };
 
+// Dice-coefficient bigram similarity for fuzzy agency → vendor / team matching.
+// Used to auto-link an AI-detected agency string ("Jangir") to an existing
+// vendor record ("Jangir Shekha") so the task carries a real vendor_id.
+function _bigrams(s: string): Set<string> {
+  const v = ` ${s.toLowerCase().trim().replace(/\s+/g, " ")} `;
+  const out = new Set<string>();
+  for (let i = 0; i < v.length - 1; i++) out.add(v.slice(i, i + 2));
+  return out;
+}
+function _dice(a: string, b: string): number {
+  if (!a || !b) return 0;
+  const an = a.toLowerCase().trim(); const bn = b.toLowerCase().trim();
+  if (an === bn) return 1;
+  if (an.includes(bn) || bn.includes(an)) return 0.92;
+  const A = _bigrams(an); const B = _bigrams(bn);
+  if (!A.size || !B.size) return 0;
+  let inter = 0;
+  A.forEach((g) => { if (B.has(g)) inter++; });
+  return (2 * inter) / (A.size + B.size);
+}
+function _bestMatch<T extends { name: string }>(name: string, pool: T[]) {
+  let best: { item: T; score: number } | null = null;
+  for (const p of pool) {
+    const s = _dice(name, p.name);
+    if (!best || s > best.score) best = { item: p, score: s };
+  }
+  return best;
+}
+
 export const confirmNarrative = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => confirmSchema.parse(input))
@@ -351,6 +380,14 @@ export const confirmNarrative = createServerFn({ method: "POST" })
       .from("tasks").select("status,done,work_type,work_types,completion_pct")
       .eq("project_id", data.projectId);
 
+    // Master vendor + team rosters → drive fuzzy agency linking.
+    const [{ data: vendorRows }, { data: teamRows }] = await Promise.all([
+      supabase.from("vendors").select("id,name").is("deleted_at", null),
+      supabase.from("team_members").select("name").is("deleted_at", null),
+    ]);
+    const vendors = (vendorRows ?? []) as { id: string; name: string }[];
+    const team = (teamRows ?? []) as { name: string }[];
+
     let created = 0;
     let updated = 0;
     const idByDesc = new Map<string, string>();
@@ -358,11 +395,29 @@ export const confirmNarrative = createServerFn({ method: "POST" })
     for (const t of data.tasks) {
       const primaryArea = t.room ?? t.areas[0] ?? null;
       const phase = WT_GROUP[t.work_type ?? ""] ?? null;
+
+      // Fuzzy-match agency → vendor (priority) or team. Threshold 0.62.
+      let resolvedAgency: string | null = t.agency;
+      let resolvedVendorId: string | null = null;
+      if (t.agency && t.agency.trim() && t.agency.toLowerCase() !== "client") {
+        const vMatch = _bestMatch(t.agency, vendors);
+        const tMatch = _bestMatch(t.agency, team);
+        const vScore = vMatch?.score ?? 0;
+        const tScore = tMatch?.score ?? 0;
+        if (vScore >= 0.62 && vScore >= tScore) {
+          resolvedAgency = vMatch!.item.name;
+          resolvedVendorId = vMatch!.item.id;
+        } else if (tScore >= 0.62) {
+          resolvedAgency = tMatch!.item.name;
+        }
+      }
+
       const payload = {
         title: t.description.slice(0, 200),
         description: t.description,
-        agency: t.agency,
-        contractor: t.agency,
+        agency: resolvedAgency,
+        contractor: resolvedAgency,
+        vendor_id: resolvedVendorId,
         work_type: t.work_type,
         work_types: t.work_types ?? (t.work_type ? [t.work_type] : []),
         area: primaryArea,
@@ -387,7 +442,11 @@ export const confirmNarrative = createServerFn({ method: "POST" })
       };
 
       if (t.duplicate_of) {
-        const { error } = await supabase.from("tasks").update(payload).eq("id", t.duplicate_of);
+        // Never overwrite an existing manually-linked vendor with null.
+        const updatePayload = resolvedVendorId
+          ? payload
+          : (() => { const { vendor_id: _v, ...rest } = payload; return rest; })();
+        const { error } = await supabase.from("tasks").update(updatePayload).eq("id", t.duplicate_of);
         if (!error) { updated++; idByDesc.set(t.description, t.duplicate_of); }
       } else {
         const { data: ins, error } = await supabase.from("tasks").insert({
