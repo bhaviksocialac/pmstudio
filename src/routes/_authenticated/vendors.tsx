@@ -159,7 +159,7 @@ function VendorsPage() {
                       <Pencil className="h-3 w-3" /> Edit
                     </button>
                     <button onClick={() => setDeleting(v)} className="h-8 px-2.5 rounded-[6px] border border-border text-xs text-[#c4685a] hover:bg-[#fff0ee] inline-flex items-center gap-1">
-                      <Trash2 className="h-3 w-3" /> Delete
+                      <Trash2 className="h-3 w-3" /> Trash
                     </button>
                   </div>
                 </div>
