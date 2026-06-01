@@ -74,35 +74,52 @@ ${text ? `Document text:\n${text}` : "Document is attached."}`;
 }
 
 async function callGateway(messages: unknown[]): Promise<BoqPreviewItem[]> {
+  const apiKey = process.env.LOVABLE_API_KEY;
+  if (!apiKey) throw new Error("AI is not configured (missing LOVABLE_API_KEY).");
   const res = await fetch(AI_URL, {
     method: "POST",
-    headers: { Authorization: `Bearer ${process.env.LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model: MODEL, messages, response_format: { type: "json_object" } }),
   });
   if (!res.ok) {
-    if (res.status === 429) throw new Error("Rate-limited, try again.");
-    if (res.status === 402) throw new Error("AI credits exhausted.");
-    throw new Error(`AI gateway error ${res.status}`);
+    const body = await res.text().catch(() => "");
+    if (res.status === 429) throw new Error("Rate-limited by AI gateway. Wait a moment and try again.");
+    if (res.status === 402) throw new Error("AI credits exhausted. Add credits in Workspace → Usage.");
+    throw new Error(`AI gateway error ${res.status}: ${body.slice(0, 200)}`);
   }
   const json = await res.json();
   const raw = json.choices?.[0]?.message?.content ?? "{}";
-  const parsed = JSON.parse(raw);
+  let parsed: { items?: unknown };
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("AI returned malformed JSON. Try uploading again.");
+  }
   const items = Array.isArray(parsed.items) ? parsed.items : [];
   const phaseSet = new Set(["Procurement","Execution","Finishing","Design","Survey","Handover"]);
   const wtSet = new Set(ALLOWED_WORK_TYPES);
   const stSet = new Set(ALLOWED_STATUSES);
-  return items.slice(0, 80).map((i: Record<string, unknown>): BoqPreviewItem => {
+  return items.slice(0, 150).map((i: Record<string, unknown>): BoqPreviewItem => {
     const wt = typeof i.work_type === "string" && wtSet.has(i.work_type) ? i.work_type : "Other";
     return {
       phase: (typeof i.phase === "string" && phaseSet.has(i.phase) ? i.phase : "Execution") as BoqPreviewItem["phase"],
       subcategory: String(i.subcategory ?? "Other").slice(0, 80),
       title: String(i.title ?? "Untitled").slice(0, 120),
       room: i.room ? String(i.room).slice(0, 60) : null,
-      amount: typeof i.amount === "number" ? i.amount : null,
+      amount: typeof i.amount === "number" && isFinite(i.amount) ? i.amount : null,
       work_type: wt,
       initial_status: typeof i.initial_status === "string" && stSet.has(i.initial_status) ? i.initial_status : "not_started",
     };
   });
+}
+
+async function extractPdfText(fileBase64: string): Promise<string> {
+  const { extractText, getDocumentProxy } = await import("unpdf");
+  const buf = Uint8Array.from(atob(fileBase64), (c) => c.charCodeAt(0));
+  const pdf = await getDocumentProxy(buf);
+  const { text } = await extractText(pdf, { mergePages: true });
+  const joined = Array.isArray(text) ? text.join("\n") : String(text ?? "");
+  return joined.trim();
 }
 
 /**
