@@ -1145,41 +1145,167 @@ export type Database = {
         }
         Relationships: []
       }
+      project_vendor_line_items: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          deleted_at: string | null
+          description: string
+          id: string
+          invoiced_amount: number
+          order_index: number
+          project_vendor_id: string
+          quantity: number | null
+          rate: number | null
+          rate_type: string
+          scope_tag: string
+          status: string
+          unit: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          category?: string
+          created_at?: string
+          deleted_at?: string | null
+          description: string
+          id?: string
+          invoiced_amount?: number
+          order_index?: number
+          project_vendor_id: string
+          quantity?: number | null
+          rate?: number | null
+          rate_type?: string
+          scope_tag?: string
+          status?: string
+          unit?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string
+          id?: string
+          invoiced_amount?: number
+          order_index?: number
+          project_vendor_id?: string
+          quantity?: number | null
+          rate?: number | null
+          rate_type?: string
+          scope_tag?: string
+          status?: string
+          unit?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      project_vendor_milestones: {
+        Row: {
+          amount: number
+          created_at: string
+          deleted_at: string | null
+          id: string
+          name: string
+          order_index: number
+          paid_at: string | null
+          percentage: number | null
+          project_vendor_id: string
+          status: string
+          trigger: string
+          trigger_note: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name: string
+          order_index?: number
+          paid_at?: string | null
+          percentage?: number | null
+          project_vendor_id: string
+          status?: string
+          trigger?: string
+          trigger_note?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name?: string
+          order_index?: number
+          paid_at?: string | null
+          percentage?: number | null
+          project_vendor_id?: string
+          status?: string
+          trigger?: string
+          trigger_note?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       project_vendors: {
         Row: {
+          contract_type: string
           created_at: string
+          deleted_at: string | null
           expected_delivery: string | null
           id: string
           notes: string | null
           po_amount: number
           project_id: string
+          quotation_storage_path: string | null
+          quotation_url: string | null
           scope: string | null
+          scope_categories: string[]
           status: string
           updated_at: string
           user_id: string
           vendor_id: string
         }
         Insert: {
+          contract_type?: string
           created_at?: string
+          deleted_at?: string | null
           expected_delivery?: string | null
           id?: string
           notes?: string | null
           po_amount?: number
           project_id: string
+          quotation_storage_path?: string | null
+          quotation_url?: string | null
           scope?: string | null
+          scope_categories?: string[]
           status?: string
           updated_at?: string
           user_id: string
           vendor_id: string
         }
         Update: {
+          contract_type?: string
           created_at?: string
+          deleted_at?: string | null
           expected_delivery?: string | null
           id?: string
           notes?: string | null
           po_amount?: number
           project_id?: string
+          quotation_storage_path?: string | null
+          quotation_url?: string | null
           scope?: string | null
+          scope_categories?: string[]
           status?: string
           updated_at?: string
           user_id?: string
@@ -1797,6 +1923,27 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_custom_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vendor_deliveries: {
         Row: {
           created_at: string
@@ -2044,6 +2191,7 @@ export type Database = {
       vendors: {
         Row: {
           bank_account: string | null
+          bank_name: string | null
           category: string | null
           city: string | null
           company_name: string | null
@@ -2051,6 +2199,7 @@ export type Database = {
           country: string | null
           created_at: string
           deleted_at: string | null
+          designation: string | null
           email: string | null
           flat_number: string | null
           gst: string | null
@@ -2069,10 +2218,13 @@ export type Database = {
           street: string | null
           updated_at: string
           user_id: string
+          vendor_type: string
           whatsapp: string | null
+          work_categories: string[]
         }
         Insert: {
           bank_account?: string | null
+          bank_name?: string | null
           category?: string | null
           city?: string | null
           company_name?: string | null
@@ -2080,6 +2232,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           deleted_at?: string | null
+          designation?: string | null
           email?: string | null
           flat_number?: string | null
           gst?: string | null
@@ -2098,10 +2251,13 @@ export type Database = {
           street?: string | null
           updated_at?: string
           user_id: string
+          vendor_type?: string
           whatsapp?: string | null
+          work_categories?: string[]
         }
         Update: {
           bank_account?: string | null
+          bank_name?: string | null
           category?: string | null
           city?: string | null
           company_name?: string | null
@@ -2109,6 +2265,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           deleted_at?: string | null
+          designation?: string | null
           email?: string | null
           flat_number?: string | null
           gst?: string | null
@@ -2127,7 +2284,9 @@ export type Database = {
           street?: string | null
           updated_at?: string
           user_id?: string
+          vendor_type?: string
           whatsapp?: string | null
+          work_categories?: string[]
         }
         Relationships: []
       }

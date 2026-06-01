@@ -17,8 +17,9 @@ export const Route = createFileRoute("/_authenticated/vendors")({
   component: VendorsPage,
 });
 
-const DEFAULT_CATS = ["Civil","Carpentry","Electrical","Plumbing","Flooring","Painting","Furniture","Lighting","Hardware","Tiles","Sanitary","HVAC","Other"];
-const DEFAULT_TERMS = ["100% Advance","50-50","On Completion","30 Days Credit","Custom"];
+import { DEFAULT_WORK_CATEGORIES, PAYMENT_TERM_PRESETS } from "@/lib/vendor-constants";
+const DEFAULT_CATS: string[] = [...DEFAULT_WORK_CATEGORIES];
+const DEFAULT_TERMS = PAYMENT_TERM_PRESETS;
 
 function VendorsPage() {
   const [q, setQ] = useState("");
@@ -30,7 +31,7 @@ function VendorsPage() {
   const { data: vendors = [], isLoading } = useQuery({
     queryKey: ["vendors"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("vendors").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("vendors").select("*").is("deleted_at", null).order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as DbVendor[];
     },
@@ -82,12 +83,12 @@ function VendorsPage() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("vendors").delete().eq("id", id);
+      const { error } = await supabase.from("vendors").update({ deleted_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["vendors"] });
-      toast.success("Vendor deleted");
+      toast.success("Vendor moved to Trash");
       setDeleting(null);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
@@ -123,16 +124,30 @@ function VendorsPage() {
               <article key={v.id} className="rounded-[16px] bg-card border border-border p-6" style={{ boxShadow: "var(--shadow-card)" }}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    {v.category && (
-                      <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-[6px] mb-1 inline-block" style={{ background: "rgba(193,127,90,0.15)", color: "#c17f5a" }}>{v.category}</span>
-                    )}
+                    {(() => {
+                      const cats: string[] = Array.isArray((v as any).work_categories) && (v as any).work_categories.length
+                        ? (v as any).work_categories
+                        : (v.category ? [v.category] : []);
+                      const vtype = ((v as any).vendor_type ?? "company") as "individual" | "company";
+                      return (
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-[6px]"
+                            style={{ background: vtype === "individual" ? "rgba(122,158,138,0.18)" : "rgba(193,127,90,0.15)", color: vtype === "individual" ? "#7a9e8a" : "#c17f5a" }}>
+                            {vtype === "individual" ? "Individual" : "Company"}
+                          </span>
+                          {cats.map((c) => (
+                            <span key={c} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-foreground/80">{c}</span>
+                          ))}
+                        </div>
+                      );
+                    })()}
                     <h3 className="font-display text-2xl leading-tight">{v.company_name || v.name}</h3>
-                    {v.company_name && v.name && <div className="text-xs text-muted-foreground mt-0.5">Contact: {v.name}</div>}
+                    {v.company_name && v.name && <div className="text-xs text-muted-foreground mt-0.5">Contact: {v.name}{(v as any).designation ? ` · ${(v as any).designation}` : ""}</div>}
                     <div className="mt-3 space-y-1 text-xs">
                       {v.phone && (
                         <div className="flex items-center gap-2 text-muted-foreground font-mono">
                           <Phone className="h-3 w-3" /> {v.phone}
-                          {v.whatsapp && <MessageCircle className="h-3 w-3 text-[#25D366]" />}
+                          {(v as any).whatsapp && <MessageCircle className="h-3 w-3 text-[#25D366]" />}
                         </div>
                       )}
                       {v.gst && <div className="font-mono text-muted-foreground">GST: {v.gst}</div>}
@@ -144,7 +159,7 @@ function VendorsPage() {
                       <Pencil className="h-3 w-3" /> Edit
                     </button>
                     <button onClick={() => setDeleting(v)} className="h-8 px-2.5 rounded-[6px] border border-border text-xs text-[#c4685a] hover:bg-[#fff0ee] inline-flex items-center gap-1">
-                      <Trash2 className="h-3 w-3" /> Delete
+                      <Trash2 className="h-3 w-3" /> Trash
                     </button>
                   </div>
                 </div>
@@ -171,12 +186,12 @@ function VendorsPage() {
       {deleting && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setDeleting(null)}>
           <div className="w-full max-w-sm bg-card rounded-[16px] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-2xl mb-2">Delete {deleting.company_name || deleting.name}?</h3>
-            <p className="text-sm text-muted-foreground mb-5">This cannot be undone.</p>
+            <h3 className="font-display text-2xl mb-2">Move {deleting.company_name || deleting.name} to Trash?</h3>
+            <p className="text-sm text-muted-foreground mb-5">You can restore from Trash within 30 days.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setDeleting(null)} className="h-10 px-4 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">Cancel</button>
               <button onClick={() => del.mutate(deleting.id)} disabled={del.isPending} className="h-10 px-5 rounded-[6px] bg-[#c4685a] text-white text-sm font-medium hover:brightness-95 inline-flex items-center gap-2 disabled:opacity-60">
-                {del.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Delete
+                {del.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Move to Trash
               </button>
             </div>
           </div>
@@ -197,8 +212,8 @@ function Empty({ onAdd }: { onAdd: () => void }) {
 }
 
 const vendorSchema = z.object({
-  name: z.string().trim().min(1, "Contact person required").max(120),
-  company_name: z.string().trim().min(1, "Company name required").max(160),
+  vendor_type: z.enum(["individual", "company"]),
+  name: z.string().trim().min(1, "Name required").max(160),
   phone: z.string().trim().min(1, "Mobile required").max(40),
 });
 
@@ -209,28 +224,36 @@ export function VendorModal({ onClose, vendor, initialName, onCreated }: { onClo
   const extractFn = useServerFn(extractVendorFromDocument);
 
   const { data: customCats = [] } = useQuery({
-    queryKey: ["user_options", "vendor_category"],
+    queryKey: ["vendor_custom_categories"],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase.from("user_options").select("value").eq("kind", "vendor_category");
-      return (data ?? []).map((r) => r.value);
+      const { data } = await supabase.from("vendor_custom_categories").select("name").order("name");
+      return ((data ?? []) as { name: string }[]).map((r) => r.name);
     },
   });
   const allCats = [...DEFAULT_CATS, ...customCats.filter((c) => !DEFAULT_CATS.includes(c))];
 
+  const existingType = (vendor as any)?.vendor_type as "individual" | "company" | undefined;
+  const initialCats: string[] = Array.isArray((vendor as any)?.work_categories)
+    ? (vendor as any).work_categories
+    : (vendor?.category ? [vendor.category] : []);
+
   const [form, setForm] = useState({
+    vendor_type: existingType ?? "company" as "individual" | "company",
     name: vendor?.name ?? initialName ?? "",
     company_name: (vendor as any)?.company_name ?? "",
+    designation: (vendor as any)?.designation ?? "",
     phone: vendor?.phone ?? "",
     whatsapp: (vendor as any)?.whatsapp ?? "",
     sameWA: !(vendor as any)?.whatsapp || (vendor as any)?.whatsapp === vendor?.phone,
     email: vendor?.email ?? "",
-    category: vendor?.category ?? allCats[0],
+    work_categories: initialCats as string[],
     customCat: "",
     pan: (vendor as any)?.pan ?? "",
     gst: (vendor as any)?.gst ?? "",
     bank_account: (vendor as any)?.bank_account ?? "",
     ifsc: (vendor as any)?.ifsc ?? "",
+    bank_name: (vendor as any)?.bank_name ?? "",
     payment_terms: vendor?.payment_terms ?? DEFAULT_TERMS[0],
     customTerms: "",
     notes: vendor?.notes ?? "",
@@ -246,6 +269,16 @@ export function VendorModal({ onClose, vendor, initialName, onCreated }: { onClo
     longitude: (vendor as any)?.longitude ?? null,
   });
   const setF = (k: keyof typeof form, v: any) => setForm((s) => ({ ...s, [k]: v }));
+  const toggleCat = (c: string) => setForm((s) => ({ ...s, work_categories: s.work_categories.includes(c) ? s.work_categories.filter((x) => x !== c) : [...s.work_categories, c] }));
+  const addCustomCat = async () => {
+    const v = form.customCat.trim();
+    if (!v) return;
+    if (!customCats.includes(v) && user) {
+      await supabase.from("vendor_custom_categories").insert({ user_id: user.id, name: v });
+      qc.invalidateQueries({ queryKey: ["vendor_custom_categories"] });
+    }
+    setForm((s) => ({ ...s, work_categories: s.work_categories.includes(v) ? s.work_categories : [...s.work_categories, v], customCat: "" }));
+  };
   const [extracting, setExtracting] = useState(false);
 
   const onFileUpload = async (file: File) => {
@@ -291,23 +324,24 @@ export function VendorModal({ onClose, vendor, initialName, onCreated }: { onClo
 
   const save = useMutation({
     mutationFn: async () => {
-      const parsed = vendorSchema.parse(form);
-      const finalCategory = form.customCat.trim() || form.category;
+      const parsed = vendorSchema.parse({ vendor_type: form.vendor_type, name: form.vendor_type === "company" ? (form.company_name || form.name) : form.name, phone: form.phone });
       const finalTerms = form.payment_terms === "Custom" ? form.customTerms.trim() : form.payment_terms;
-      if (form.customCat.trim() && !customCats.includes(form.customCat.trim())) {
-        await supabase.from("user_options").insert({ user_id: user!.id, kind: "vendor_category", value: form.customCat.trim() });
-      }
+      const isCompany = form.vendor_type === "company";
       const payload: any = {
-        name: parsed.name,
-        company_name: parsed.company_name,
+        vendor_type: form.vendor_type,
+        name: form.name.trim(),
+        company_name: isCompany ? (form.company_name.trim() || null) : null,
+        designation: isCompany ? (form.designation.trim() || null) : null,
         phone: parsed.phone,
         whatsapp: form.sameWA ? parsed.phone : (form.whatsapp || null),
         email: form.email || null,
-        category: finalCategory,
+        category: form.work_categories[0] ?? null, // legacy single-cat field
+        work_categories: form.work_categories,
         pan: form.pan || null,
-        gst: form.gst || null,
+        gst: isCompany ? (form.gst || null) : null,
         bank_account: form.bank_account || null,
         ifsc: form.ifsc || null,
+        bank_name: form.bank_name || null,
         payment_terms: finalTerms || null,
         notes: form.notes || null,
         flat_number: address.flat_number || null,
@@ -331,14 +365,15 @@ export function VendorModal({ onClose, vendor, initialName, onCreated }: { onClo
     },
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ["vendors"] });
-      qc.invalidateQueries({ queryKey: ["vendors-light"] });
-      qc.invalidateQueries({ queryKey: ["user_options"] });
+      qc.invalidateQueries({ queryKey: ["vendors-full"] });
       toast.success(editing ? "Vendor updated" : "Vendor added");
       if (!editing && created) onCreated?.(created);
       onClose();
     },
     onError: (e) => toast.error(e instanceof z.ZodError ? e.issues[0].message : e instanceof Error ? e.message : "Failed"),
   });
+
+  const isCompany = form.vendor_type === "company";
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
@@ -348,13 +383,23 @@ export function VendorModal({ onClose, vendor, initialName, onCreated }: { onClo
           <button onClick={onClose} className="h-9 w-9 rounded-[10px] hover:bg-muted flex items-center justify-center"><X className="h-4 w-4" /></button>
         </div>
         <div className="p-6 space-y-4 overflow-y-auto">
+          {/* Type toggle */}
+          <div className="grid grid-cols-2 gap-2 p-1 rounded-[10px] bg-muted">
+            {(["individual","company"] as const).map((t) => (
+              <button key={t} type="button" onClick={() => setF("vendor_type", t)}
+                className={`h-9 rounded-[8px] text-xs font-medium transition ${form.vendor_type === t ? "bg-card shadow-sm" : "text-muted-foreground"}`}>
+                {t === "individual" ? "Individual" : "Company"}
+              </button>
+            ))}
+          </div>
+
           {!editing && (
             <div className="rounded-[10px] border border-dashed border-[#c17f5a] bg-[#fff7eb] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="h-4 w-4 text-[#c17f5a]" />
                 <span className="text-sm font-medium">Upload BOQ, Invoice or Quotation</span>
               </div>
-              <p className="text-xs text-muted-foreground mb-3">AI will read your PDF/Excel and auto-fill the form.</p>
+              <p className="text-xs text-muted-foreground mb-3">AI auto-fills the form.</p>
               <label className="inline-flex items-center gap-2 h-9 px-4 rounded-[6px] bg-white border border-border text-xs font-medium cursor-pointer hover:bg-muted">
                 {extracting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                 {extracting ? "AI reading document..." : "Choose file"}
@@ -364,8 +409,18 @@ export function VendorModal({ onClose, vendor, initialName, onCreated }: { onClo
             </div>
           )}
 
-          <F label="Contact Person Name" required><input className={ic} value={form.name} onChange={(e) => setF("name", e.target.value)} /></F>
-          <F label="Company Name" required><input className={ic} value={form.company_name} onChange={(e) => setF("company_name", e.target.value)} /></F>
+          {isCompany ? (
+            <>
+              <F label="Company Name" required><input className={ic} value={form.company_name} onChange={(e) => setF("company_name", e.target.value)} /></F>
+              <div className="grid grid-cols-2 gap-3">
+                <F label="Contact Person"><input className={ic} value={form.name} onChange={(e) => setF("name", e.target.value)} /></F>
+                <F label="Designation"><input className={ic} value={form.designation} onChange={(e) => setF("designation", e.target.value)} /></F>
+              </div>
+            </>
+          ) : (
+            <F label="Full Name" required><input className={ic} value={form.name} onChange={(e) => setF("name", e.target.value)} /></F>
+          )}
+
           <F label="Mobile Number" required>
             <div className="flex gap-2"><span className="h-10 px-3 rounded-[10px] bg-muted border border-border text-sm flex items-center font-mono">+91</span>
               <input className={ic} value={form.phone} onChange={(e) => setF("phone", e.target.value)} />
@@ -377,22 +432,35 @@ export function VendorModal({ onClose, vendor, initialName, onCreated }: { onClo
           </label>
           {!form.sameWA && <F label="WhatsApp Number"><input className={ic} value={form.whatsapp} onChange={(e) => setF("whatsapp", e.target.value)} /></F>}
           <F label="Email"><input type="email" className={ic} value={form.email} onChange={(e) => setF("email", e.target.value)} /></F>
-          <F label="Category">
-            <div className="flex gap-2">
-              <select className={ic} value={form.category} onChange={(e) => setF("category", e.target.value)}>
-                {allCats.map((c) => <option key={c}>{c}</option>)}
-              </select>
+
+          <F label="Work Categories (select all that apply)">
+            <div className="flex flex-wrap gap-1.5">
+              {allCats.map((c) => {
+                const on = form.work_categories.includes(c);
+                return (
+                  <button key={c} type="button" onClick={() => toggleCat(c)}
+                    className={`h-7 px-2.5 rounded-full text-[11px] border transition ${on ? "bg-[#c17f5a] text-white border-[#c17f5a]" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
+                    {on && "✓ "}{c}
+                  </button>
+                );
+              })}
             </div>
-            <input className={`${ic} mt-2`} value={form.customCat} onChange={(e) => setF("customCat", e.target.value)} placeholder="+ Or type custom category…" />
+            <div className="mt-2 flex gap-2">
+              <input className={ic} value={form.customCat} onChange={(e) => setF("customCat", e.target.value)} placeholder="+ Add custom category…"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomCat(); } }} />
+              <button type="button" onClick={addCustomCat} className="h-10 px-3 rounded-[10px] border border-border text-xs whitespace-nowrap hover:bg-muted">Add</button>
+            </div>
           </F>
+
           <div className="grid grid-cols-2 gap-3">
             <F label="PAN Number"><input className={ic} value={form.pan} onChange={(e) => setF("pan", e.target.value.toUpperCase())} maxLength={10} /></F>
-            <F label="GST Number"><input className={ic} value={form.gst} onChange={(e) => setF("gst", e.target.value.toUpperCase())} maxLength={15} /></F>
+            {isCompany && <F label="GST Number"><input className={ic} value={form.gst} onChange={(e) => setF("gst", e.target.value.toUpperCase())} maxLength={15} /></F>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <F label="Bank Account"><input className={ic} value={form.bank_account} onChange={(e) => setF("bank_account", e.target.value)} /></F>
             <F label="IFSC Code"><input className={ic} value={form.ifsc} onChange={(e) => setF("ifsc", e.target.value.toUpperCase())} maxLength={11} /></F>
           </div>
+          <F label="Bank Name"><input className={ic} value={form.bank_name} onChange={(e) => setF("bank_name", e.target.value)} /></F>
           <F label="Payment Terms">
             <select className={ic} value={form.payment_terms} onChange={(e) => setF("payment_terms", e.target.value)}>
               {DEFAULT_TERMS.map((t) => <option key={t}>{t}</option>)}
@@ -401,10 +469,12 @@ export function VendorModal({ onClose, vendor, initialName, onCreated }: { onClo
               <input className={`${ic} mt-2`} value={form.customTerms} onChange={(e) => setF("customTerms", e.target.value)} placeholder="Type custom terms…" />
             )}
           </F>
-          <div>
-            <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-2">Address</div>
-            <AddressFields value={address} onChange={setAddress} />
-          </div>
+          {isCompany && (
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-2">Registered Address</div>
+              <AddressFields value={address} onChange={setAddress} />
+            </div>
+          )}
           <F label="Notes"><textarea rows={3} className={`${ic} h-auto py-2`} value={form.notes} onChange={(e) => setF("notes", e.target.value)} /></F>
         </div>
         <div className="px-6 py-4 border-t border-border flex justify-end gap-2 flex-shrink-0">
@@ -423,3 +493,4 @@ function F({ label, children, required }: { label: string; children: React.React
   return <label className="block"><span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}{required && <span className="text-[#c17f5a] ml-1">*</span>}</span><div className="mt-1.5">{children}</div></label>;
 }
 const ic = "w-full h-10 px-3 rounded-[10px] bg-card border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring/30";
+
