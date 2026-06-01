@@ -89,13 +89,16 @@ export function AgencyTag({ value, kind, className }: { value: string | null; ki
     team:    "bg-[#c17f5a22] text-[#7a4628] border-[#c17f5a55]",
     client:  "bg-[#7a9e8a22] text-[#3d5e4b] border-[#7a9e8a55]",
     vendor:  "bg-[#e6e2da] text-[#3a3a3a] border-[#cfc8bd]",
-    unknown: "bg-[#e6e2da] text-[#3a3a3a] border-[#cfc8bd]",
+    unknown: "bg-amber-50 text-amber-800 border-amber-200",
   };
+  const Icon = kind === "vendor" ? Building2 : kind === "team" ? User : kind === "unknown" ? HelpCircle : null;
+  const title = kind === "unknown" ? `"${value}" is not linked to a vendor or team member` : undefined;
   return (
-    <span className={cn(
-      "inline-flex items-center px-2 py-0.5 rounded-[6px] text-[11px] font-medium border whitespace-nowrap",
+    <span title={title} className={cn(
+      "inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[11px] font-medium border whitespace-nowrap",
       styles[kind], className,
     )}>
+      {Icon && <Icon className="h-3 w-3 opacity-80" />}
       {value}
     </span>
   );
