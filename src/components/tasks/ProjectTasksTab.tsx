@@ -375,11 +375,103 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
                 rooms={filterGroups[0].values}
                 onAddRoom={(r) => setExtraRooms((p) => Array.from(new Set([...p, r])))}
                 allProjectTasks={rows}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onToggleSelectAll={toggleSelectAllIn}
               />
             </section>
           ))}
         </div>
       )}
+
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 py-2 rounded-[14px] bg-[#1a1612] text-white shadow-2xl border border-[#1a1612]">
+          <span className="text-xs font-medium px-2 py-1 rounded-[6px] bg-white/10">
+            {selectedIds.size} task{selectedIds.size === 1 ? "" : "s"} selected
+          </span>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button disabled={bulkBusy} className="h-8 px-2.5 rounded-[6px] text-xs hover:bg-white/10 inline-flex items-center gap-1 disabled:opacity-50">
+                Change Status <ChevronDown className="h-3 w-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="max-h-72 overflow-y-auto">
+              {STATUS_ORDER.map((s) => (
+                <DropdownMenuItem key={s} onClick={() => bulkStatus(s)}>
+                  {STATUS_META[s]?.label ?? s}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button disabled={bulkBusy} className="h-8 px-2.5 rounded-[6px] text-xs hover:bg-white/10 inline-flex items-center gap-1 disabled:opacity-50">
+                Change Agency <ChevronDown className="h-3 w-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="max-h-72 overflow-y-auto">
+              {allAgencies.map((a) => (
+                <DropdownMenuItem key={a} onClick={() => bulkPatch({ agency: a, contractor: a }, "Agency")}>
+                  {a}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem onClick={() => bulkPatch({ agency: null, contractor: null }, "Agency")} className="text-muted-foreground">
+                Clear agency
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button disabled={bulkBusy} className="h-8 px-2.5 rounded-[6px] text-xs hover:bg-white/10 inline-flex items-center gap-1 disabled:opacity-50">
+                Change Work Type <ChevronDown className="h-3 w-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="max-h-72 overflow-y-auto">
+              {allWorkTypes.map((w) => (
+                <DropdownMenuItem key={w} onClick={() => bulkPatch({ work_type: w, work_types: [w] }, "Work type")}>
+                  {titleCase(w)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <button
+            disabled={bulkBusy}
+            onClick={() => setConfirmDelete(true)}
+            className="h-8 px-3 rounded-[6px] text-xs bg-[#c4685a] hover:bg-[#a04a3f] inline-flex items-center gap-1 disabled:opacity-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Delete Selected
+          </button>
+
+          <button
+            disabled={bulkBusy}
+            onClick={clearSelection}
+            className="h-8 px-2.5 rounded-[6px] text-xs hover:bg-white/10 disabled:opacity-50"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move {selectedIds.size} task{selectedIds.size === 1 ? "" : "s"} to Trash?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You can restore deleted tasks from Trash within 30 days.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={bulkDelete} className="bg-[#c4685a] hover:bg-[#a04a3f]">
+              Move to Trash
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
