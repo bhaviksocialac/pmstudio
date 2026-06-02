@@ -953,3 +953,203 @@ function MiniCard({ label, value, tone }: { label: string; value: string; tone?:
 }
 
 
+/* ---------------- Calendar ---------------- */
+type CalendarEvent = {
+  id: string;
+  date: Date;
+  title: string;
+  kind: "milestone" | "task" | "handover";
+  meta?: string;
+  tone: string;
+};
+
+function CalendarTab({ project }: { project: Project }) {
+  const { data: milestones = [] } = useQuery({
+    queryKey: ["calendar-milestones", project.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("milestones")
+        .select("id,name,triggered_at,status,invoice_amount")
+        .eq("project_id", project.id);
+      return data ?? [];
+    },
+  });
+  const { data: tasks = [] } = useQuery({
+    queryKey: ["calendar-tasks", project.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tasks")
+        .select("id,title,due_date,done,status,assignee,room")
+        .eq("project_id", project.id)
+        .not("due_date", "is", null);
+      return data ?? [];
+    },
+  });
+
+  const events: CalendarEvent[] = useMemo(() => {
+    const list: CalendarEvent[] = [];
+    (tasks as Array<{ id: string; title: string | null; due_date: string | null; done: boolean | null; assignee: string | null; room: string | null }>).forEach((t) => {
+      if (!t.due_date) return;
+      list.push({
+        id: `t-${t.id}`,
+        date: new Date(t.due_date),
+        title: t.title ?? "Untitled task",
+        kind: "task",
+        meta: [t.room, t.assignee].filter(Boolean).join(" · ") || undefined,
+        tone: t.done ? "#7a9e8a" : new Date(t.due_date) < new Date() ? "#c4685a" : "#c17f5a",
+      });
+    });
+    (milestones as Array<{ id: string; name: string; triggered_at: string | null; status: string; invoice_amount: number | null }>).forEach((m) => {
+      if (!m.triggered_at) return;
+      list.push({
+        id: `m-${m.id}`,
+        date: new Date(m.triggered_at),
+        title: m.name,
+        kind: "milestone",
+        meta: m.invoice_amount ? `Bill ₹${(Number(m.invoice_amount) / 100000).toFixed(1)}L` : undefined,
+        tone: "#7a9e8a",
+      });
+    });
+    if (project.expectedHandover && project.expectedHandover !== "—") {
+      const d = new Date(project.expectedHandover);
+      if (!isNaN(d.getTime())) {
+        list.push({
+          id: "handover",
+          date: d,
+          title: "Expected Handover",
+          kind: "handover",
+          tone: "#1a1612",
+        });
+      }
+    }
+    return list.sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [milestones, tasks, project.expectedHandover]);
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    events.forEach((e) => {
+      const key = e.date.toLocaleString("en", { month: "long", year: "numeric" });
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(e);
+    });
+    return Array.from(map.entries());
+  }, [events]);
+
+  const today = new Date();
+  const upcoming = events.filter((e) => e.date >= new Date(today.getFullYear(), today.getMonth(), today.getDate())).length;
+  const overdue = events.filter((e) => e.kind === "task" && e.tone === "#c4685a").length;
+
+  return (
+    <div className="space-y-10">
+      <div>
+        <div className="text-[10px] uppercase tracking-[0.22em] text-[#c17f5a] mb-2">Schedule</div>
+        <h2 className="font-display text-3xl">Calendar</h2>
+        <p className="text-sm text-muted-foreground mt-2">
+          {upcoming} upcoming · {overdue} overdue
+        </p>
+      </div>
+
+      {grouped.length === 0 && (
+        <Card className="p-12 text-center">
+          <CalendarIcon className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">No scheduled events yet. Add task due dates or trigger milestones to see them here.</p>
+        </Card>
+      )}
+
+      {grouped.map(([month, items]) => (
+        <section key={month}>
+          <div className="flex items-baseline justify-between mb-5 pb-3 border-b border-border/60">
+            <h3 className="font-display text-2xl">{month}</h3>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">{items.length} event{items.length === 1 ? "" : "s"}</span>
+          </div>
+          <div className="space-y-2">
+            {items.map((e) => {
+              const day = e.date.getDate();
+              const weekday = e.date.toLocaleString("en", { weekday: "short" }).toUpperCase();
+              return (
+                <div
+                  key={e.id}
+                  className="group flex items-center gap-6 px-5 py-5 rounded-[12px] bg-card hover:bg-[#f5efe7] transition-colors"
+                  style={{ boxShadow: "var(--shadow-card)" }}
+                >
+                  <div className="w-14 shrink-0 text-center">
+                    <div className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">{weekday}</div>
+                    <div className="font-display text-3xl leading-none mt-1">{day}</div>
+                  </div>
+                  <div className="w-px self-stretch bg-border/60" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: e.tone }} />
+                      <span className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground">{e.kind}</span>
+                    </div>
+                    <div className="font-display text-lg truncate">{e.title}</div>
+                    {e.meta && <div className="text-xs text-muted-foreground mt-1">{e.meta}</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+
+/* ---------------- Budget ---------------- */
+function BudgetTab({ project }: { project: Project }) {
+  const budgetPct = project.budget > 0 ? Math.round((project.spent / project.budget) * 100) : 0;
+  const remaining = project.budget - project.spent;
+
+  return (
+    <div className="space-y-10">
+      <div>
+        <div className="text-[10px] uppercase tracking-[0.22em] text-[#c17f5a] mb-2">Financial Overview</div>
+        <h2 className="font-display text-3xl">Budget</h2>
+        <p className="text-sm text-muted-foreground mt-2 max-w-xl">
+          Live reconciliation of allocated budget, spend, and outstanding commitments.
+        </p>
+      </div>
+
+      <Card className="p-8 md:p-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Allocated</div>
+            <div className="font-display text-[44px] leading-none tabular-nums">₹{project.budget}L</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Spent</div>
+            <div className="font-display text-[44px] leading-none tabular-nums" style={{ color: "#c17f5a" }}>₹{project.spent}L</div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-2 font-mono">{budgetPct}% used</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Remaining</div>
+            <div
+              className="font-display text-[44px] leading-none tabular-nums"
+              style={{ color: remaining < 0 ? "#c4685a" : "#7a9e8a" }}
+            >
+              ₹{remaining.toFixed(1)}L
+            </div>
+          </div>
+        </div>
+        <div className="mt-10 h-1.5 rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-full transition-all"
+            style={{
+              width: `${Math.min(budgetPct, 100)}%`,
+              background: budgetPct > 100 ? "#c4685a" : budgetPct > 80 ? "#d4882a" : "#c17f5a",
+            }}
+          />
+        </div>
+      </Card>
+
+      <BudgetReconciliationPanel projectId={project.id} projectBudget={project.budget} />
+
+      <FinanceTab project={project} />
+    </div>
+  );
+}
+
+
+
+
