@@ -98,7 +98,7 @@ function Dashboard() {
       const { data } = await supabase
         .from("milestones")
         .select("id,project_id,name,status,order_index,triggered_at")
-        .neq("status", "completed")
+        .neq("status", "paid")
         .order("order_index", { ascending: true });
       return data ?? [];
     },
