@@ -232,7 +232,7 @@ export function VendorDocumentsSection({
         user_id: user.id,
         project_id: projectId,
         name: doc.name,
-        category: CATEGORY_LABEL[doc.category],
+        category: categoryLabel(doc),
         folder_path: folder,
         storage_path: doc.storage_path,
         file_url: doc.file_url,
