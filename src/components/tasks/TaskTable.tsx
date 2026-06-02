@@ -77,6 +77,7 @@ export function TaskTable({
   rows, projectMap, showProject = true, onChanged,
   vendors = [], teamMembers = [], rooms = [], onAddRoom,
   allProjectTasks,
+  selectedIds, onToggleSelect, onToggleSelectAll,
 }: {
   rows: TaskRow[];
   projectMap?: Map<string, string>;
@@ -88,6 +89,10 @@ export function TaskTable({
   onAddRoom?: (r: string) => void;
   /** All tasks in the project — used for dependency pickers (across filter groups). */
   allProjectTasks?: TaskRow[];
+  /** Selection state (lifted to parent so it can span groups). */
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: (ids: string[], select: boolean) => void;
 }) {
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
