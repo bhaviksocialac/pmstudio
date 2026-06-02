@@ -1,14 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Table as TableIcon, GanttChart, Search, X } from "lucide-react";
+import { Loader2, Table as TableIcon, GanttChart, Search, X, Trash2, ChevronDown } from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { TaskTable, type TaskRow } from "@/components/tasks/TaskTable";
 import { TaskFilters, emptyFilters, type FilterState } from "@/components/tasks/TaskFilters";
 
 import { GanttTimeline } from "@/components/tasks/GanttTimeline";
-import { STATUS_META, deriveActionRequired } from "@/lib/task-flow";
+import { STATUS_META, STATUS_ORDER, deriveActionRequired } from "@/lib/task-flow";
+import { changeTaskStatus } from "@/lib/task-status";
 import { useWorkTypes } from "@/hooks/useWorkTypes";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 type GroupBy = "all" | "status" | "contractor" | "room" | "work_type";
 type View = "table" | "gantt";
