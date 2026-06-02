@@ -61,13 +61,19 @@ const CATEGORY_LABEL: Record<VendorDocCategory, string> = Object.fromEntries(
 ) as Record<VendorDocCategory, string>;
 
 const DOCS_FOLDER_BY_CAT: Record<VendorDocCategory, string> = {
-  quotation: "Quotations",
   boq: "BOQ",
+  quotation: "Quotations",
+  po: "Purchase Orders",
+  pi: "Proforma Invoices",
   invoice: "Invoices",
-  delivery_challan: "Delivery Challans",
-  work_order: "Work Orders",
+  challan: "Challans",
   other: "Other",
 };
+
+function categoryLabel(d: Pick<VendorDoc, "category" | "custom_label">): string {
+  if (d.category === "other" && d.custom_label?.trim()) return d.custom_label.trim();
+  return CATEGORY_LABEL[d.category] ?? d.category;
+}
 
 export function VendorDocumentsSection({
   projectId, vendorId, projectVendorId, vendorName,
