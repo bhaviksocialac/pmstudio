@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Send, Check, Pencil, Upload, Plus, Image as ImageIcon, Loader2,
-  ChevronDown, Calendar as CalendarIcon, MapPin,
+  ChevronDown, Calendar as CalendarIcon,
 } from "lucide-react";
 import { ProjectProgressPanels } from "@/components/tasks/ProjectProgressPanels";
 import { computeRollup, EXECUTION_PHASE_GROUPS, isDone, overallProjectPct, phaseOfTask, type ExecutionPhaseGroup, type GroupRollup, type TaskLite } from "@/lib/phase-sync";
