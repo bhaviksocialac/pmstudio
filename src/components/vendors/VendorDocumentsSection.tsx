@@ -446,8 +446,10 @@ function VersionHistoryList({ docId, currentVersion }: { docId: string; currentV
 
 function CategoryPickerDialog({
   file, onCancel, onConfirm,
-}: { file: File; onCancel: () => void; onConfirm: (c: VendorDocCategory) => void }) {
+}: { file: File; onCancel: () => void; onConfirm: (c: VendorDocCategory, customLabel: string | null) => void }) {
   const [cat, setCat] = useState<VendorDocCategory>(guessCategoryFromName(file.name));
+  const [customLabel, setCustomLabel] = useState("");
+  const canSubmit = cat !== "other" || customLabel.trim().length > 0;
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onCancel}>
       <div className="bg-card rounded-[14px] shadow-2xl p-5 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
@@ -458,20 +460,38 @@ function CategoryPickerDialog({
           </div>
           <button onClick={onCancel} className="h-7 w-7 rounded hover:bg-muted inline-flex items-center justify-center"><X className="h-3.5 w-3.5" /></button>
         </div>
-        <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="grid grid-cols-2 gap-2 mb-3">
           {VENDOR_DOC_CATEGORIES.map((c) => (
             <button
               key={c.value}
               onClick={() => setCat(c.value)}
-              className={`h-9 px-3 rounded-[6px] text-xs border ${cat === c.value ? "bg-[#c17f5a] text-white border-[#c17f5a]" : "border-border hover:bg-muted"}`}
+              className={`px-3 py-2 rounded-[6px] text-left border transition ${cat === c.value ? "bg-[#c17f5a] text-white border-[#c17f5a]" : "border-border hover:bg-muted"}`}
             >
-              {cat === c.value && <Check className="inline h-3 w-3 mr-1 -mt-0.5" />}{c.label}
+              <div className="text-xs font-medium inline-flex items-center gap-1">
+                {cat === c.value && <Check className="h-3 w-3" />} {c.label}
+              </div>
+              <div className={`text-[10px] mt-0.5 ${cat === c.value ? "text-white/80" : "text-muted-foreground"}`}>{c.hint}</div>
             </button>
           ))}
         </div>
+        {cat === "other" && (
+          <input
+            autoFocus
+            value={customLabel}
+            onChange={(e) => setCustomLabel(e.target.value)}
+            placeholder="Type category name..."
+            className="w-full h-9 px-3 mb-3 rounded-[8px] border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-[#c17f5a]/30"
+          />
+        )}
         <div className="flex justify-end gap-2">
           <button onClick={onCancel} className="h-9 px-3 rounded-[6px] border border-border text-xs">Cancel</button>
-          <button onClick={() => onConfirm(cat)} className="h-9 px-4 rounded-[6px] bg-[#c17f5a] text-white text-xs font-medium">Upload</button>
+          <button
+            disabled={!canSubmit}
+            onClick={() => onConfirm(cat, cat === "other" ? customLabel.trim() : null)}
+            className="h-9 px-4 rounded-[6px] bg-[#c17f5a] text-white text-xs font-medium disabled:opacity-40"
+          >
+            Upload
+          </button>
         </div>
       </div>
     </div>
@@ -483,12 +503,14 @@ function EditDetailsDialog({
 }: {
   doc: VendorDoc;
   onCancel: () => void;
-  onSave: (p: { name: string; category: VendorDocCategory; notes: string }) => void;
+  onSave: (p: { name: string; category: VendorDocCategory; notes: string; customLabel: string | null }) => void;
   busy: boolean;
 }) {
   const [name, setName] = useState(doc.name);
   const [category, setCategory] = useState<VendorDocCategory>(doc.category);
   const [notes, setNotes] = useState(doc.notes ?? "");
+  const [customLabel, setCustomLabel] = useState(doc.custom_label ?? "");
+  const canSave = category !== "other" || customLabel.trim().length > 0;
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onCancel}>
       <div className="bg-card rounded-[14px] shadow-2xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
@@ -501,12 +523,31 @@ function EditDetailsDialog({
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Name</div>
             <input value={name} onChange={(e) => setName(e.target.value)} className="w-full h-9 px-3 rounded-[8px] border border-border bg-card text-sm" />
           </label>
-          <label className="block">
+          <div>
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Category</div>
-            <select value={category} onChange={(e) => setCategory(e.target.value as VendorDocCategory)} className="w-full h-9 px-3 rounded-[8px] border border-border bg-card text-sm">
-              {VENDOR_DOC_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </select>
-          </label>
+            <div className="grid grid-cols-2 gap-2">
+              {VENDOR_DOC_CATEGORIES.map((c) => (
+                <button
+                  key={c.value}
+                  onClick={() => setCategory(c.value)}
+                  className={`px-3 py-2 rounded-[6px] text-left border transition ${category === c.value ? "bg-[#c17f5a] text-white border-[#c17f5a]" : "border-border hover:bg-muted"}`}
+                >
+                  <div className="text-xs font-medium inline-flex items-center gap-1">
+                    {category === c.value && <Check className="h-3 w-3" />} {c.label}
+                  </div>
+                  <div className={`text-[10px] mt-0.5 ${category === c.value ? "text-white/80" : "text-muted-foreground"}`}>{c.hint}</div>
+                </button>
+              ))}
+            </div>
+            {category === "other" && (
+              <input
+                value={customLabel}
+                onChange={(e) => setCustomLabel(e.target.value)}
+                placeholder="Type category name..."
+                className="w-full h-9 px-3 mt-2 rounded-[8px] border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-[#c17f5a]/30"
+              />
+            )}
+          </div>
           <label className="block">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Notes</div>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-[8px] border border-border bg-card text-sm" />
@@ -514,7 +555,11 @@ function EditDetailsDialog({
         </div>
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={onCancel} className="h-9 px-3 rounded-[6px] border border-border text-xs">Cancel</button>
-          <button disabled={busy} onClick={() => onSave({ name, category, notes })} className="h-9 px-4 rounded-[6px] bg-[#c17f5a] text-white text-xs font-medium inline-flex items-center gap-1.5">
+          <button
+            disabled={busy || !canSave}
+            onClick={() => onSave({ name, category, notes, customLabel: category === "other" ? customLabel.trim() : null })}
+            className="h-9 px-4 rounded-[6px] bg-[#c17f5a] text-white text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-40"
+          >
             {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Save
           </button>
         </div>
