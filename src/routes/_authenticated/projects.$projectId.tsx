@@ -312,7 +312,10 @@ function ProjectDetailView({ project }: { project: Project }) {
         {tab === "photos" && <PhotosTab project={project} />}
         {tab === "vendors" && <ProjectVendorsTab projectId={project.id} />}
         {tab === "finance" && <FinanceTab project={project} />}
-        {tab === "documents" && <DocumentsTab projectId={project.id} />}
+        {tab === "files" && <DocumentsTab projectId={project.id} />}
+        {tab === "selections" && <SelectionsTab project={project} />}
+        {tab === "approvals" && <ApprovalsTab projectId={project.id} />}
+        {tab === "activity" && <ProjectActivityFeed projectId={project.id} />}
       </main>
       {editing && <NewProjectWizard onClose={() => setEditing(false)} editProjectId={project.id} />}
 
