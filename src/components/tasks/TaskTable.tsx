@@ -215,6 +215,17 @@ export function TaskTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/30">
+              {selectedIds && (
+                <Th className="w-8">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all visible tasks"
+                    checked={parents.length > 0 && parents.every((t) => selectedIds.has(t.id))}
+                    onChange={(e) => onToggleSelectAll?.(parents.map((t) => t.id), e.target.checked)}
+                    className="h-3.5 w-3.5 accent-[#c17f5a] cursor-pointer"
+                  />
+                </Th>
+              )}
               <Th className="w-10" />
               <Th className="w-10" />
               <Th>Description</Th>
