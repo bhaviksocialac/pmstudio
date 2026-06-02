@@ -359,10 +359,10 @@ export function VendorDocumentsSection({
         <CategoryPickerDialog
           file={pendingCategoryFor}
           onCancel={() => setPendingCategoryFor(null)}
-          onConfirm={(cat) => {
+          onConfirm={(cat, customLabel) => {
             const f = pendingCategoryFor;
             setPendingCategoryFor(null);
-            upload.mutate({ file: f, category: cat });
+            upload.mutate({ file: f, category: cat, customLabel });
           }}
         />
       )}
