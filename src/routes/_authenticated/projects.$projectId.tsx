@@ -117,12 +117,22 @@ function ProjectDetail() {
   return <ProjectDetailView project={project} />;
 }
 
-type Tab = "overview" | "milestones" | "timeline" | "tasks" | "phases" | "snags" | "attendance" | "change-orders" | "reports" | "photos" | "vendors" | "finance" | "documents";
-const tabs: { id: Tab; label: string }[] = [
+type Tab =
+  | "overview" | "timeline" | "calendar" | "tasks" | "budget" | "documents"
+  | "milestones" | "phases" | "snags" | "attendance" | "change-orders"
+  | "reports" | "photos" | "vendors" | "finance";
+
+const primaryTabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
-  { id: "milestones", label: "Milestones" },
   { id: "timeline", label: "Timeline" },
+  { id: "calendar", label: "Calendar" },
   { id: "tasks", label: "Tasks" },
+  { id: "budget", label: "Budget" },
+  { id: "documents", label: "Documents" },
+];
+
+const secondaryTabs: { id: Tab; label: string }[] = [
+  { id: "milestones", label: "Milestones" },
   { id: "phases", label: "Phases" },
   { id: "snags", label: "Snags" },
   { id: "attendance", label: "Attendance" },
@@ -130,9 +140,10 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "reports", label: "Reports" },
   { id: "photos", label: "Photos" },
   { id: "vendors", label: "Vendors" },
-  { id: "finance", label: "Finance" },
-  { id: "documents", label: "Documents" },
+  { id: "finance", label: "Invoices" },
 ];
+
+const allTabs = [...primaryTabs, ...secondaryTabs];
 
 
 function ProjectDetailView({ project }: { project: Project }) {
