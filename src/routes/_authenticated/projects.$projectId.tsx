@@ -149,6 +149,7 @@ const allTabs = [...primaryTabs, ...secondaryTabs];
 function ProjectDetailView({ project }: { project: Project }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     const onGoto = (e: Event) => {
@@ -160,58 +161,114 @@ function ProjectDetailView({ project }: { project: Project }) {
     return () => window.removeEventListener("pmstudio:goto-tab", onGoto as EventListener);
   }, [project.id]);
 
-  const h = healthMap[project.health as keyof typeof healthMap];
+  useEffect(() => {
+    const onClick = () => setMoreOpen(false);
+    if (moreOpen) {
+      window.addEventListener("click", onClick);
+      return () => window.removeEventListener("click", onClick);
+    }
+  }, [moreOpen]);
 
+  const h = healthMap[project.health as keyof typeof healthMap];
+  const budgetPct = project.budget > 0 ? Math.round((project.spent / project.budget) * 100) : 0;
+  const activeTabLabel = allTabs.find((t) => t.id === tab)?.label ?? "Overview";
+  const isSecondary = secondaryTabs.some((t) => t.id === tab);
 
   return (
     <AppShell>
-      <main className="px-4 md:px-8 py-6 md:py-8 max-w-[1400px] w-full pb-24 md:pb-10">
-        <Link to="/dashboard" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground mb-6 font-mono uppercase tracking-wider">
-          <ArrowLeft className="h-3.5 w-3.5" /> Dashboard
+      <main className="px-4 md:px-10 lg:px-14 py-8 md:py-12 max-w-[1400px] w-full pb-24 md:pb-16">
+        <Link to="/dashboard" className="inline-flex items-center gap-2 text-[10px] text-muted-foreground hover:text-foreground mb-10 uppercase tracking-[0.22em] font-medium">
+          <ArrowLeft className="h-3 w-3" /> Dashboard
         </Link>
 
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-3">
-              <span className={`h-1.5 w-1.5 rounded-full ${h.pulse}`} style={{ background: h.color, color: h.color }} />
-              <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{h.label}</span>
+        {/* Editorial header */}
+        <header className="mb-12">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+            <div className="min-w-0 max-w-3xl">
+              <div className="flex items-center gap-2.5 mb-4">
+                <span className={`h-1.5 w-1.5 rounded-full ${h.pulse}`} style={{ background: h.color }} />
+                <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">{project.phase} · {h.label}</span>
+              </div>
+              <h1 className="font-display text-[44px] md:text-[56px] leading-[1.05] tracking-[-0.01em]">{project.name}</h1>
+              {project.location && (
+                <p className="font-display italic text-lg md:text-xl text-muted-foreground mt-2.5">
+                  {project.location}
+                </p>
+              )}
             </div>
-            <h1 className="font-display text-4xl md:text-[36px] leading-tight">{project.name}</h1>
-            <div className="flex flex-wrap gap-2 mt-3">
-              <Pill>{project.client}</Pill>
-              <Pill>{project.location}</Pill>
-              <Pill>{labelForProjectType(project.type)}</Pill>
-              <Pill>{project.phase}</Pill>
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={() => setEditing(true)} className="h-10 px-4 inline-flex items-center gap-1.5 rounded-[6px] text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors">
+                <Pencil className="h-3.5 w-3.5" /> Edit
+              </button>
+              <SharePortalButton projectId={project.id} variant="outline" size="md" label="Share Portal" stopPropagation={false} />
+              <button onClick={() => openModal("draft-update")} className="h-10 px-5 inline-flex items-center gap-1.5 rounded-[6px] bg-[#1a1612] text-white text-sm font-medium hover:brightness-110 transition">
+                <Send className="h-3.5 w-3.5" /> Send Update
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[6px] text-xs font-medium" style={{ background: `${h.color}22`, color: h.color }}>
-              <span className="h-1.5 w-1.5 rounded-full" style={{ background: h.color }} /> {h.label}
-            </span>
-            <button onClick={() => setEditing(true)} className="h-10 px-3 inline-flex items-center gap-1.5 rounded-[6px] border border-border text-sm font-medium hover:bg-muted">
-              <Pencil className="h-3.5 w-3.5" /> Edit Project
-            </button>
-            
-            <button onClick={() => openModal("draft-update")} className="h-10 px-4 inline-flex items-center gap-1.5 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95">
-              <Send className="h-3.5 w-3.5" /> Send Update
-            </button>
-            <SharePortalButton projectId={project.id} variant="outline" size="md" label="Share Portal" stopPropagation={false} />
+
+          {/* Editorial metadata strip */}
+          <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-x-10 gap-y-6 pt-8 border-t border-border/60">
+            <MetaCell label="Client" value={project.client} />
+            <MetaCell label="Type" value={labelForProjectType(project.type)} />
+            <MetaCell label="Handover" value={project.expectedHandover} />
+            <MetaCell
+              label="Budget"
+              value={`₹${project.spent}L / ₹${project.budget}L`}
+              hint={`${budgetPct}% used`}
+              tone={budgetPct > 100 ? "#c4685a" : budgetPct > 80 ? "#d4882a" : undefined}
+            />
           </div>
         </header>
 
-        <div className="mb-6">
+        <div className="mb-8">
           <AINarrativeBar projectId={project.id} />
         </div>
 
-        {/* Tabs */}
-        <div className="border-b border-border mb-8 overflow-x-auto">
-          <div className="flex gap-1 min-w-max">
-            {tabs.map((t) => (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                      className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === t.id ? "border-[#c17f5a] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+        {/* Editorial tab nav: 6 primary + More overflow */}
+        <div className="border-b border-border/60 mb-10">
+          <div className="flex items-center gap-1 overflow-x-auto">
+            {primaryTabs.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`px-5 py-4 text-sm font-medium border-b -mb-px transition-colors whitespace-nowrap ${
+                  tab === t.id
+                    ? "border-[#c17f5a] text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
                 {t.label}
               </button>
             ))}
+            <div className="relative ml-auto" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setMoreOpen((v) => !v)}
+                className={`px-5 py-4 text-sm font-medium border-b -mb-px transition-colors inline-flex items-center gap-1.5 whitespace-nowrap ${
+                  isSecondary
+                    ? "border-[#c17f5a] text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {isSecondary ? activeTabLabel : "More"} <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+              {moreOpen && (
+                <div
+                  className="absolute right-0 top-full mt-1 z-20 min-w-[180px] rounded-[10px] bg-card border border-border/60 py-1.5"
+                  style={{ boxShadow: "var(--shadow-card)" }}
+                >
+                  {secondaryTabs.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => { setTab(t.id); setMoreOpen(false); }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-muted/60 transition-colors ${tab === t.id ? "text-foreground" : "text-muted-foreground"}`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -223,7 +280,9 @@ function ProjectDetailView({ project }: { project: Project }) {
         {tab === "overview" && <OverviewTab project={project} onGoTo={setTab} />}
         {tab === "milestones" && <MilestonesTab projectId={project.id} />}
         {tab === "timeline" && <TimelineTab project={project} />}
+        {tab === "calendar" && <CalendarTab project={project} />}
         {tab === "tasks" && <ProjectTasksTab projectId={project.id} projectName={project.name} />}
+        {tab === "budget" && <BudgetTab project={project} />}
         {tab === "phases" && <PhaseChecklistTab projectId={project.id} projectBudget={project.budget} />}
         {tab === "snags" && <SnagsTab projectId={project.id} />}
         {tab === "attendance" && (
@@ -240,8 +299,9 @@ function ProjectDetailView({ project }: { project: Project }) {
         {tab === "reports" && (
           <div className="space-y-6">
             <div>
-              <h2 className="font-display text-2xl">Daily Site Reports</h2>
-              <p className="text-sm text-muted-foreground mt-1">Auto-compiled every evening from today's tasks, attendance, photos and snags.</p>
+              <div className="text-[10px] uppercase tracking-[0.22em] text-[#c17f5a] mb-2">Site Pulse</div>
+              <h2 className="font-display text-3xl">Daily Site Reports</h2>
+              <p className="text-sm text-muted-foreground mt-2 max-w-xl">Auto-compiled every evening from today's tasks, attendance, photos and snags.</p>
             </div>
             <SiteReportsList projectId={project.id} />
           </div>
@@ -252,8 +312,18 @@ function ProjectDetailView({ project }: { project: Project }) {
         {tab === "documents" && <DocumentsTab projectId={project.id} />}
       </main>
       {editing && <NewProjectWizard onClose={() => setEditing(false)} editProjectId={project.id} />}
-      
+
     </AppShell>
+  );
+}
+
+function MetaCell({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">{label}</div>
+      <div className="font-display text-xl truncate" style={tone ? { color: tone } : undefined}>{value}</div>
+      {hint && <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1 font-mono">{hint}</div>}
+    </div>
   );
 }
 
@@ -262,7 +332,7 @@ const Pill = ({ children }: { children: React.ReactNode }) => (
 );
 
 const Card: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className = "", children, ...p }) => (
-  <div {...p} className={`rounded-[16px] bg-card border border-border ${className}`} style={{ boxShadow: "var(--shadow-card)" }}>{children}</div>
+  <div {...p} className={`rounded-[16px] bg-card ${className}`} style={{ boxShadow: "var(--shadow-card)" }}>{children}</div>
 );
 
 /* ---------------- Overview ---------------- */
