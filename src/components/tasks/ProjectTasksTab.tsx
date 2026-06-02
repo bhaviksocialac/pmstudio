@@ -214,6 +214,87 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
     return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [parents, groupBy]);
 
+  // ---------- Bulk selection (spans all groups) ----------
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Prune selections that no longer match filters
+  useEffect(() => {
+    const valid = new Set(parents.map((t) => t.id));
+    setSelectedIds((prev) => {
+      const next = new Set<string>();
+      prev.forEach((id) => { if (valid.has(id)) next.add(id); });
+      return next.size === prev.size ? prev : next;
+    });
+  }, [parents]);
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  const toggleSelectAllIn = (ids: string[], select: boolean) =>
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (select) ids.forEach((i) => n.add(i)); else ids.forEach((i) => n.delete(i));
+      return n;
+    });
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const refetchAfterBulk = async () => { await tasksQ.refetch(); };
+
+  const bulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkBusy(true);
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase.from("tasks")
+      .update({ deleted_at: new Date().toISOString() }).in("id", ids);
+    setBulkBusy(false);
+    setConfirmDelete(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Moved ${ids.length} task${ids.length === 1 ? "" : "s"} to Trash`);
+    clearSelection();
+    await refetchAfterBulk();
+  };
+
+  const bulkStatus = async (status: string) => {
+    if (selectedIds.size === 0) return;
+    setBulkBusy(true);
+    const today = new Date().toISOString().slice(0, 10);
+    let ok = 0, fail = 0;
+    for (const id of selectedIds) {
+      try { await changeTaskStatus({ taskId: id, newStatus: status, effectiveDate: today }); ok++; }
+      catch { fail++; }
+    }
+    setBulkBusy(false);
+    toast.success(`Updated ${ok} task${ok === 1 ? "" : "s"}${fail ? ` (${fail} failed)` : ""}`);
+    clearSelection();
+    await refetchAfterBulk();
+  };
+
+  const bulkPatch = async (patch: Record<string, unknown>, label: string) => {
+    if (selectedIds.size === 0) return;
+    setBulkBusy(true);
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase.from("tasks")
+      .update({ ...patch, updated_at: new Date().toISOString() }).in("id", ids);
+    setBulkBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${label} updated on ${ids.length} task${ids.length === 1 ? "" : "s"}`);
+    clearSelection();
+    await refetchAfterBulk();
+  };
+
+  const allAgencies = useMemo(() => {
+    const s = new Set<string>(["Client"]);
+    (vendorsQ.data ?? []).forEach((v) => s.add(v.name));
+    teamMembers.forEach((m) => s.add(m.name));
+    return Array.from(s).sort();
+  }, [vendorsQ.data, teamMembers]);
+  const allWorkTypes = sharedWorkTypeOptions;
+
   return (
     <div className="space-y-6">
       <div className="rounded-[16px] bg-card border border-border p-5 md:p-6" style={{ boxShadow: "var(--shadow-card)" }}>
