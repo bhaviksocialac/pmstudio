@@ -24,6 +24,7 @@ import { SiteReportsList } from "@/components/SiteReportsList";
 import { AINarrativeBar } from "@/components/tasks/AINarrativeBar";
 import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
 import { ProjectActivityFeed } from "@/components/ProjectActivityFeed";
+import { PendingApprovals } from "@/components/PendingApprovals";
 import { RoomProgressGrid } from "@/components/tasks/RoomProgressGrid";
 import { ProjectTasksTab } from "@/components/tasks/ProjectTasksTab";
 
@@ -1258,6 +1259,40 @@ function BudgetTab({ project }: { project: Project }) {
     </div>
   );
 }
+
+
+/* ---------------- Selections ---------------- */
+function SelectionsTab({ project }: { project: Project }) {
+  return (
+    <div className="space-y-8">
+      <div>
+        <div className="text-[10px] uppercase tracking-[0.22em] text-[#c17f5a] mb-2">Material & Finish Selections</div>
+        <h2 className="font-display text-3xl">Selections</h2>
+        <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
+          Curate finishes, fixtures and furniture choices for {project.name}. Tracked through the Design and Selections phases.
+        </p>
+      </div>
+      <PhaseChecklistTab projectId={project.id} projectBudget={project.budget} />
+    </div>
+  );
+}
+
+/* ---------------- Approvals ---------------- */
+function ApprovalsTab({ projectId: _projectId }: { projectId: string }) {
+  return (
+    <div className="space-y-8">
+      <div>
+        <div className="text-[10px] uppercase tracking-[0.22em] text-[#c17f5a] mb-2">Client Sign-offs</div>
+        <h2 className="font-display text-3xl">Approvals</h2>
+        <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
+          AI-drafted messages and approval requests waiting for review. Nothing leaves the studio without your sign-off.
+        </p>
+      </div>
+      <PendingApprovals />
+    </div>
+  );
+}
+
 
 
 
