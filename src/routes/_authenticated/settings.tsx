@@ -31,6 +31,7 @@ function SettingsPage() {
           <TeamMembersSettings />
           <WorkTypesSettings />
           <WhatsAppGroupsSettings />
+          <RoomCleanupPanel />
           <ClearTestDataPanel />
         </div>
       </main>
