@@ -210,9 +210,14 @@ export function VendorDocumentsSection({
 
   // ---------- Edit details ----------
   const saveEdit = useMutation({
-    mutationFn: async (patch: { name: string; category: VendorDocCategory; notes: string }) => {
+    mutationFn: async (patch: { name: string; category: VendorDocCategory; notes: string; customLabel: string | null }) => {
       if (!editing) return;
-      const { error } = await supabase.from("vendor_documents").update(patch).eq("id", editing.id);
+      const { error } = await supabase.from("vendor_documents").update({
+        name: patch.name,
+        category: patch.category,
+        notes: patch.notes,
+        custom_label: patch.category === "other" ? (patch.customLabel?.trim() || null) : null,
+      }).eq("id", editing.id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => { toast.success("Updated"); setEditing(null); invalidate(); },
