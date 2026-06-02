@@ -1,14 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Table as TableIcon, GanttChart, Search, X } from "lucide-react";
+import { Loader2, Table as TableIcon, GanttChart, Search, X, Trash2, ChevronDown } from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { TaskTable, type TaskRow } from "@/components/tasks/TaskTable";
 import { TaskFilters, emptyFilters, type FilterState } from "@/components/tasks/TaskFilters";
 
 import { GanttTimeline } from "@/components/tasks/GanttTimeline";
-import { STATUS_META, deriveActionRequired } from "@/lib/task-flow";
+import { STATUS_META, STATUS_ORDER, deriveActionRequired } from "@/lib/task-flow";
+import { changeTaskStatus } from "@/lib/task-status";
 import { useWorkTypes } from "@/hooks/useWorkTypes";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 type GroupBy = "all" | "status" | "contractor" | "room" | "work_type";
 type View = "table" | "gantt";
@@ -101,12 +110,20 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
   }), [tasksQ.data]);
 
   const filterGroups = useMemo(() => {
-    const rooms = new Set<string>(extraRooms);
+    // Case-insensitive dedup for rooms — keep the first-seen casing as canonical
+    const roomCanon = new Map<string, string>();
+    const addRoom = (raw: string) => {
+      const v = raw.trim();
+      if (!v) return;
+      const k = v.toLowerCase();
+      if (!roomCanon.has(k)) roomCanon.set(k, v);
+    };
+    extraRooms.forEach(addRoom);
     const contractors = new Set<string>(["Client"]);
     const workTypes = new Set<string>(extraWorkTypes);
     rows.forEach((t) => {
       const areas = Array.isArray(t.areas) && (t.areas as string[]).length ? (t.areas as string[]) : (t.area ? [t.area] : []);
-      areas.forEach((a) => rooms.add(a));
+      areas.forEach(addRoom);
       const c = t.agency || t.contractor || t.assignee;
       if (c) contractors.add(c);
       const wts = Array.isArray(t.work_types) && (t.work_types as string[]).length ? (t.work_types as string[]) : (t.work_type ? [t.work_type] : []);
@@ -119,7 +136,7 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
     return [
       {
         key: "rooms" as const, label: "Room",
-        values: Array.from(rooms).sort(),
+        values: Array.from(roomCanon.values()).sort((a, b) => a.localeCompare(b)),
         format: (v: string) => titleCase(v),
         addLabel: "Add Room",
         onAdd: (v: string) => setExtraRooms((p) => Array.from(new Set([...p, v]))),
@@ -196,6 +213,87 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
     });
     return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [parents, groupBy]);
+
+  // ---------- Bulk selection (spans all groups) ----------
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Prune selections that no longer match filters
+  useEffect(() => {
+    const valid = new Set(parents.map((t) => t.id));
+    setSelectedIds((prev) => {
+      const next = new Set<string>();
+      prev.forEach((id) => { if (valid.has(id)) next.add(id); });
+      return next.size === prev.size ? prev : next;
+    });
+  }, [parents]);
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  const toggleSelectAllIn = (ids: string[], select: boolean) =>
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (select) ids.forEach((i) => n.add(i)); else ids.forEach((i) => n.delete(i));
+      return n;
+    });
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const refetchAfterBulk = async () => { await tasksQ.refetch(); };
+
+  const bulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkBusy(true);
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase.from("tasks")
+      .update({ deleted_at: new Date().toISOString() }).in("id", ids);
+    setBulkBusy(false);
+    setConfirmDelete(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Moved ${ids.length} task${ids.length === 1 ? "" : "s"} to Trash`);
+    clearSelection();
+    await refetchAfterBulk();
+  };
+
+  const bulkStatus = async (status: string) => {
+    if (selectedIds.size === 0) return;
+    setBulkBusy(true);
+    const today = new Date().toISOString().slice(0, 10);
+    let ok = 0, fail = 0;
+    for (const id of selectedIds) {
+      try { await changeTaskStatus({ taskId: id, newStatus: status, effectiveDate: today }); ok++; }
+      catch { fail++; }
+    }
+    setBulkBusy(false);
+    toast.success(`Updated ${ok} task${ok === 1 ? "" : "s"}${fail ? ` (${fail} failed)` : ""}`);
+    clearSelection();
+    await refetchAfterBulk();
+  };
+
+  const bulkPatch = async (patch: Record<string, unknown>, label: string) => {
+    if (selectedIds.size === 0) return;
+    setBulkBusy(true);
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase.from("tasks")
+      .update({ ...patch, updated_at: new Date().toISOString() }).in("id", ids);
+    setBulkBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${label} updated on ${ids.length} task${ids.length === 1 ? "" : "s"}`);
+    clearSelection();
+    await refetchAfterBulk();
+  };
+
+  const allAgencies = useMemo(() => {
+    const s = new Set<string>(["Client"]);
+    (vendorsQ.data ?? []).forEach((v) => s.add(v.name));
+    teamMembers.forEach((m) => s.add(m.name));
+    return Array.from(s).sort();
+  }, [vendorsQ.data, teamMembers]);
+  const allWorkTypes = sharedWorkTypeOptions;
 
   return (
     <div className="space-y-6">
@@ -277,11 +375,103 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
                 rooms={filterGroups[0].values}
                 onAddRoom={(r) => setExtraRooms((p) => Array.from(new Set([...p, r])))}
                 allProjectTasks={rows}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onToggleSelectAll={toggleSelectAllIn}
               />
             </section>
           ))}
         </div>
       )}
+
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 py-2 rounded-[14px] bg-[#1a1612] text-white shadow-2xl border border-[#1a1612]">
+          <span className="text-xs font-medium px-2 py-1 rounded-[6px] bg-white/10">
+            {selectedIds.size} task{selectedIds.size === 1 ? "" : "s"} selected
+          </span>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button disabled={bulkBusy} className="h-8 px-2.5 rounded-[6px] text-xs hover:bg-white/10 inline-flex items-center gap-1 disabled:opacity-50">
+                Change Status <ChevronDown className="h-3 w-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="max-h-72 overflow-y-auto">
+              {STATUS_ORDER.map((s) => (
+                <DropdownMenuItem key={s} onClick={() => bulkStatus(s)}>
+                  {STATUS_META[s]?.label ?? s}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button disabled={bulkBusy} className="h-8 px-2.5 rounded-[6px] text-xs hover:bg-white/10 inline-flex items-center gap-1 disabled:opacity-50">
+                Change Agency <ChevronDown className="h-3 w-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="max-h-72 overflow-y-auto">
+              {allAgencies.map((a) => (
+                <DropdownMenuItem key={a} onClick={() => bulkPatch({ agency: a, contractor: a }, "Agency")}>
+                  {a}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem onClick={() => bulkPatch({ agency: null, contractor: null }, "Agency")} className="text-muted-foreground">
+                Clear agency
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button disabled={bulkBusy} className="h-8 px-2.5 rounded-[6px] text-xs hover:bg-white/10 inline-flex items-center gap-1 disabled:opacity-50">
+                Change Work Type <ChevronDown className="h-3 w-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="max-h-72 overflow-y-auto">
+              {allWorkTypes.map((w) => (
+                <DropdownMenuItem key={w} onClick={() => bulkPatch({ work_type: w, work_types: [w] }, "Work type")}>
+                  {titleCase(w)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <button
+            disabled={bulkBusy}
+            onClick={() => setConfirmDelete(true)}
+            className="h-8 px-3 rounded-[6px] text-xs bg-[#c4685a] hover:bg-[#a04a3f] inline-flex items-center gap-1 disabled:opacity-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Delete Selected
+          </button>
+
+          <button
+            disabled={bulkBusy}
+            onClick={clearSelection}
+            className="h-8 px-2.5 rounded-[6px] text-xs hover:bg-white/10 disabled:opacity-50"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move {selectedIds.size} task{selectedIds.size === 1 ? "" : "s"} to Trash?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You can restore deleted tasks from Trash within 30 days.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={bulkDelete} className="bg-[#c4685a] hover:bg-[#a04a3f]">
+              Move to Trash
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -2095,6 +2095,7 @@ export type Database = {
           category: string
           created_at: string
           current_version_no: number
+          custom_label: string | null
           deleted_at: string | null
           file_size: number | null
           file_url: string
@@ -2114,6 +2115,7 @@ export type Database = {
           category?: string
           created_at?: string
           current_version_no?: number
+          custom_label?: string | null
           deleted_at?: string | null
           file_size?: number | null
           file_url: string
@@ -2133,6 +2135,7 @@ export type Database = {
           category?: string
           created_at?: string
           current_version_no?: number
+          custom_label?: string | null
           deleted_at?: string | null
           file_size?: number | null
           file_url?: string

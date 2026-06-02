@@ -19,6 +19,7 @@ type VendorDoc = {
   id: string;
   name: string;
   category: VendorDocCategory;
+  custom_label: string | null;
   storage_path: string;
   file_url: string;
   mime_type: string | null;
@@ -60,13 +61,19 @@ const CATEGORY_LABEL: Record<VendorDocCategory, string> = Object.fromEntries(
 ) as Record<VendorDocCategory, string>;
 
 const DOCS_FOLDER_BY_CAT: Record<VendorDocCategory, string> = {
-  quotation: "Quotations",
   boq: "BOQ",
+  quotation: "Quotations",
+  po: "Purchase Orders",
+  pi: "Proforma Invoices",
   invoice: "Invoices",
-  delivery_challan: "Delivery Challans",
-  work_order: "Work Orders",
+  challan: "Challans",
   other: "Other",
 };
+
+function categoryLabel(d: Pick<VendorDoc, "category" | "custom_label">): string {
+  if (d.category === "other" && d.custom_label?.trim()) return d.custom_label.trim();
+  return CATEGORY_LABEL[d.category] ?? d.category;
+}
 
 export function VendorDocumentsSection({
   projectId, vendorId, projectVendorId, vendorName,
@@ -109,7 +116,7 @@ export function VendorDocumentsSection({
 
   // ---------- Upload new file ----------
   const upload = useMutation({
-    mutationFn: async ({ file, category }: { file: File; category: VendorDocCategory }) => {
+    mutationFn: async ({ file, category, customLabel }: { file: File; category: VendorDocCategory; customLabel?: string | null }) => {
       if (!user) throw new Error("Not authenticated");
       const up = await uploadVendorFile(file, { projectId, vendorId });
       const { data, error } = await supabase.from("vendor_documents").insert({
@@ -119,6 +126,7 @@ export function VendorDocumentsSection({
         project_vendor_id: projectVendorId,
         name: file.name,
         category,
+        custom_label: category === "other" ? (customLabel?.trim() || null) : null,
         storage_path: up.path,
         file_url: up.url,
         mime_type: file.type || null,
@@ -202,9 +210,14 @@ export function VendorDocumentsSection({
 
   // ---------- Edit details ----------
   const saveEdit = useMutation({
-    mutationFn: async (patch: { name: string; category: VendorDocCategory; notes: string }) => {
+    mutationFn: async (patch: { name: string; category: VendorDocCategory; notes: string; customLabel: string | null }) => {
       if (!editing) return;
-      const { error } = await supabase.from("vendor_documents").update(patch).eq("id", editing.id);
+      const { error } = await supabase.from("vendor_documents").update({
+        name: patch.name,
+        category: patch.category,
+        notes: patch.notes,
+        custom_label: patch.category === "other" ? (patch.customLabel?.trim() || null) : null,
+      }).eq("id", editing.id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => { toast.success("Updated"); setEditing(null); invalidate(); },
@@ -224,7 +237,7 @@ export function VendorDocumentsSection({
         user_id: user.id,
         project_id: projectId,
         name: doc.name,
-        category: CATEGORY_LABEL[doc.category],
+        category: categoryLabel(doc),
         folder_path: folder,
         storage_path: doc.storage_path,
         file_url: doc.file_url,
@@ -299,7 +312,7 @@ export function VendorDocumentsSection({
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium truncate">{d.name}</div>
                   <div className="text-[10px] text-muted-foreground flex flex-wrap gap-x-1.5">
-                    <span className="px-1.5 rounded bg-muted">{CATEGORY_LABEL[d.category]}</span>
+                    <span className="px-1.5 rounded bg-muted">{categoryLabel(d)}</span>
                     <span>{fmtDate(d.created_at)}</span>
                     <span>· {fmtSize(d.file_size)}</span>
                     {d.current_version_no > 1 && (
@@ -346,10 +359,10 @@ export function VendorDocumentsSection({
         <CategoryPickerDialog
           file={pendingCategoryFor}
           onCancel={() => setPendingCategoryFor(null)}
-          onConfirm={(cat) => {
+          onConfirm={(cat, customLabel) => {
             const f = pendingCategoryFor;
             setPendingCategoryFor(null);
-            upload.mutate({ file: f, category: cat });
+            upload.mutate({ file: f, category: cat, customLabel });
           }}
         />
       )}
@@ -433,8 +446,10 @@ function VersionHistoryList({ docId, currentVersion }: { docId: string; currentV
 
 function CategoryPickerDialog({
   file, onCancel, onConfirm,
-}: { file: File; onCancel: () => void; onConfirm: (c: VendorDocCategory) => void }) {
+}: { file: File; onCancel: () => void; onConfirm: (c: VendorDocCategory, customLabel: string | null) => void }) {
   const [cat, setCat] = useState<VendorDocCategory>(guessCategoryFromName(file.name));
+  const [customLabel, setCustomLabel] = useState("");
+  const canSubmit = cat !== "other" || customLabel.trim().length > 0;
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onCancel}>
       <div className="bg-card rounded-[14px] shadow-2xl p-5 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
@@ -445,20 +460,38 @@ function CategoryPickerDialog({
           </div>
           <button onClick={onCancel} className="h-7 w-7 rounded hover:bg-muted inline-flex items-center justify-center"><X className="h-3.5 w-3.5" /></button>
         </div>
-        <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="grid grid-cols-2 gap-2 mb-3">
           {VENDOR_DOC_CATEGORIES.map((c) => (
             <button
               key={c.value}
               onClick={() => setCat(c.value)}
-              className={`h-9 px-3 rounded-[6px] text-xs border ${cat === c.value ? "bg-[#c17f5a] text-white border-[#c17f5a]" : "border-border hover:bg-muted"}`}
+              className={`px-3 py-2 rounded-[6px] text-left border transition ${cat === c.value ? "bg-[#c17f5a] text-white border-[#c17f5a]" : "border-border hover:bg-muted"}`}
             >
-              {cat === c.value && <Check className="inline h-3 w-3 mr-1 -mt-0.5" />}{c.label}
+              <div className="text-xs font-medium inline-flex items-center gap-1">
+                {cat === c.value && <Check className="h-3 w-3" />} {c.label}
+              </div>
+              <div className={`text-[10px] mt-0.5 ${cat === c.value ? "text-white/80" : "text-muted-foreground"}`}>{c.hint}</div>
             </button>
           ))}
         </div>
+        {cat === "other" && (
+          <input
+            autoFocus
+            value={customLabel}
+            onChange={(e) => setCustomLabel(e.target.value)}
+            placeholder="Type category name..."
+            className="w-full h-9 px-3 mb-3 rounded-[8px] border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-[#c17f5a]/30"
+          />
+        )}
         <div className="flex justify-end gap-2">
           <button onClick={onCancel} className="h-9 px-3 rounded-[6px] border border-border text-xs">Cancel</button>
-          <button onClick={() => onConfirm(cat)} className="h-9 px-4 rounded-[6px] bg-[#c17f5a] text-white text-xs font-medium">Upload</button>
+          <button
+            disabled={!canSubmit}
+            onClick={() => onConfirm(cat, cat === "other" ? customLabel.trim() : null)}
+            className="h-9 px-4 rounded-[6px] bg-[#c17f5a] text-white text-xs font-medium disabled:opacity-40"
+          >
+            Upload
+          </button>
         </div>
       </div>
     </div>
@@ -470,12 +503,14 @@ function EditDetailsDialog({
 }: {
   doc: VendorDoc;
   onCancel: () => void;
-  onSave: (p: { name: string; category: VendorDocCategory; notes: string }) => void;
+  onSave: (p: { name: string; category: VendorDocCategory; notes: string; customLabel: string | null }) => void;
   busy: boolean;
 }) {
   const [name, setName] = useState(doc.name);
   const [category, setCategory] = useState<VendorDocCategory>(doc.category);
   const [notes, setNotes] = useState(doc.notes ?? "");
+  const [customLabel, setCustomLabel] = useState(doc.custom_label ?? "");
+  const canSave = category !== "other" || customLabel.trim().length > 0;
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onCancel}>
       <div className="bg-card rounded-[14px] shadow-2xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
@@ -488,12 +523,31 @@ function EditDetailsDialog({
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Name</div>
             <input value={name} onChange={(e) => setName(e.target.value)} className="w-full h-9 px-3 rounded-[8px] border border-border bg-card text-sm" />
           </label>
-          <label className="block">
+          <div>
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Category</div>
-            <select value={category} onChange={(e) => setCategory(e.target.value as VendorDocCategory)} className="w-full h-9 px-3 rounded-[8px] border border-border bg-card text-sm">
-              {VENDOR_DOC_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </select>
-          </label>
+            <div className="grid grid-cols-2 gap-2">
+              {VENDOR_DOC_CATEGORIES.map((c) => (
+                <button
+                  key={c.value}
+                  onClick={() => setCategory(c.value)}
+                  className={`px-3 py-2 rounded-[6px] text-left border transition ${category === c.value ? "bg-[#c17f5a] text-white border-[#c17f5a]" : "border-border hover:bg-muted"}`}
+                >
+                  <div className="text-xs font-medium inline-flex items-center gap-1">
+                    {category === c.value && <Check className="h-3 w-3" />} {c.label}
+                  </div>
+                  <div className={`text-[10px] mt-0.5 ${category === c.value ? "text-white/80" : "text-muted-foreground"}`}>{c.hint}</div>
+                </button>
+              ))}
+            </div>
+            {category === "other" && (
+              <input
+                value={customLabel}
+                onChange={(e) => setCustomLabel(e.target.value)}
+                placeholder="Type category name..."
+                className="w-full h-9 px-3 mt-2 rounded-[8px] border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-[#c17f5a]/30"
+              />
+            )}
+          </div>
           <label className="block">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Notes</div>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-[8px] border border-border bg-card text-sm" />
@@ -501,7 +555,11 @@ function EditDetailsDialog({
         </div>
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={onCancel} className="h-9 px-3 rounded-[6px] border border-border text-xs">Cancel</button>
-          <button disabled={busy} onClick={() => onSave({ name, category, notes })} className="h-9 px-4 rounded-[6px] bg-[#c17f5a] text-white text-xs font-medium inline-flex items-center gap-1.5">
+          <button
+            disabled={busy || !canSave}
+            onClick={() => onSave({ name, category, notes, customLabel: category === "other" ? customLabel.trim() : null })}
+            className="h-9 px-4 rounded-[6px] bg-[#c17f5a] text-white text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-40"
+          >
             {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Save
           </button>
         </div>

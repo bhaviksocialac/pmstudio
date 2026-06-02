@@ -5,29 +5,32 @@ export const VENDOR_FILE_ACCEPT =
 export const VENDOR_FILE_MAX_BYTES = 25 * 1024 * 1024;
 
 export type VendorDocCategory =
-  | "quotation"
   | "boq"
+  | "quotation"
+  | "po"
+  | "pi"
   | "invoice"
-  | "delivery_challan"
-  | "work_order"
+  | "challan"
   | "other";
 
-export const VENDOR_DOC_CATEGORIES: { value: VendorDocCategory; label: string }[] = [
-  { value: "quotation", label: "Quotation" },
-  { value: "boq", label: "BOQ" },
-  { value: "invoice", label: "Invoice" },
-  { value: "delivery_challan", label: "Delivery Challan" },
-  { value: "work_order", label: "Work Order" },
-  { value: "other", label: "Other" },
+export const VENDOR_DOC_CATEGORIES: { value: VendorDocCategory; label: string; hint: string }[] = [
+  { value: "boq",       label: "BOQ",       hint: "Bill of Quantities" },
+  { value: "quotation", label: "Quotation", hint: "Vendor price quote" },
+  { value: "po",        label: "PO",        hint: "Purchase Order" },
+  { value: "pi",        label: "PI",        hint: "Proforma Invoice" },
+  { value: "invoice",   label: "Invoice",   hint: "Tax / payment invoice" },
+  { value: "challan",   label: "Challan",   hint: "Delivery challan / gate pass" },
+  { value: "other",     label: "Other",     hint: "Custom category" },
 ];
 
 export function guessCategoryFromName(name: string): VendorDocCategory {
   const n = name.toLowerCase();
   if (/\b(boq|bill[\s_-]?of[\s_-]?quantit)/.test(n)) return "boq";
   if (/\b(quote|quotation|estimate)\b/.test(n)) return "quotation";
+  if (/\b(proforma|pro[\s_-]?forma|\bpi[\s_-]?\d)/.test(n)) return "pi";
   if (/\b(invoice|inv[\s_-]?\d|tax[\s_-]?invoice)\b/.test(n)) return "invoice";
-  if (/\b(challan|delivery)\b/.test(n)) return "delivery_challan";
-  if (/\b(work[\s_-]?order|po[\s_-]?\d|purchase[\s_-]?order)\b/.test(n)) return "work_order";
+  if (/\b(challan|gate[\s_-]?pass|delivery)\b/.test(n)) return "challan";
+  if (/\b(po[\s_-]?\d|purchase[\s_-]?order|work[\s_-]?order)\b/.test(n)) return "po";
   return "other";
 }
 
@@ -50,8 +53,6 @@ export async function uploadVendorFile(
   if (err) throw new Error(err);
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
   const path = `vendors/${opts.projectId}/${opts.vendorId}/${crypto.randomUUID()}.${ext}`;
-  // Best-effort progress: storage-js doesn't expose progress yet, so we mark
-  // 30% on start and 100% on completion to drive the UI bar.
   opts.onProgress?.(30);
   const { error } = await supabase.storage
     .from("project-documents")

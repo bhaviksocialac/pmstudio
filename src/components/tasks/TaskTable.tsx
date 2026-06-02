@@ -77,6 +77,7 @@ export function TaskTable({
   rows, projectMap, showProject = true, onChanged,
   vendors = [], teamMembers = [], rooms = [], onAddRoom,
   allProjectTasks,
+  selectedIds, onToggleSelect, onToggleSelectAll,
 }: {
   rows: TaskRow[];
   projectMap?: Map<string, string>;
@@ -88,6 +89,10 @@ export function TaskTable({
   onAddRoom?: (r: string) => void;
   /** All tasks in the project — used for dependency pickers (across filter groups). */
   allProjectTasks?: TaskRow[];
+  /** Selection state (lifted to parent so it can span groups). */
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: (ids: string[], select: boolean) => void;
 }) {
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -210,6 +215,17 @@ export function TaskTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/30">
+              {selectedIds && (
+                <Th className="w-8">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all visible tasks"
+                    checked={parents.length > 0 && parents.every((t) => selectedIds.has(t.id))}
+                    onChange={(e) => onToggleSelectAll?.(parents.map((t) => t.id), e.target.checked)}
+                    className="h-3.5 w-3.5 accent-[#c17f5a] cursor-pointer"
+                  />
+                </Th>
+              )}
               <Th className="w-10" />
               <Th className="w-10" />
               <Th>Description</Th>
@@ -258,7 +274,18 @@ export function TaskTable({
 
               return (
                 <Fragment key={t.id}>
-                  <tr className={`border-b border-border last:border-b-0 hover:bg-muted/10 transition-colors ${t.done ? "bg-[#7a9e8a14]" : tint}`}>
+                  <tr className={`border-b border-border last:border-b-0 hover:bg-muted/10 transition-colors ${selectedIds?.has(t.id) ? "bg-[#c17f5a14]" : t.done ? "bg-[#7a9e8a14]" : tint}`}>
+                    {selectedIds && (
+                      <Td>
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${t.title}`}
+                          checked={selectedIds.has(t.id)}
+                          onChange={() => onToggleSelect?.(t.id)}
+                          className="h-3.5 w-3.5 accent-[#c17f5a] cursor-pointer"
+                        />
+                      </Td>
+                    )}
                     <Td>
                       {hasDetail ? (
                         <button onClick={() => toggleExpand(t.id)} className="h-7 w-7 rounded-[6px] hover:bg-muted flex items-center justify-center">
@@ -426,7 +453,7 @@ export function TaskTable({
 
                   {isOpen && hasDetail && (
                     <tr className="bg-muted/10 border-b border-border">
-                      <td colSpan={16} className="px-6 py-5">
+                      <td colSpan={selectedIds ? 17 : 16} className="px-6 py-5">
                         {t.action_required && t.action_label && (
                           <div className="mb-4 px-3 py-2 rounded-[8px] bg-[#c4685a18] border border-[#c4685a40] text-sm text-[#8a2a1f] flex items-center gap-2">
                             <AlertCircle className="h-4 w-4" /> {t.action_label}

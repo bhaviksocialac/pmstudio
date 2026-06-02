@@ -5,6 +5,7 @@ import { BillingPanel } from "@/components/BillingPanel";
 import { TeamMembersSettings } from "@/components/TeamMembersSettings";
 import { WorkTypesSettings } from "@/components/WorkTypesSettings";
 import { ClearTestDataPanel } from "@/components/ClearTestDataPanel";
+import { RoomCleanupPanel } from "@/components/RoomCleanupPanel";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
@@ -30,6 +31,7 @@ function SettingsPage() {
           <TeamMembersSettings />
           <WorkTypesSettings />
           <WhatsAppGroupsSettings />
+          <RoomCleanupPanel />
           <ClearTestDataPanel />
         </div>
       </main>
