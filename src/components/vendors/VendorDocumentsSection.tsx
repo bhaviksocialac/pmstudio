@@ -307,7 +307,7 @@ export function VendorDocumentsSection({
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium truncate">{d.name}</div>
                   <div className="text-[10px] text-muted-foreground flex flex-wrap gap-x-1.5">
-                    <span className="px-1.5 rounded bg-muted">{CATEGORY_LABEL[d.category]}</span>
+                    <span className="px-1.5 rounded bg-muted">{categoryLabel(d)}</span>
                     <span>{fmtDate(d.created_at)}</span>
                     <span>· {fmtSize(d.file_size)}</span>
                     {d.current_version_no > 1 && (
