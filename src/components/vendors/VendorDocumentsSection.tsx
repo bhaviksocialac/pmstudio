@@ -116,7 +116,7 @@ export function VendorDocumentsSection({
 
   // ---------- Upload new file ----------
   const upload = useMutation({
-    mutationFn: async ({ file, category }: { file: File; category: VendorDocCategory }) => {
+    mutationFn: async ({ file, category, customLabel }: { file: File; category: VendorDocCategory; customLabel?: string | null }) => {
       if (!user) throw new Error("Not authenticated");
       const up = await uploadVendorFile(file, { projectId, vendorId });
       const { data, error } = await supabase.from("vendor_documents").insert({
@@ -126,6 +126,7 @@ export function VendorDocumentsSection({
         project_vendor_id: projectVendorId,
         name: file.name,
         category,
+        custom_label: category === "other" ? (customLabel?.trim() || null) : null,
         storage_path: up.path,
         file_url: up.url,
         mime_type: file.type || null,
