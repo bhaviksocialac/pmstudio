@@ -189,11 +189,10 @@ export function ProjectVendorsTab({ projectId }: { projectId: string }) {
       </div>
 
       {picking && (
-        <VendorPickerOverlay
+        <AddVendorSheet
           projectId={projectId}
           existingVendorIds={rows.map((r) => r.vendor_id)}
           onClose={() => setPicking(false)}
-          onLinked={() => qc.invalidateQueries({ queryKey: ["project_vendors", projectId] })}
         />
       )}
       {editing && (
