@@ -19,6 +19,7 @@ type VendorDoc = {
   id: string;
   name: string;
   category: VendorDocCategory;
+  custom_label: string | null;
   storage_path: string;
   file_url: string;
   mime_type: string | null;
