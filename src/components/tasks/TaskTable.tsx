@@ -274,7 +274,18 @@ export function TaskTable({
 
               return (
                 <Fragment key={t.id}>
-                  <tr className={`border-b border-border last:border-b-0 hover:bg-muted/10 transition-colors ${t.done ? "bg-[#7a9e8a14]" : tint}`}>
+                  <tr className={`border-b border-border last:border-b-0 hover:bg-muted/10 transition-colors ${selectedIds?.has(t.id) ? "bg-[#c17f5a14]" : t.done ? "bg-[#7a9e8a14]" : tint}`}>
+                    {selectedIds && (
+                      <Td>
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${t.title}`}
+                          checked={selectedIds.has(t.id)}
+                          onChange={() => onToggleSelect?.(t.id)}
+                          className="h-3.5 w-3.5 accent-[#c17f5a] cursor-pointer"
+                        />
+                      </Td>
+                    )}
                     <Td>
                       {hasDetail ? (
                         <button onClick={() => toggleExpand(t.id)} className="h-7 w-7 rounded-[6px] hover:bg-muted flex items-center justify-center">
