@@ -601,6 +601,8 @@ type TimelineBar = {
 const CAT_FILTERS = ["All", "Phases", "Procurement", "Execution"] as const;
 type CatFilter = typeof CAT_FILTERS[number];
 
+type TLBar = TimelineBar & { phaseGroup: string };
+
 function TimelineTab({ project }: { project: Project }) {
   const [filter, setFilter] = useState<CatFilter>("All");
 
@@ -624,10 +626,20 @@ function TimelineTab({ project }: { project: Project }) {
       return (subs ?? []).map((s: any) => ({ ...s, vendor_name: s.vendor_id ? vendorMap.get(s.vendor_id) : null }));
     },
   });
+  const { data: milestones = [] } = useQuery({
+    queryKey: ["timeline-milestones", project.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("milestones")
+        .select("id,name,triggered_at,status,trigger,kind")
+        .eq("project_id", project.id);
+      return data ?? [];
+    },
+  });
 
   const parse = (s: string | null | undefined) => (s ? new Date(s) : null);
 
-  const allBars: TimelineBar[] = [
+  const allBars: TLBar[] = [
     ...phaseRows.map((p: any) => ({
       id: `phase-${p.id}`,
       label: p.phase,
@@ -635,8 +647,9 @@ function TimelineTab({ project }: { project: Project }) {
       start: parse(p.start_date),
       end: parse(p.end_date),
       status: p.status,
+      phaseGroup: p.phase ?? "Phase",
     })),
-    ...subRows.map((s) => ({
+    ...subRows.map((s: any) => ({
       id: `sub-${s.id}`,
       label: s.name,
       kind: s.phase as "Procurement" | "Execution",
@@ -644,6 +657,7 @@ function TimelineTab({ project }: { project: Project }) {
       end: parse(s.end_date),
       status: s.status,
       assignee: s.contractor_name || s.vendor_name || null,
+      phaseGroup: s.phase ?? "Other",
     })),
   ];
 
@@ -653,145 +667,234 @@ function TimelineTab({ project }: { project: Project }) {
     return b.kind === filter;
   });
 
-  // Determine timeline range
-  const projStart = parse(project.startDate) ?? new Date();
-  const projEnd = parse(project.expectedHandover) ?? new Date(projStart.getTime() + 1000 * 60 * 60 * 24 * 180);
-  const startMs = projStart.getTime();
-  const endMs = Math.max(projEnd.getTime(), startMs + 1000 * 60 * 60 * 24 * 30);
+  // Group bars by phase for editorial lanes
+  const grouped = useMemo(() => {
+    const m = new Map<string, TLBar[]>();
+    bars.forEach((b) => {
+      const k = b.phaseGroup || "Other";
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push(b);
+    });
+    return Array.from(m.entries());
+  }, [bars]);
+
+  // Determine timeline range — span all data including milestones
+  const allDates = [
+    parse(project.startDate),
+    parse(project.expectedHandover),
+    ...allBars.flatMap((b) => [b.start, b.end]),
+    ...milestones.map((m: any) => parse(m.triggered_at)),
+  ].filter(Boolean) as Date[];
+  const projStart = allDates.length
+    ? new Date(Math.min(...allDates.map((d) => d.getTime())))
+    : new Date();
+  const projEnd = allDates.length
+    ? new Date(Math.max(...allDates.map((d) => d.getTime())))
+    : new Date(projStart.getTime() + 1000 * 60 * 60 * 24 * 180);
+  // Pad by 14 days each side for breathing room
+  const pad = 1000 * 60 * 60 * 24 * 14;
+  const startMs = projStart.getTime() - pad;
+  const endMs = Math.max(projEnd.getTime() + pad, startMs + 1000 * 60 * 60 * 24 * 60);
   const totalMs = endMs - startMs;
 
-  // Build month labels
-  const months: { label: string; offsetPct: number }[] = [];
-  const cursor = new Date(projStart.getFullYear(), projStart.getMonth(), 1);
+  // Build month + year header
+  const months: { label: string; offsetPct: number; year: number; isYearStart: boolean }[] = [];
+  const cursor = new Date(new Date(startMs).getFullYear(), new Date(startMs).getMonth(), 1);
   while (cursor.getTime() <= endMs) {
     months.push({
       label: cursor.toLocaleString("en", { month: "short" }),
+      year: cursor.getFullYear(),
       offsetPct: ((cursor.getTime() - startMs) / totalMs) * 100,
+      isYearStart: cursor.getMonth() === 0,
     });
     cursor.setMonth(cursor.getMonth() + 1);
   }
+  const years = Array.from(new Set(months.map((m) => m.year))).map((y) => {
+    const firstIdx = months.findIndex((m) => m.year === y);
+    const lastIdx = months.length - 1 - [...months].reverse().findIndex((m) => m.year === y);
+    return {
+      year: y,
+      leftPct: months[firstIdx].offsetPct,
+      widthPct: (lastIdx === months.length - 1 ? 100 : months[lastIdx + 1].offsetPct) - months[firstIdx].offsetPct,
+    };
+  });
 
   const today = new Date();
   const todayPct = ((today.getTime() - startMs) / totalMs) * 100;
 
-  const colorFor = (b: TimelineBar) => {
-    if (b.status === "done") return "#7a9e8a";
-    if (b.status === "delayed") return "#c4685a";
-    if (b.status === "in_progress" || b.status === "active") return "#c17f5a";
-    return "#d4882a";
+  const colorFor = (status: string) => {
+    if (status === "done") return { bg: "#7a9e8a", soft: "#7a9e8a22" };
+    if (status === "delayed") return { bg: "#c4685a", soft: "#c4685a22" };
+    if (status === "in_progress" || status === "active") return { bg: "#c17f5a", soft: "#c17f5a22" };
+    return { bg: "#b8a890", soft: "#b8a89022" };
   };
 
+  const fmtRange = (s: Date | null, e: Date | null) => {
+    if (!s || !e) return "—";
+    const opt: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short" };
+    return `${s.toLocaleDateString("en-IN", opt)} → ${e.toLocaleDateString("en-IN", { ...opt, year: "numeric" })}`;
+  };
+
+  const LANE_LABEL_WIDTH = 200;
+
   return (
-    <Card className="p-6 overflow-x-auto">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+    <Card className="p-0 overflow-hidden border-0" style={{ background: "#fefdfb", boxShadow: "0 1px 0 rgba(26,22,18,0.04), 0 12px 32px -16px rgba(26,22,18,0.10)" }}>
+      {/* Editorial header */}
+      <div className="px-8 pt-8 pb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="font-display text-2xl">Timeline</h2>
-          <p className="text-xs text-muted-foreground">{project.startDate} → {project.expectedHandover}</p>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-[#c17f5a] font-medium mb-2">Project Timeline</div>
+          <h2 className="font-display text-3xl text-[#1a1612] leading-tight">{project.name}</h2>
+          <p className="text-xs text-muted-foreground mt-2 font-mono">
+            {project.startDate ?? "—"} <span className="mx-2 text-[#c17f5a]">·</span> {project.expectedHandover ?? "—"}
+          </p>
         </div>
         <div className="flex gap-1">
           {CAT_FILTERS.map((f) => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`h-8 px-3 rounded-[6px] text-xs font-medium transition-colors ${filter === f ? "bg-[#1a1612] text-white" : "border border-border bg-card hover:bg-muted"}`}>
+              className={`h-8 px-3 rounded-full text-[11px] font-medium tracking-wide transition-all ${filter === f ? "bg-[#1a1612] text-[#faf8f5]" : "text-muted-foreground hover:bg-[#f0ebe3]"}`}>
               {f}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="min-w-[720px] relative mt-8">
-        {/* Month header */}
-        <div className="relative h-5 border-b border-border mb-5" style={{ marginLeft: 180 }}>
-          {months.map((m, i) => (
-            <div key={i} className="absolute top-0 text-[10px] uppercase tracking-wider text-muted-foreground font-mono" style={{ left: `${m.offsetPct}%` }}>
-              {m.label}
-            </div>
-          ))}
-        </div>
+      <div className="px-8 pb-8 overflow-x-auto">
+        <div className="min-w-[860px] relative">
+          {/* Year strip */}
+          <div className="relative h-5 mb-1" style={{ marginLeft: LANE_LABEL_WIDTH }}>
+            {years.map((y) => (
+              <div key={y.year} className="absolute top-0 h-5 flex items-center" style={{ left: `${y.leftPct}%`, width: `${y.widthPct}%` }}>
+                <span className="font-display text-base text-[#1a1612] leading-none">{y.year}</span>
+              </div>
+            ))}
+          </div>
+          {/* Month strip with subtle baseline */}
+          <div className="relative h-6 border-b border-[#e8e3da]" style={{ marginLeft: LANE_LABEL_WIDTH }}>
+            {months.map((m, i) => (
+              <div key={i} className="absolute top-0 bottom-0 flex items-end pb-1" style={{ left: `${m.offsetPct}%` }}>
+                <span className={`text-[10px] uppercase tracking-[0.18em] font-mono ${m.isYearStart ? "text-[#1a1612]" : "text-muted-foreground"}`}>{m.label}</span>
+              </div>
+            ))}
+            {/* Year separator ticks */}
+            {months.filter((m) => m.isYearStart && m.offsetPct > 1).map((m, i) => (
+              <div key={`yt-${i}`} className="absolute top-0 bottom-0 w-px bg-[#e8e3da]" style={{ left: `${m.offsetPct}%` }} />
+            ))}
+          </div>
 
-        {bars.length === 0 && (
-          <div className="py-12 text-center text-sm text-muted-foreground">No timeline items yet. Use the AI Update bar in the Tasks tab to add some.</div>
-        )}
+          {/* Lanes container */}
+          <div className="relative pt-6 pb-4">
+            {/* Today vertical line (full height) */}
+            {todayPct >= 0 && todayPct <= 100 && (
+              <div
+                className="absolute top-0 bottom-0 pointer-events-none z-10"
+                style={{
+                  left: `calc(${LANE_LABEL_WIDTH}px + (100% - ${LANE_LABEL_WIDTH}px) * ${todayPct / 100})`,
+                }}
+              >
+                <div className="w-px h-full bg-[#c4685a] opacity-50" />
+                <div className="absolute -top-2 -translate-x-1/2 text-[9px] uppercase tracking-[0.2em] text-[#c4685a] font-mono bg-[#fefdfb] px-1.5">Today</div>
+              </div>
+            )}
 
-        <div className="relative">
-          {bars.map((b) => {
-            if (!b.start || !b.end) {
-              return (
-                <div key={b.id} className="flex items-center mb-4 h-9">
-                  <div className="w-[180px] pr-3 truncate">
-                    <div className="text-xs font-medium truncate">{b.label}</div>
-                    <div className="text-[10px] text-muted-foreground truncate">{b.kind === "phase" ? "Phase" : b.kind} {b.assignee ? `· ${b.assignee}` : ""}</div>
+            {grouped.length === 0 && (
+              <div className="py-16 text-center text-sm text-muted-foreground italic">
+                No timeline items yet. Add phases or subcategories to start shaping the schedule.
+              </div>
+            )}
+
+            {grouped.map(([phaseName, items], gi) => (
+              <div key={phaseName} className="mb-6 last:mb-0">
+                {/* Phase eyebrow lane label */}
+                <div className="flex items-center mb-3" style={{ paddingLeft: 0 }}>
+                  <div style={{ width: LANE_LABEL_WIDTH }} className="pr-4">
+                    <div className="text-[9px] uppercase tracking-[0.22em] text-[#c17f5a] font-medium">{`Phase ${String(gi + 1).padStart(2, "0")}`}</div>
+                    <div className="font-display text-lg text-[#1a1612] leading-tight">{phaseName}</div>
                   </div>
-                  <div className="flex-1 text-[10px] text-muted-foreground italic">no dates set</div>
+                  <div className="flex-1 h-px bg-gradient-to-r from-[#e8e3da] to-transparent" />
                 </div>
-              );
-            }
-            const left = Math.max(0, ((b.start.getTime() - startMs) / totalMs) * 100);
-            const width = Math.max(2, ((b.end.getTime() - b.start.getTime()) / totalMs) * 100);
-            const color = colorFor(b);
-            return (
-              <div key={b.id} className="flex items-center mb-4 h-9">
-                <div className="w-[180px] pr-3 truncate">
-                  <div className="text-xs font-medium truncate">{b.label}</div>
-                  <div className="text-[10px] text-muted-foreground truncate">{b.kind === "phase" ? "Phase" : b.kind}{b.assignee ? ` · ${b.assignee}` : ""}</div>
-                </div>
-                <div className="flex-1 relative h-7">
-                  <div className="absolute h-7 rounded-[6px] flex items-center px-2 text-[10px] font-medium text-white overflow-hidden"
-                    style={{ left: `${left}%`, width: `${width}%`, background: color, opacity: b.status === "planned" ? 0.6 : 1 }}>
-                    <span className="truncate">{b.assignee ?? b.status}</span>
+
+                {items.map((b) => {
+                  const c = colorFor(b.status);
+                  const hasDates = !!(b.start && b.end);
+                  const left = hasDates ? Math.max(0, ((b.start!.getTime() - startMs) / totalMs) * 100) : 0;
+                  const width = hasDates ? Math.max(1.2, ((b.end!.getTime() - b.start!.getTime()) / totalMs) * 100) : 0;
+                  return (
+                    <div key={b.id} className="flex items-center h-10 group">
+                      <div style={{ width: LANE_LABEL_WIDTH }} className="pr-4 truncate">
+                        <div className="text-[13px] text-[#1a1612] truncate font-medium tracking-tight">{b.label}</div>
+                        <div className="text-[10px] text-muted-foreground truncate tracking-wide uppercase">
+                          {b.kind === "phase" ? "Phase" : b.kind}{b.assignee ? ` · ${b.assignee}` : ""}
+                        </div>
+                      </div>
+                      <div className="flex-1 relative h-10">
+                        {hasDates ? (
+                          <div
+                            className="absolute top-1/2 -translate-y-1/2 h-7 rounded-full flex items-center px-3 text-[10px] font-medium tracking-wide overflow-hidden transition-all group-hover:h-8"
+                            style={{
+                              left: `${left}%`,
+                              width: `${width}%`,
+                              background: c.soft,
+                              borderLeft: `3px solid ${c.bg}`,
+                              boxShadow: `0 1px 2px ${c.bg}30, 0 4px 12px -4px ${c.bg}40`,
+                              color: c.bg,
+                            }}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full mr-2 shrink-0" style={{ background: c.bg }} />
+                            <span className="truncate uppercase">{b.assignee ?? b.status.replace("_", " ")}</span>
+                          </div>
+                        ) : (
+                          <div className="absolute top-1/2 -translate-y-1/2 text-[10px] italic text-muted-foreground/60 pl-2">
+                            no dates set
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+
+            {/* Milestones overlay row */}
+            {milestones.length > 0 && filter === "All" && (
+              <div className="mt-6 pt-5 border-t border-[#e8e3da]">
+                <div className="flex items-start">
+                  <div style={{ width: LANE_LABEL_WIDTH }} className="pr-4">
+                    <div className="text-[9px] uppercase tracking-[0.22em] text-[#c17f5a] font-medium">Milestones</div>
+                    <div className="font-display text-lg text-[#1a1612] leading-tight">Key moments</div>
+                  </div>
+                  <div className="flex-1 relative h-10">
+                    {milestones.map((m: any) => {
+                      const at = parse(m.triggered_at);
+                      if (!at) return null;
+                      const pct = ((at.getTime() - startMs) / totalMs) * 100;
+                      if (pct < 0 || pct > 100) return null;
+                      const tone = m.status === "done" || m.status === "completed" ? "#7a9e8a" : m.status === "delayed" ? "#c4685a" : "#c17f5a";
+                      return (
+                        <div key={m.id} className="absolute top-1/2 -translate-y-1/2 group/ms" style={{ left: `${pct}%` }}>
+                          <div className="-translate-x-1/2 flex flex-col items-center">
+                            <div className="w-3 h-3 rotate-45 shadow-sm" style={{ background: tone }} />
+                            <div className="mt-1.5 text-[10px] font-medium text-[#1a1612] whitespace-nowrap opacity-0 group-hover/ms:opacity-100 transition-opacity bg-[#fefdfb] px-2 py-0.5 rounded shadow-sm">
+                              {m.name}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
-            );
-          })}
-
-          {/* Dependency arrows: connect consecutive bars in same category */}
-          {bars.length > 1 && (
-            <svg
-              className="absolute pointer-events-none"
-              style={{ left: 180, top: 0, right: 0, bottom: 0, width: `calc(100% - 180px)`, height: bars.length * 52 }}
-              preserveAspectRatio="none"
-            >
-              <defs>
-                <marker id="arrow-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                  <path d="M0,0 L10,5 L0,10 z" fill="#c17f5a" />
-                </marker>
-              </defs>
-              {bars.map((b, i) => {
-                if (i === 0) return null;
-                const prev = bars[i - 1];
-                if (!prev.start || !prev.end || !b.start || !b.end) return null;
-                if (prev.kind !== b.kind) return null;
-                const x1Pct = ((prev.end.getTime() - startMs) / totalMs) * 100;
-                const x2Pct = ((b.start.getTime() - startMs) / totalMs) * 100;
-                const rowH = 52; // mb-4 (16) + h-9 (36)
-                const y1 = (i - 1) * rowH + 14 + rowH / 2 - 14; // bar vertical center within row
-                const y2 = i * rowH + 14 + rowH / 2 - 14;
-                const midX = `calc(${x1Pct}% + 6px)`;
-                return (
-                  <g key={`dep-${b.id}`} stroke="#c17f5a" strokeWidth="1.5" fill="none" opacity="0.85">
-                    <line x1={`${x1Pct}%`} y1={y1} x2={midX} y2={y1} />
-                    <line x1={midX} y1={y1} x2={midX} y2={y2} />
-                    <line x1={midX} y1={y2} x2={`${x2Pct}%`} y2={y2} markerEnd="url(#arrow-warm)" />
-                  </g>
-                );
-              })}
-            </svg>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Today line */}
-        {todayPct >= 0 && todayPct <= 100 && (
-          <div className="absolute top-0 bottom-0 w-px bg-[#c4685a]" style={{ left: `calc(180px + (100% - 180px) * ${todayPct / 100})` }}>
-            <div className="absolute -top-1 -translate-x-1/2 text-[9px] uppercase tracking-wider text-[#c4685a] font-mono bg-card px-1">Today</div>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-wrap gap-4 mt-6 text-[11px] text-muted-foreground">
-        <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-sm bg-[#7a9e8a]" /> Done</div>
-        <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-sm bg-[#c17f5a]" /> In progress</div>
-        <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-sm bg-[#d4882a]" /> Planned</div>
-        <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-sm bg-[#c4685a]" /> Delayed</div>
+        {/* Legend */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-8 pt-6 border-t border-[#e8e3da] text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-full" style={{ background: "#7a9e8a" }} /> Done</div>
+          <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-full" style={{ background: "#c17f5a" }} /> In progress</div>
+          <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-full" style={{ background: "#b8a890" }} /> Planned</div>
+          <div className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded-full" style={{ background: "#c4685a" }} /> Delayed</div>
+          <div className="inline-flex items-center gap-2"><span className="w-2 h-2 rotate-45" style={{ background: "#c17f5a" }} /> Milestone</div>
+        </div>
       </div>
     </Card>
   );
