@@ -15,6 +15,8 @@ import { VendorInvoiceList } from "@/components/vendors/VendorInvoiceList";
 import { extractVendorQuotation, type QuotationExtract } from "@/lib/vendor-quotation.functions";
 import { assignVendorToProjectTasks } from "@/lib/vendor-assignment.functions";
 import { DEFAULT_WORK_CATEGORIES } from "@/lib/vendor-constants";
+import { AddVendorSheet } from "@/components/vendors/AddVendorSheet";
+import { VendorDocumentsSection } from "@/components/vendors/VendorDocumentsSection";
 
 
 
