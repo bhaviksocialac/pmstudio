@@ -2046,6 +2046,110 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_document_versions: {
+        Row: {
+          file_size: number | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          storage_path: string
+          uploaded_at: string
+          user_id: string
+          vendor_document_id: string
+          version_no: number
+        }
+        Insert: {
+          file_size?: number | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          storage_path: string
+          uploaded_at?: string
+          user_id: string
+          vendor_document_id: string
+          version_no: number
+        }
+        Update: {
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          storage_path?: string
+          uploaded_at?: string
+          user_id?: string
+          vendor_document_id?: string
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_document_versions_vendor_document_id_fkey"
+            columns: ["vendor_document_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_documents: {
+        Row: {
+          category: string
+          created_at: string
+          current_version_no: number
+          deleted_at: string | null
+          file_size: number | null
+          file_url: string
+          id: string
+          linked_document_id: string | null
+          mime_type: string | null
+          name: string
+          notes: string | null
+          project_id: string
+          project_vendor_id: string | null
+          storage_path: string
+          updated_at: string
+          user_id: string
+          vendor_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          current_version_no?: number
+          deleted_at?: string | null
+          file_size?: number | null
+          file_url: string
+          id?: string
+          linked_document_id?: string | null
+          mime_type?: string | null
+          name: string
+          notes?: string | null
+          project_id: string
+          project_vendor_id?: string | null
+          storage_path: string
+          updated_at?: string
+          user_id: string
+          vendor_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          current_version_no?: number
+          deleted_at?: string | null
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          linked_document_id?: string | null
+          mime_type?: string | null
+          name?: string
+          notes?: string | null
+          project_id?: string
+          project_vendor_id?: string | null
+          storage_path?: string
+          updated_at?: string
+          user_id?: string
+          vendor_id?: string
+        }
+        Relationships: []
+      }
       vendor_invoice_lines: {
         Row: {
           amount: number

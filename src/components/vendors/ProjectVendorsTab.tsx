@@ -15,6 +15,8 @@ import { VendorInvoiceList } from "@/components/vendors/VendorInvoiceList";
 import { extractVendorQuotation, type QuotationExtract } from "@/lib/vendor-quotation.functions";
 import { assignVendorToProjectTasks } from "@/lib/vendor-assignment.functions";
 import { DEFAULT_WORK_CATEGORIES } from "@/lib/vendor-constants";
+import { AddVendorSheet } from "@/components/vendors/AddVendorSheet";
+import { VendorDocumentsSection } from "@/components/vendors/VendorDocumentsSection";
 
 
 
@@ -175,7 +177,13 @@ export function ProjectVendorsTab({ projectId }: { projectId: string }) {
                     </button>
                   </div>
                   {v && (
-                    <div className="mt-3 pt-3 border-t border-border">
+                    <div className="mt-3 pt-3 border-t border-border space-y-3">
+                      <VendorDocumentsSection
+                        projectId={projectId}
+                        vendorId={v.id}
+                        projectVendorId={r.id}
+                        vendorName={v.company_name || v.name}
+                      />
                       <VendorInvoiceList projectId={projectId} vendorId={v.id} />
                     </div>
                   )}
@@ -187,11 +195,10 @@ export function ProjectVendorsTab({ projectId }: { projectId: string }) {
       </div>
 
       {picking && (
-        <VendorPickerOverlay
+        <AddVendorSheet
           projectId={projectId}
           existingVendorIds={rows.map((r) => r.vendor_id)}
           onClose={() => setPicking(false)}
-          onLinked={() => qc.invalidateQueries({ queryKey: ["project_vendors", projectId] })}
         />
       )}
       {editing && (
