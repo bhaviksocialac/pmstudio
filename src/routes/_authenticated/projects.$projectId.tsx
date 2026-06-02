@@ -118,20 +118,24 @@ function ProjectDetail() {
 }
 
 type Tab =
-  | "overview" | "timeline" | "calendar" | "tasks" | "budget" | "documents"
-  | "milestones" | "phases" | "snags" | "attendance" | "change-orders"
-  | "reports" | "photos" | "vendors" | "finance";
+  | "overview" | "timeline" | "budget" | "selections" | "vendors" | "approvals" | "files" | "activity"
+  | "calendar" | "tasks" | "milestones" | "phases" | "snags" | "attendance" | "change-orders"
+  | "reports" | "photos" | "finance";
 
 const primaryTabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "timeline", label: "Timeline" },
-  { id: "calendar", label: "Calendar" },
-  { id: "tasks", label: "Tasks" },
   { id: "budget", label: "Budget" },
-  { id: "documents", label: "Documents" },
+  { id: "selections", label: "Selections" },
+  { id: "vendors", label: "Vendors" },
+  { id: "approvals", label: "Approvals" },
+  { id: "files", label: "Files" },
+  { id: "activity", label: "Activity" },
 ];
 
 const secondaryTabs: { id: Tab; label: string }[] = [
+  { id: "tasks", label: "Tasks" },
+  { id: "calendar", label: "Calendar" },
   { id: "milestones", label: "Milestones" },
   { id: "phases", label: "Phases" },
   { id: "snags", label: "Snags" },
@@ -139,7 +143,6 @@ const secondaryTabs: { id: Tab; label: string }[] = [
   { id: "change-orders", label: "Change Orders" },
   { id: "reports", label: "Reports" },
   { id: "photos", label: "Photos" },
-  { id: "vendors", label: "Vendors" },
   { id: "finance", label: "Invoices" },
 ];
 
