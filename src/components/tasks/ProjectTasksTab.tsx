@@ -110,12 +110,20 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
   }), [tasksQ.data]);
 
   const filterGroups = useMemo(() => {
-    const rooms = new Set<string>(extraRooms);
+    // Case-insensitive dedup for rooms — keep the first-seen casing as canonical
+    const roomCanon = new Map<string, string>();
+    const addRoom = (raw: string) => {
+      const v = raw.trim();
+      if (!v) return;
+      const k = v.toLowerCase();
+      if (!roomCanon.has(k)) roomCanon.set(k, v);
+    };
+    extraRooms.forEach(addRoom);
     const contractors = new Set<string>(["Client"]);
     const workTypes = new Set<string>(extraWorkTypes);
     rows.forEach((t) => {
       const areas = Array.isArray(t.areas) && (t.areas as string[]).length ? (t.areas as string[]) : (t.area ? [t.area] : []);
-      areas.forEach((a) => rooms.add(a));
+      areas.forEach(addRoom);
       const c = t.agency || t.contractor || t.assignee;
       if (c) contractors.add(c);
       const wts = Array.isArray(t.work_types) && (t.work_types as string[]).length ? (t.work_types as string[]) : (t.work_type ? [t.work_type] : []);
@@ -128,7 +136,7 @@ export function ProjectTasksTab({ projectId, projectName }: { projectId: string;
     return [
       {
         key: "rooms" as const, label: "Room",
-        values: Array.from(rooms).sort(),
+        values: Array.from(roomCanon.values()).sort((a, b) => a.localeCompare(b)),
         format: (v: string) => titleCase(v),
         addLabel: "Add Room",
         onAdd: (v: string) => setExtraRooms((p) => Array.from(new Set([...p, v]))),
