@@ -24,6 +24,7 @@ import { SiteReportsList } from "@/components/SiteReportsList";
 import { AINarrativeBar } from "@/components/tasks/AINarrativeBar";
 import { PhaseChecklistTab } from "@/components/PhaseChecklistTab";
 import { ProjectActivityFeed } from "@/components/ProjectActivityFeed";
+import { PendingApprovals } from "@/components/PendingApprovals";
 import { RoomProgressGrid } from "@/components/tasks/RoomProgressGrid";
 import { ProjectTasksTab } from "@/components/tasks/ProjectTasksTab";
 
@@ -118,20 +119,24 @@ function ProjectDetail() {
 }
 
 type Tab =
-  | "overview" | "timeline" | "calendar" | "tasks" | "budget" | "documents"
-  | "milestones" | "phases" | "snags" | "attendance" | "change-orders"
-  | "reports" | "photos" | "vendors" | "finance";
+  | "overview" | "timeline" | "budget" | "selections" | "vendors" | "approvals" | "files" | "activity"
+  | "calendar" | "tasks" | "milestones" | "phases" | "snags" | "attendance" | "change-orders"
+  | "reports" | "photos" | "finance";
 
 const primaryTabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "timeline", label: "Timeline" },
-  { id: "calendar", label: "Calendar" },
-  { id: "tasks", label: "Tasks" },
   { id: "budget", label: "Budget" },
-  { id: "documents", label: "Documents" },
+  { id: "selections", label: "Selections" },
+  { id: "vendors", label: "Vendors" },
+  { id: "approvals", label: "Approvals" },
+  { id: "files", label: "Files" },
+  { id: "activity", label: "Activity" },
 ];
 
 const secondaryTabs: { id: Tab; label: string }[] = [
+  { id: "tasks", label: "Tasks" },
+  { id: "calendar", label: "Calendar" },
   { id: "milestones", label: "Milestones" },
   { id: "phases", label: "Phases" },
   { id: "snags", label: "Snags" },
@@ -139,7 +144,6 @@ const secondaryTabs: { id: Tab; label: string }[] = [
   { id: "change-orders", label: "Change Orders" },
   { id: "reports", label: "Reports" },
   { id: "photos", label: "Photos" },
-  { id: "vendors", label: "Vendors" },
   { id: "finance", label: "Invoices" },
 ];
 
@@ -309,7 +313,10 @@ function ProjectDetailView({ project }: { project: Project }) {
         {tab === "photos" && <PhotosTab project={project} />}
         {tab === "vendors" && <ProjectVendorsTab projectId={project.id} />}
         {tab === "finance" && <FinanceTab project={project} />}
-        {tab === "documents" && <DocumentsTab projectId={project.id} />}
+        {tab === "files" && <DocumentsTab projectId={project.id} />}
+        {tab === "selections" && <SelectionsTab project={project} />}
+        {tab === "approvals" && <ApprovalsTab projectId={project.id} />}
+        {tab === "activity" && <ProjectActivityFeed projectId={project.id} />}
       </main>
       {editing && <NewProjectWizard onClose={() => setEditing(false)} editProjectId={project.id} />}
 
@@ -1252,6 +1259,40 @@ function BudgetTab({ project }: { project: Project }) {
     </div>
   );
 }
+
+
+/* ---------------- Selections ---------------- */
+function SelectionsTab({ project }: { project: Project }) {
+  return (
+    <div className="space-y-8">
+      <div>
+        <div className="text-[10px] uppercase tracking-[0.22em] text-[#c17f5a] mb-2">Material & Finish Selections</div>
+        <h2 className="font-display text-3xl">Selections</h2>
+        <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
+          Curate finishes, fixtures and furniture choices for {project.name}. Tracked through the Design and Selections phases.
+        </p>
+      </div>
+      <PhaseChecklistTab projectId={project.id} projectBudget={project.budget} />
+    </div>
+  );
+}
+
+/* ---------------- Approvals ---------------- */
+function ApprovalsTab({ projectId: _projectId }: { projectId: string }) {
+  return (
+    <div className="space-y-8">
+      <div>
+        <div className="text-[10px] uppercase tracking-[0.22em] text-[#c17f5a] mb-2">Client Sign-offs</div>
+        <h2 className="font-display text-3xl">Approvals</h2>
+        <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
+          AI-drafted messages and approval requests waiting for review. Nothing leaves the studio without your sign-off.
+        </p>
+      </div>
+      <PendingApprovals />
+    </div>
+  );
+}
+
 
 
 
