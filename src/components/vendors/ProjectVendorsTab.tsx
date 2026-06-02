@@ -177,7 +177,13 @@ export function ProjectVendorsTab({ projectId }: { projectId: string }) {
                     </button>
                   </div>
                   {v && (
-                    <div className="mt-3 pt-3 border-t border-border">
+                    <div className="mt-3 pt-3 border-t border-border space-y-3">
+                      <VendorDocumentsSection
+                        projectId={projectId}
+                        vendorId={v.id}
+                        projectVendorId={r.id}
+                        vendorName={v.company_name || v.name}
+                      />
                       <VendorInvoiceList projectId={projectId} vendorId={v.id} />
                     </div>
                   )}
