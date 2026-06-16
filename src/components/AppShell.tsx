@@ -106,10 +106,10 @@ function Sidebar({ pathname }: { pathname: string }) {
             <Link
               key={n.label}
               to={n.to}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm transition-[background-color,color] duration-[150ms] ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-all duration-200 ${
                 active
-                  ? "bg-sidebar-accent text-white border-l-2 border-[#c17f5a]"
-                  : "text-white/65 hover:text-white hover:bg-sidebar-accent border-l-2 border-transparent"
+                  ? "bg-[#0f0c0a] text-white shadow-[inset_3px_3px_6px_rgba(0,0,0,0.55),inset_-3px_-3px_6px_rgba(60,50,42,0.35)]"
+                  : "text-white/65 hover:text-white hover:bg-sidebar-accent/60"
               }`}
             >
               <n.icon className="h-4 w-4" />
