@@ -123,36 +123,6 @@
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
-  }
-  html { font-size: 15px; }
-  body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-    font-family: var(--font-sans);
-    font-size: 15px;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    background-image:
-      radial-gradient(circle at 1px 1px, rgba(61,53,48,0.015) 1px, transparent 0);
-    background-size: 8px 8px;
-  }
-  h1, h2, h3, h4 {
-    font-family: var(--font-display);
-    letter-spacing: -0.01em;
-    font-weight: 500;
-  }
-  h1 { font-size: 36px; line-height: 1.15; }
-  h2 { font-size: 22px; line-height: 1.25; }
-  h3 { font-size: 18px; line-height: 1.3; }
-  h4 { font-size: 16px; line-height: 1.3; }
-  table { font-size: 15px; }
-  thead th { font-size: 13px; }
-  label { font-size: 13px; }
-  input, textarea, select { font-size: 15px; }
-  button { font-size: 14px; }
-  small { font-size: 13px; }
   /* Soften default borders globally — neumorphism reads with shadow, not lines */
   * {
     border-color: var(--color-border);
