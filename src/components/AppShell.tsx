@@ -106,16 +106,16 @@ function Sidebar({ pathname }: { pathname: string }) {
             <Link
               key={n.label}
               to={n.to}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-sm transition-[background-color,color] duration-[150ms] ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-all duration-200 ${
                 active
-                  ? "bg-sidebar-accent text-white border-l-2 border-[#c17f5a]"
-                  : "text-white/65 hover:text-white hover:bg-sidebar-accent border-l-2 border-transparent"
+                  ? "bg-[#0f0c0a] text-white shadow-[inset_3px_3px_6px_rgba(0,0,0,0.55),inset_-3px_-3px_6px_rgba(60,50,42,0.35)]"
+                  : "text-white/65 hover:text-white hover:bg-sidebar-accent/60"
               }`}
             >
-              <n.icon className="h-4 w-4" />
+              <n.icon className={`h-4 w-4 ${active ? "text-[#c17f5a]" : ""}`} />
               <span className="flex-1 text-left">{n.label}</span>
               {n.badge && (
-                <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-md bg-[#c17f5a] text-white">{n.badge}</span>
+                <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-[#c17f5a] text-white">{n.badge}</span>
               )}
             </Link>
           );
@@ -205,9 +205,9 @@ function TopBar() {
   const hasResults = enabled && (searchProjects.length || searchClients.length || searchVendors.length);
 
   return (
-    <header className="h-16 border-b border-border bg-background/85 backdrop-blur flex items-center px-4 md:px-8 gap-3 sticky top-0 z-30">
-      <div className="relative flex-1 max-w-xl">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <header className="h-20 bg-transparent flex items-center px-4 md:px-10 gap-4 sticky top-0 z-30">
+      <div className="relative flex-1 max-w-2xl">
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         <input
           type="text"
           value={query}
@@ -216,13 +216,13 @@ function TopBar() {
             if (e.key === "Enter" && query.trim()) { askCopilot(query.trim()); setQuery(""); }
           }}
           placeholder="Ask AI or search anything…"
-          className="w-full h-10 pl-10 pr-4 rounded-[10px] bg-card border border-border text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring/30"
+          className="neu-inset w-full h-12 pl-12 pr-4 text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:shadow-[inset_4px_4px_9px_rgba(184,168,148,0.32),inset_-4px_-4px_9px_rgba(255,255,255,0.92),0_0_0_3px_rgba(193,127,90,0.18)] transition-shadow"
         />
         {enabled && (
-          <div className="absolute top-full left-0 right-0 mt-2 rounded-[10px] bg-card border border-border shadow-lg overflow-hidden z-40 max-h-[60vh] overflow-y-auto">
+          <div className="neu-card-sm absolute top-full left-0 right-0 mt-3 bg-[var(--surface-raised)] overflow-hidden z-40 max-h-[60vh] overflow-y-auto">
             <button
               onClick={() => { askCopilot(query); setQuery(""); }}
-              className="w-full text-left px-4 py-3 flex items-center gap-2.5 bg-[#fff7eb] hover:bg-[#fce9d2] border-b border-border"
+              className="w-full text-left px-4 py-3 flex items-center gap-2.5 bg-[var(--chip-peach)]/40 hover:bg-[var(--chip-peach)]/70 transition-colors"
             >
               <Sparkles className="h-4 w-4 text-[#c17f5a] shrink-0" />
               <div className="flex-1 min-w-0">
@@ -259,20 +259,20 @@ function TopBar() {
         <div ref={bellRef} className="relative">
           <button
             onClick={() => setBellOpen((v) => !v)}
-            className="relative h-10 w-10 inline-flex items-center justify-center rounded-[10px] border border-border bg-card hover:bg-muted transition-colors duration-150"
+            className="neu-pill relative h-12 w-12 inline-flex items-center justify-center hover:shadow-[var(--shadow-soft)] active:shadow-[var(--shadow-pressed)] transition-shadow"
           >
             <Bell className="h-4 w-4" />
-            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#c17f5a] shadow-[0_0_0_3px_rgba(193,127,90,0.25)] pulse-fast" />
+            <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-[#c17f5a] shadow-[0_0_0_3px_rgba(193,127,90,0.25)] pulse-fast" />
           </button>
           {bellOpen && (
-            <div className="absolute right-0 top-full mt-2 w-80 rounded-[16px] bg-card border border-border shadow-lg overflow-hidden z-40">
-              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <div className="neu-card-sm absolute right-0 top-full mt-3 w-80 bg-[var(--surface-raised)] overflow-hidden z-40">
+              <div className="px-4 py-3 flex items-center justify-between border-b border-[color:rgba(184,168,148,0.18)]">
                 <span className="text-sm font-medium">Notifications</span>
                 <span className="text-[10px] uppercase tracking-wider text-[#c17f5a] font-mono">{notifs.length} new</span>
               </div>
-              <div className="divide-y divide-border max-h-[400px] overflow-y-auto">
+              <div className="max-h-[400px] overflow-y-auto">
                 {notifs.map((n) => (
-                  <button key={n.id} className="w-full text-left px-4 py-3 hover:bg-muted transition-colors flex gap-3">
+                  <button key={n.id} className="w-full text-left px-4 py-3 hover:bg-[var(--surface-sunken)] transition-colors flex gap-3 border-b border-[color:rgba(184,168,148,0.10)] last:border-0">
                     <span className={`h-2 w-2 rounded-full mt-1.5 shrink-0`} style={{ background: n.tone === "success" ? "#7a9e8a" : n.tone === "warning" ? "#d4882a" : "#c17f5a" }} />
                     <div className="flex-1">
                       <div className="text-sm">{n.title}</div>
@@ -286,7 +286,7 @@ function TopBar() {
         </div>
         <button
           onClick={() => openModal("new-project")}
-          className="h-10 px-4 inline-flex items-center gap-2 rounded-[6px] bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 transition-[filter] duration-150"
+          className="h-12 px-5 inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground text-sm font-medium shadow-[var(--shadow-soft-sm)] hover:shadow-[var(--shadow-soft)] active:shadow-[var(--shadow-pressed)] transition-shadow"
         >
           <Plus className="h-4 w-4" /><span className="hidden sm:inline">New project</span>
         </button>

@@ -1,104 +1,89 @@
 
-# Vendor Onboarding & Document Flow
+# Neumorphic Redesign — Full App
 
-Rebuild the "add vendor to project" flow as a single AI-driven action: pick vendor → upload quotation/BOQ → AI creates or updates tasks (work type, agency, budget) → confirm → done. Also add full vendor document management inside the project Vendors tab.
+Apply a luxurious soft-UI (neumorphism) skin across every screen, inspired by the reference: warm off-white base, pillowed white cards with paired light/shadow, generous padding, rounded geometry, restrained pastel accents. The warm-black sidebar stays as a deliberate contrast element.
 
-## 1. RLS & schema audit
+## 1. Design tokens (`src/styles.css`)
 
-Before any UI work, verify and fix policies on `project_vendors`, `phase_subcategories`, `tasks`, `project_documents`, `document_folders`. All must allow INSERT/UPDATE/SELECT/DELETE where `auth.uid() = user_id`. Add a `vendor_documents` table for vendor-scoped files with version history:
+New foundation — driven by tokens so every existing component inherits:
 
-- `vendor_documents` — project_id, vendor_id, project_vendor_id, name, category (quotation|boq|invoice|delivery_challan|work_order|other), storage_path, file_url, mime_type, file_size, notes, current_version_id, linked_document_id (FK to project_documents), user_id, timestamps, deleted_at.
-- `vendor_document_versions` — vendor_document_id, version_no, storage_path, file_url, file_size, mime_type, uploaded_at, user_id.
+- **Surface**: keep `--background #faf8f5`. Add `--surface-raised #ffffff`, `--surface-sunken #f3ede4`, `--surface-tint #ece5d8` (for inset highlights).
+- **Neumorphic shadow pairs** (the core of the look):
+  - `--shadow-soft`: `8px 8px 20px rgba(184,168,148,0.35), -8px -8px 20px rgba(255,255,255,0.9)` — default raised card.
+  - `--shadow-soft-sm`: tighter version for buttons/chips.
+  - `--shadow-soft-lg`: deeper version for hero panels/modals.
+  - `--shadow-inset`: `inset 4px 4px 8px rgba(184,168,148,0.30), inset -4px -4px 8px rgba(255,255,255,0.85)` — for inputs, search bars, sunken wells.
+  - `--shadow-pressed`: subtler inset for active/pressed buttons.
+- **Radii bumped up**: `--radius-md 14px`, `--radius-lg 22px`, `--radius-xl 28px`, `--radius-pill 999px`. Reference uses very rounded corners.
+- **Accents (hybrid as requested)**:
+  - Primary stays terracotta `#c17f5a`.
+  - Status pastel palette (chips, dots, category tags only): sage `#a8c4a2`, blush `#f0c4c4`, peach `#f4c89a`, cream `#f0e6cd`, soft-orange `#e8a87c`, mist-blue `#bcd0d8`.
+  - Expose as `--chip-sage`, `--chip-blush`, `--chip-peach`, `--chip-cream`, `--chip-orange`, `--chip-mist`.
+- **Typography**: keep Cormorant Garamond display + DM Sans body (already on-brand). Slightly lighter weights to match the airy reference.
 
-Both tables: GRANTs + RLS scoped to `auth.uid() = user_id`.
+## 2. Reusable neumorphic primitives
 
-## 2. Add Vendor sheet (replace current form)
+Three small utility classes in `styles.css` so every component can opt in without rewriting markup:
 
-Replace the existing add-vendor dialog in `ProjectVendorsTab` with a single sheet:
+- `.neu-card` — white surface, `--radius-xl`, `--shadow-soft`, generous internal padding default.
+- `.neu-inset` — sunken well for inputs, search bars, progress tracks, KPI value containers.
+- `.neu-pill` — pill button/chip with soft shadow that flips to `--shadow-pressed` on `:active`.
 
-1. Vendor autocomplete (existing `VendorAutocomplete`) — pick or create.
-2. Scope of work (optional textarea).
-3. File dropzone — PDF / XLSX / XLS / CSV / JPG / PNG, max 25MB, drag-drop + click. Progress bar, green check on success, inline error on failure (never silent).
-4. "Add to Project" button.
+Add a `@utility` for `neu-hover` that lifts the shadow slightly on hover (no translate — neumorphism reads better with shadow change than motion).
 
-On submit: upload file to `project-documents` bucket under `vendors/{projectVendorId}/{filename}`, insert `project_vendors` row, insert `vendor_documents` row (category defaults to Quotation/BOQ based on filename, editable), then trigger AI parse.
+## 3. shadcn component overrides (`src/components/ui/*`)
 
-## 3. Server function: `parseVendorQuotation`
+Edit in place, keep APIs identical:
 
-New `src/lib/vendor-quotation-ai.functions.ts`:
-- Input: `projectId`, `projectVendorId`, `vendorId`, `vendorName`, `fileBase64`, `filename`, `mime`.
-- Reuse logic from `boq-checklist.functions.ts` (already extracts line items via Lovable AI gateway). Extend prompt to return: description, quantity, unit, rate, amount, detected `work_type` from keyword map, detected `phase` (Civil/Electrical/Plumbing/Carpentry/Flooring/Painting → Execution; supply-only → Procurement).
-- Returns preview items only — no DB writes yet.
+- **button.tsx** — `default` variant: pill, `--shadow-soft-sm`, terracotta gradient text on white for secondary; `primary` keeps terracotta fill but with the soft shadow pair. `ghost` becomes a flat pill. Add `pressed` active state via `--shadow-pressed`.
+- **card.tsx** — apply `.neu-card`, remove hard border, increase default padding (`p-8`).
+- **input.tsx / textarea.tsx / select.tsx** — apply `.neu-inset`, taller (`h-12`), remove visible border, focus ring becomes terracotta glow instead of outline.
+- **badge.tsx** — soft pastel backgrounds keyed off variant, no border, slight inner highlight.
+- **tabs.tsx** — tab list becomes a sunken `.neu-inset` pill rail; active tab is a raised white pill with `--shadow-soft-sm`.
+- **dialog.tsx / sheet.tsx** — `--radius-xl`, `--shadow-soft-lg`, no border, off-white backdrop with light blur.
+- **progress.tsx** — track uses `.neu-inset`, fill is terracotta with subtle highlight.
+- **switch.tsx, checkbox.tsx** — soft pillowed thumb/box with inset track.
+- **table.tsx** — remove row borders, rely on whitespace; header row gets a sunken band; row hover is a soft cream wash.
+- **dropdown-menu.tsx / popover.tsx / tooltip.tsx** — white surface, `--shadow-soft-lg`, larger radius.
+- **alert.tsx, toast/sonner** — soft pastel surfaces by severity using the new chip palette.
+- **separator.tsx** — replace hairlines with a thin embossed line (1px highlight + 1px shadow).
 
-## 4. Server function: `matchAndSaveVendorTasks`
+## 4. App shell (`AppShell.tsx`)
 
-Input: items array + projectVendorId + vendorId/name.
+- Sidebar stays warm-black `#1a1612` (per your choice). Nav items get a soft inset highlight on active state (subtle inner shadow + terracotta left accent dot) instead of a filled pill.
+- Top bar: white, no border, with `--shadow-soft-sm` and a sunken search field.
+- Main content area: increase outer padding (`px-10 py-8` desktop), max-width breathing room.
 
-For each item:
-- Fuzzy match existing `tasks` in project by work_type + title similarity (Postgres `similarity()` already available via pg_trgm, threshold ~0.45).
-- If match: collect into `updates` (set `vendor_id`, `contractor`=vendor name, `boq_amount`=item.amount, store variance).
-- Else: collect into `creates` (new task with work_type, phase, vendor_id, boq_amount, status='not_started').
+## 5. Page-by-page application
 
-Return `{ updates, creates }` for the confirmation screen. A second `confirmVendorTasks` fn actually writes the inserts/updates + recomputes budget (triggers handle the rollup).
+All pages inherit automatically via tokens/primitives. Specific tweaks:
 
-## 5. Confirmation screen
+- **Dashboard** — KPI tiles become big neumorphic cards in a looser grid; "Studio Intelligence" insights as soft pastel-bordered cards (sage/blush/peach by severity); phase timeline gets pillowed milestone discs with inset connector track.
+- **Projects list** — project cards become tall pillowed cards with generous padding; status as pastel chip.
+- **Project detail** — tab rail becomes neumorphic pill bar; phase timeline (Concept→Handover) gets raised circular milestone markers with inset track between them.
+- **Tasks** — table loses borders; selection checkboxes become neumorphic; floating bulk-action bar already exists — restyle as a single raised pill at the bottom with `--shadow-soft-lg`.
+- **Vendors** — vendor cards pillowed, document chips pastel-tinted by category (BOQ/Quotation/PO/PI/Invoice/Challan each gets one of the pastel chip colors).
+- **Settings, Auth, Wizards** — inherit card/input/button changes; bump padding.
 
-`VendorQuotationReviewSheet` (new component, modeled on `BoqReviewSheet`):
-- Header: "AI read {filename} — found N line items".
-- Section "Tasks to Update": table with old/new agency, old/new budget, variance chip.
-- Section "New Tasks to Create": editable rows (title, work type select, budget input).
-- Footer summary: "X updated · Y created · {Vendor} assigned · Total ₹Z".
-- Buttons: "Review & Edit" (toggle inline editing) and "Confirm & Save".
+## 6. Spacing pass (per "embrace it")
 
-On confirm: call `confirmVendorTasks`, also copy file into `project_documents` under proper folder (Quotations/{vendor}, BOQ/{vendor}, Invoices/{vendor}), set `vendor_documents.linked_document_id`. Show toast and emit `pmstudio:goto-tab` → tasks.
+- Global container padding `px-10 py-10` desktop, `px-6 py-8` mobile.
+- Card internal padding default `p-8` (was ~p-4/p-6).
+- Form field vertical rhythm `space-y-6`.
+- Section gaps `gap-8` minimum.
 
-## 6. Project total budget alert
+## 7. Out of scope
 
-In project Overview, if confirmed creates introduce new scopes not in original BOQ, surface a `project_alerts` row: "New scope added — budget increased by ₹X — consider informing client". Existing alerts strip will render it.
+- No backend, RLS, schema, or data-layer changes.
+- No new features — purely visual.
+- No changes to PDF/print views, Gantt theme (already custom), or AI prompts.
+- Charts (Recharts) get a recolor pass only — same components.
 
-## 7. Vendor document management (Vendors tab)
+## Technical notes
 
-Inside each vendor card in `ProjectVendorsTab`, add a Documents subsection:
+- All changes are CSS tokens + `src/components/ui/*` variants + `AppShell.tsx`. Page files are touched only where they hard-code shadows/borders that fight the new look (rare — most use the design system).
+- Neumorphism contrast is delicate; foreground text stays `#3d3530` to keep WCAG AA on the warm off-white.
+- Reduced-motion users: shadow transitions only, no translate, already respected.
+- Risk: very busy data tables can look mushy in pure neumorphism — mitigated by keeping table header as a sunken band and rows on flat white inside the card (not each row pillowed).
 
-- List `vendor_documents` rows with: file-type icon (PDF/XLS/IMG), name, category chip, upload date, size.
-- Per-row 3-dot menu: View / Replace / Edit Details / Download / Move to Documents / Delete.
-  - **Replace** uploads new file, archives current to `vendor_document_versions`, bumps version.
-  - **Edit Details** opens small dialog (name, category, notes).
-  - **Move to Documents** copies into `project_documents` under correct folder; if already linked, show "Linked" badge instead of duplicating.
-  - **Delete** soft-deletes (`deleted_at`).
-- **Version history**: expandable row showing V1 / V2 (current) with restore action.
-- **Add File** button: file picker → asks category → uploads with progress → after upload, if category is Quotation/BOQ, prompt "Process this to create tasks?" (runs the same AI flow). If Invoice, prompt "Process to update payments?" (reuse existing `vendor-invoice-extract` flow).
-- **Drag & drop** on the vendor card: same upload path, category auto-guessed from filename (`quote|quotation` → Quotation, `boq` → BOQ, `invoice|inv` → Invoice, else Other).
-
-## 8. File upload hardening
-
-- Single `uploadVendorFile` helper in `src/lib/vendor-upload.ts`: validates mime + 25MB cap, uploads with `supabase.storage.from('project-documents').upload`, returns public URL + path. Surfaces real Supabase error message via toast.
-- Progress: use XHR-based upload wrapper to drive a Tailwind progress bar; fall back to indeterminate spinner if Storage SDK doesn't emit progress.
-
-## 9. Technical Details
-
-- **Files added**:
-  - `src/lib/vendor-quotation-ai.functions.ts` (parse + match + confirm server fns)
-  - `src/lib/vendor-upload.ts` (browser upload helper)
-  - `src/components/vendors/AddVendorSheet.tsx`
-  - `src/components/vendors/VendorQuotationReviewSheet.tsx`
-  - `src/components/vendors/VendorDocumentsSection.tsx`
-  - `src/components/vendors/VendorFileVersionHistory.tsx`
-- **Files edited**:
-  - `src/components/vendors/ProjectVendorsTab.tsx` — swap add flow, embed `VendorDocumentsSection`, dropzone wrapper.
-  - `src/lib/boq-checklist.functions.ts` — extract keyword→work_type/phase mapping into shared util.
-- **Migration**: create `vendor_documents`, `vendor_document_versions`, indexes on (project_id, vendor_id) and (vendor_document_id, version_no). GRANTs + RLS as per project conventions. Re-affirm INSERT policies on `project_vendors` and add missing ones if linter flags them.
-- **Reuse**: AI gateway call pattern from `boq.functions.ts` and `boq-checklist.functions.ts`; `BoqReviewSheet` UX as reference for the review screen; `DocumentsTab` folder convention for the "Move to Documents" target paths.
-- **Cache invalidation** after confirm: `tasks`, `phase-subs`, `project-budget-rollup`, `project`, `project-vendors`, `vendor-documents`, `project-documents`, `project-activity`.
-
-## Out of scope
-
-- No changes to the published portal vendor view.
-- No edits to existing edge functions or daily-reports cron.
-- No global theming changes — keep existing palette/components.
-
-Ship in this order:
-1. Migration (vendor_documents + version history + RLS audit).
-2. Upload helper + AddVendorSheet + parse/match/confirm server fns + Review sheet.
-3. VendorDocumentsSection (list, actions, version history, drag-drop, AI offers).
-4. Overview budget-alert hook.
+After implementation, I'll spot-check dashboard, a project detail page, tasks, and vendors visually before handing back.
