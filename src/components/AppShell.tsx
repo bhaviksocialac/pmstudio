@@ -112,10 +112,10 @@ function Sidebar({ pathname }: { pathname: string }) {
                   : "text-white/65 hover:text-white hover:bg-sidebar-accent/60"
               }`}
             >
-              <n.icon className="h-4 w-4" />
+              <n.icon className={`h-4 w-4 ${active ? "text-[#c17f5a]" : ""}`} />
               <span className="flex-1 text-left">{n.label}</span>
               {n.badge && (
-                <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-md bg-[#c17f5a] text-white">{n.badge}</span>
+                <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-[#c17f5a] text-white">{n.badge}</span>
               )}
             </Link>
           );
