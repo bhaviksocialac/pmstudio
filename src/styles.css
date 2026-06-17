@@ -35,87 +35,89 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
-  --font-display: "Cormorant Garamond", Georgia, serif;
-  --font-sans: "DM Sans", system-ui, sans-serif;
-  --font-mono: "DM Mono", ui-monospace, monospace;
+  --font-display: "Outfit", system-ui, sans-serif;
+  --font-sans: "Outfit", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 :root {
   --radius: 22px;
 
-  --background: #faf8f5;
-  --foreground: #3d3530;
+  /* Pure neumorphism — cool monochrome base */
+  --background: #e8eaf0;
+  --foreground: #4a4e5a;
 
-  --card: #ffffff;
-  --card-foreground: #3d3530;
-  --popover: #ffffff;
-  --popover-foreground: #3d3530;
+  --card: #eef0f5;
+  --card-foreground: #4a4e5a;
+  --popover: #eef0f5;
+  --popover-foreground: #4a4e5a;
 
   --primary: #c17f5a;
   --primary-foreground: #ffffff;
 
-  --secondary: #f1ece4;
-  --secondary-foreground: #3d3530;
-  --muted: #efe9df;
-  --muted-foreground: #7a6e64;
+  --secondary: #e0e3eb;
+  --secondary-foreground: #4a4e5a;
+  --muted: #dee1e9;
+  --muted-foreground: #8a8e9a;
   --accent: #c17f5a;
   --accent-foreground: #ffffff;
 
-  --destructive: #c4685a;
+  --destructive: #d97766;
   --destructive-foreground: #ffffff;
 
-  --border: #ece5d8;
-  --input: #ece5d8;
+  --border: #d8dbe4;
+  --input: #d8dbe4;
   --ring: #c17f5a;
 
-  --success: #7a9e8a;
-  --warning: #d4882a;
-  --danger: #c4685a;
+  --success: #7fa890;
+  --warning: #e8a87c;
+  --danger: #d97766;
 
-  --sidebar: #1a1612;
-  --sidebar-foreground: #ffffff;
-  --sidebar-accent: #2a2520;
-  --sidebar-border: #2a2520;
+  /* Sidebar matches body — light neumorphic */
+  --sidebar: #e8eaf0;
+  --sidebar-foreground: #4a4e5a;
+  --sidebar-accent: #dee1e9;
+  --sidebar-border: transparent;
 
   /* Neumorphic surfaces */
-  --surface-raised: #ffffff;
-  --surface-sunken: #f1ebe0;
-  --surface-tint: #ece5d8;
+  --surface-raised: #eef0f5;
+  --surface-sunken: #dee1e9;
+  --surface-tint: #d8dbe4;
 
-  /* Neumorphic shadow pairs — paired dark + light to read as pillowed */
-  --neu-dark: rgba(184, 168, 148, 0.38);
+  /* Dual shadows — dark cool + bright light, pronounced pillow */
+  --neu-dark: rgba(166, 171, 189, 0.55);
   --neu-light: rgba(255, 255, 255, 0.95);
   --shadow-soft-sm:
-    3px 3px 8px rgba(184, 168, 148, 0.30),
-    -3px -3px 8px rgba(255, 255, 255, 0.90);
+    4px 4px 10px rgba(166, 171, 189, 0.45),
+    -4px -4px 10px rgba(255, 255, 255, 0.95);
   --shadow-soft:
-    8px 8px 22px rgba(184, 168, 148, 0.32),
-    -8px -8px 22px rgba(255, 255, 255, 0.92);
+    10px 10px 26px rgba(166, 171, 189, 0.50),
+    -10px -10px 26px rgba(255, 255, 255, 0.95);
   --shadow-soft-lg:
-    14px 14px 36px rgba(184, 168, 148, 0.34),
-    -14px -14px 36px rgba(255, 255, 255, 0.95);
+    18px 18px 44px rgba(166, 171, 189, 0.55),
+    -18px -18px 44px rgba(255, 255, 255, 1);
   --shadow-inset:
-    inset 4px 4px 9px rgba(184, 168, 148, 0.32),
-    inset -4px -4px 9px rgba(255, 255, 255, 0.90);
+    inset 5px 5px 11px rgba(166, 171, 189, 0.50),
+    inset -5px -5px 11px rgba(255, 255, 255, 0.95);
   --shadow-inset-sm:
-    inset 2px 2px 5px rgba(184, 168, 148, 0.28),
-    inset -2px -2px 5px rgba(255, 255, 255, 0.90);
+    inset 3px 3px 6px rgba(166, 171, 189, 0.42),
+    inset -3px -3px 6px rgba(255, 255, 255, 0.92);
   --shadow-pressed:
-    inset 3px 3px 6px rgba(184, 168, 148, 0.28),
-    inset -3px -3px 6px rgba(255, 255, 255, 0.82);
+    inset 4px 4px 8px rgba(166, 171, 189, 0.50),
+    inset -4px -4px 8px rgba(255, 255, 255, 0.85);
 
-  /* Pastel status / category palette */
-  --chip-sage: #d9e8d3;
+  /* Pastel status / category palette — keep hybrid accents */
+  --chip-sage: #c9dec1;
   --chip-sage-ink: #4f7d65;
-  --chip-blush: #f5d8d8;
+  --chip-blush: #f2d0d0;
   --chip-blush-ink: #a35b5b;
-  --chip-peach: #fadbb8;
+  --chip-peach: #f7d0a8;
   --chip-peach-ink: #a06a35;
-  --chip-cream: #f4ebd1;
+  --chip-cream: #efe2bf;
   --chip-cream-ink: #8a6f38;
-  --chip-orange: #f4c89a;
+  --chip-orange: #f4b984;
   --chip-orange-ink: #a86b1f;
-  --chip-mist: #d6e2e7;
+  --chip-mist: #cdd9e0;
   --chip-mist-ink: #4a6e7d;
 
   --shadow-card: var(--shadow-soft);
@@ -136,8 +138,8 @@
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     background-image:
-      radial-gradient(1200px 800px at 0% 0%, rgba(255,255,255,0.55), transparent 60%),
-      radial-gradient(1200px 800px at 100% 100%, rgba(184,168,148,0.10), transparent 60%);
+      radial-gradient(1400px 900px at 0% 0%, rgba(255,255,255,0.7), transparent 60%),
+      radial-gradient(1400px 900px at 100% 100%, rgba(166,171,189,0.18), transparent 60%);
   }
   h1, h2, h3, h4 {
     font-family: var(--font-display);
