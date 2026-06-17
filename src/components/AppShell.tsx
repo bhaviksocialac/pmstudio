@@ -36,7 +36,7 @@ export function AppShell({ children, pageTitle }: { children: React.ReactNode; p
     <div className="min-h-screen flex bg-background text-foreground font-sans">
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
       <Sidebar pathname={pathname} />
 
@@ -91,14 +91,14 @@ function Sidebar({ pathname }: { pathname: string }) {
   };
 
   return (
-    <aside className="hidden md:flex w-64 shrink-0 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border sticky top-0 h-screen">
+    <aside className="hidden md:flex w-64 shrink-0 bg-sidebar text-sidebar-foreground flex-col sticky top-0 h-screen">
       <div className="px-6 pt-8 pb-10">
-        <Link to="/dashboard" className="font-display text-3xl leading-none">
-          <span className="text-white">PM</span><span className="text-[#c17f5a]">Studio</span>
+        <Link to="/dashboard" className="font-display text-3xl leading-none tracking-tight">
+          <span className="text-foreground font-light">PM</span><span className="text-[#c17f5a] font-medium">Studio</span>
         </Link>
-        <div className="text-[10px] uppercase tracking-[0.22em] text-white/35 mt-2">Design Command Centre</div>
+        <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mt-2 font-medium">Design Command Centre</div>
       </div>
-      <nav className="px-3 space-y-1 flex-1">
+      <nav className="px-4 space-y-2 flex-1">
         {navItems.map((n) => {
           const p = pathname as string;
           const active = p === n.to || p.startsWith(n.to + "/");
@@ -106,14 +106,14 @@ function Sidebar({ pathname }: { pathname: string }) {
             <Link
               key={n.label}
               to={n.to}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm transition-all duration-200 ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-full text-sm transition-all duration-200 ${
                 active
-                  ? "bg-[#0f0c0a] text-white shadow-[inset_3px_3px_6px_rgba(0,0,0,0.55),inset_-3px_-3px_6px_rgba(60,50,42,0.35)]"
-                  : "text-white/65 hover:text-white hover:bg-sidebar-accent/60"
+                  ? "bg-[var(--surface-sunken)] text-foreground shadow-[var(--shadow-inset-sm)]"
+                  : "text-muted-foreground hover:text-foreground hover:shadow-[var(--shadow-soft-sm)] hover:bg-[var(--surface-raised)]"
               }`}
             >
               <n.icon className={`h-4 w-4 ${active ? "text-[#c17f5a]" : ""}`} />
-              <span className="flex-1 text-left">{n.label}</span>
+              <span className="flex-1 text-left font-medium">{n.label}</span>
               {n.badge && (
                 <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-[#c17f5a] text-white">{n.badge}</span>
               )}
@@ -121,9 +121,9 @@ function Sidebar({ pathname }: { pathname: string }) {
           );
         })}
       </nav>
-      <div className="p-3 relative">
+      <div className="p-4 relative">
         {profileOpen && (
-          <div className="absolute bottom-full left-3 right-3 mb-2 rounded-[10px] bg-white text-foreground shadow-lg border border-border overflow-hidden z-50">
+          <div className="absolute bottom-full left-4 right-4 mb-2 rounded-[18px] bg-[var(--surface-raised)] text-foreground shadow-[var(--shadow-soft)] overflow-hidden z-50">
             {[
               { icon: UserCircle, label: "My Profile", onClick: () => { setProfileOpen(false); toast("My Profile coming soon"); } },
               { icon: Settings, label: "Studio Settings", onClick: () => { setProfileOpen(false); toast("Studio Settings coming soon"); } },
@@ -133,7 +133,7 @@ function Sidebar({ pathname }: { pathname: string }) {
               <button
                 key={it.label}
                 onClick={it.onClick}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-muted text-left"
+                className="w-full flex items-center gap-2.5 px-4 py-3 text-sm hover:bg-[var(--surface-sunken)] text-left transition-colors"
               >
                 <it.icon className="h-4 w-4 text-muted-foreground" />
                 <span className="flex-1">{it.label}</span>
@@ -143,14 +143,14 @@ function Sidebar({ pathname }: { pathname: string }) {
         )}
         <button
           onClick={() => setProfileOpen((v) => !v)}
-          className="w-full flex items-center gap-3 p-3 rounded-[10px] bg-sidebar-accent border border-sidebar-border hover:bg-[#332b25] transition-colors"
+          className="w-full flex items-center gap-3 p-3 rounded-full bg-[var(--surface-raised)] shadow-[var(--shadow-soft-sm)] hover:shadow-[var(--shadow-soft)] transition-shadow"
         >
-          <span className="h-9 w-9 rounded-full bg-[#c17f5a] text-white flex items-center justify-center text-xs font-medium">{initials || "S"}</span>
+          <span className="h-9 w-9 rounded-full bg-[#c17f5a] text-white flex items-center justify-center text-xs font-semibold shadow-[var(--shadow-soft-sm)]">{initials || "S"}</span>
           <div className="flex-1 text-left min-w-0">
-            <div className="text-sm font-medium text-white truncate">{fullName}</div>
-            <div className="text-[10px] font-mono text-white/45 truncate">{profile?.studio_name || "Studio"}</div>
+            <div className="text-sm font-medium text-foreground truncate">{fullName}</div>
+            <div className="text-[10px] font-mono text-muted-foreground truncate">{profile?.studio_name || "Studio"}</div>
           </div>
-          <ChevronRight className={`h-3.5 w-3.5 text-white/50 transition-transform ${profileOpen ? "rotate-90" : ""}`} />
+          <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${profileOpen ? "rotate-90" : ""}`} />
         </button>
       </div>
     </aside>
@@ -311,13 +311,13 @@ function SearchSection({ title, items }: { title: string; items: { key: string; 
 
 function MobileBottomNav({ pathname }: { pathname: string }) {
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-sidebar border-t border-sidebar-border px-2 py-2 flex justify-around">
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-[var(--surface-raised)] shadow-[var(--shadow-soft)] px-2 py-2 flex justify-around rounded-t-[22px]">
       {[navItems[0], navItems[1], navItems[2], navItems[5], navItems[6]].map((n) => {
         const p = pathname as string;
         const active = p === n.to || p.startsWith(n.to + "/");
         return (
           <Link key={n.label} to={n.to}
-            className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-[10px] text-[10px] ${active ? "text-[#c17f5a]" : "text-white/60"}`}>
+            className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-full text-[10px] ${active ? "text-[#c17f5a] shadow-[var(--shadow-inset-sm)] bg-[var(--surface-sunken)]" : "text-muted-foreground"}`}>
             <n.icon className="h-5 w-5" />
             <span>{n.label}</span>
           </Link>
