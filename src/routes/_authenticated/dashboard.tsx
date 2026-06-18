@@ -270,7 +270,10 @@ function Dashboard() {
 
   return (
     <AppShell>
-      <main className="px-5 md:px-14 py-10 md:py-16 max-w-[1340px] w-full pb-24 md:pb-20">
+      <main className="px-5 md:px-14 py-10 md:py-12 max-w-[1340px] w-full pb-24 md:pb-20">
+
+        {/* 0. STUDIO COMMAND BAR — bold hero */}
+        <StudioCommandBar projects={projects} tasks={tasks} firstName={firstName} />
 
         {/* 1. MORNING BRIEFING */}
         <SectionLabel eyebrow="01 — Briefing" title="Morning Briefing" subtitle="What needs your attention before the studio opens." />
