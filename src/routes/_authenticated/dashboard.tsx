@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth";
 import { PendingApprovals } from "@/components/PendingApprovals";
 import { PhotoStaging } from "@/components/PhotoStaging";
 import { MorningBriefing } from "@/components/dashboard/MorningBriefing";
+import { StudioCommandBar } from "@/components/dashboard/StudioCommandBar";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
